@@ -3,7 +3,7 @@ import {
 } from "../chunk-QHE3GYBX.js";
 import {
   zh_CN_default
-} from "../chunk-AQIU5XW4.js";
+} from "../chunk-EB3DJFG6.js";
 import {
   UniverRemoteSheetsFormulaPlugin
 } from "../chunk-F6LNSSAA.js";

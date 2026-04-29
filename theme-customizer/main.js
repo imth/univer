@@ -1,27 +1,28 @@
 import {
   UniverSheetsNoteUIPlugin,
   UniverSheetsTableUIPlugin
-} from "../chunk-ZZHY7JRW.js";
+} from "../chunk-XZNOMUT5.js";
 import {
   UniverSheetsSortUIPlugin
-} from "../chunk-KO6NXRMG.js";
+} from "../chunk-UKHYPRTG.js";
 import {
   en_US_default
-} from "../chunk-WVRTT5L6.js";
+} from "../chunk-44VHBNK2.js";
 import "../chunk-D5O35L4U.js";
 import "../chunk-JP6QLGWM.js";
 import "../chunk-WT4JNZXZ.js";
+import "../chunk-HEVHAOJL.js";
 import {
   UniverSheetsNotePlugin,
   UniverSheetsTablePlugin
 } from "../chunk-ZT5VZXQD.js";
 import {
   UniverSheetsZenEditorPlugin
-} from "../chunk-JKJ3ZUHM.js";
+} from "../chunk-SYKVI3MP.js";
 import {
   UniverSheetsHyperLinkPlugin,
   UniverSheetsHyperLinkUIPlugin
-} from "../chunk-7A3VGSOU.js";
+} from "../chunk-SBFKPBVY.js";
 import {
   UniverSheetsSortPlugin
 } from "../chunk-SK52SX2N.js";
@@ -29,7 +30,7 @@ import {
   UniverSheetsConditionalFormattingUIPlugin,
   UniverSheetsDataValidationUIPlugin,
   UniverSheetsFilterUIPlugin
-} from "../chunk-JFL7BFHK.js";
+} from "../chunk-2DW6PSUZ.js";
 import {
   UniverSheetsConditionalFormattingPlugin
 } from "../chunk-5RETGFZ5.js";
@@ -38,24 +39,24 @@ import {
 } from "../chunk-QHE3GYBX.js";
 import {
   UniverSheetsNumfmtUIPlugin
-} from "../chunk-V2FR5XJG.js";
+} from "../chunk-DKY3EF7B.js";
 import {
   UniverSheetsFormulaUIPlugin
-} from "../chunk-BKXHVGES.js";
+} from "../chunk-U7COZTXY.js";
 import {
   UniverSheetsNumfmtPlugin
 } from "../chunk-4L54LCYD.js";
 import {
   UniverSheetsUIPlugin
-} from "../chunk-E2DEMQQU.js";
+} from "../chunk-US4GHTPO.js";
 import {
   DEFAULT_WORKBOOK_DATA_DEMO
-} from "../chunk-NBHWZPCR.js";
+} from "../chunk-NL4BWSOT.js";
 import {
   UniverDocsPlugin,
   UniverDocsUIPlugin,
   UniverSheetsDataValidationPlugin
-} from "../chunk-4URBNYAO.js";
+} from "../chunk-6BGVBGKF.js";
 import "../chunk-LI6UXASZ.js";
 import {
   Button,
@@ -71,7 +72,7 @@ import {
   render,
   require_jsx_runtime,
   require_react
-} from "../chunk-JAWGSHYY.js";
+} from "../chunk-LJX3KESO.js";
 import {
   UniverSheetsFormulaPlugin
 } from "../chunk-F6LNSSAA.js";
