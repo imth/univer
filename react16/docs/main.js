@@ -1,38 +1,38 @@
 import {
   UniverDocsMentionUIPlugin
-} from "../chunk-K4XE3KBM.js";
+} from "../chunk-NWUV2KBV.js";
 import {
   SetActiveCommentOperation,
   ThreadCommentPanel,
   ThreadCommentPanelService,
   UniverThreadCommentUIPlugin
-} from "../chunk-IZFMZK3P.js";
-import "../chunk-SGVZVWUF.js";
+} from "../chunk-VDFF4NMY.js";
+import "../chunk-3J4E3GFP.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-LLXNSXWQ.js";
+} from "../chunk-J4FYYWEY.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-2RXBWQAF.js";
+} from "../chunk-J3PVGPNI.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
   ThreadCommentModel,
   getDT
 } from "../chunk-IBVO3ATC.js";
-import "../chunk-2Q5Y46ZC.js";
+import "../chunk-3C4OY2I7.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-EI6LXNRM.js";
+} from "../chunk-7HAQKVDX.js";
 import {
   FUniver
 } from "../chunk-HM2RZA4P.js";
-import "../chunk-DKG3ND25.js";
+import "../chunk-5AQH5H5L.js";
 import {
   DEFAULT_DOCUMENT_DATA_SIMPLE
-} from "../chunk-YEMSYPPD.js";
+} from "../chunk-SVW75NOL.js";
 import {
   BulletListCommand,
   CutContentCommand,
@@ -66,7 +66,7 @@ import {
   getAnchorBounding,
   replaceSelectionFactory,
   whenDocAndEditorFocused
-} from "../chunk-6BI4E4FH.js";
+} from "../chunk-QVAAKY2I.js";
 import "../chunk-LI6UXASZ.js";
 import {
   Button,
@@ -99,20 +99,20 @@ import {
   useDependency,
   useEvent,
   useObservable
-} from "../chunk-QHUPZ3XV.js";
+} from "../chunk-WAAGLRXD.js";
 import {
   zh_CN_default
 } from "../chunk-EB3DJFG6.js";
-import "../chunk-F6LNSSAA.js";
+import "../chunk-4LFMFKL5.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-AUPUCYDH.js";
+} from "../chunk-EWRU3GCM.js";
 import {
   IRenderManagerService,
   UniverRenderEnginePlugin,
   ptToPixel,
   withCurrentTypeOfRenderer
-} from "../chunk-QYXLJWB3.js";
+} from "../chunk-7USV3ESF.js";
 import {
   BehaviorSubject,
   BuildTextUtils,
@@ -6494,6 +6494,20 @@ function textOf(node) {
   }
   return out;
 }
+function flattenSdt(nodes) {
+  const out = [];
+  for (const node of nodes) {
+    if (nodeName(node) === "w:sdt") {
+      const content = findChild(node, "w:sdtContent");
+      if (content) {
+        for (const inner of flattenSdt(nodeChildren(content))) out.push(inner);
+      }
+    } else {
+      out.push(node);
+    }
+  }
+  return out;
+}
 
 // ../packages/docs-exchange/src/utils/parse/parse-drawing.ts
 function bytesToBase64(bytes) {
@@ -6586,6 +6600,15 @@ function emitRun(run, acc, ctx) {
   const runEnd = acc.data.length;
   if (run.style) {
     acc.textRuns.push({ st: runStart, ed: runEnd, ts: run.style });
+  }
+  if (run.fieldType) {
+    acc.customRanges.push({
+      startIndex: runStart,
+      endIndex: runEnd - 1,
+      rangeType: 1 /* FIELD */,
+      rangeId: uuidv4(),
+      properties: { subtype: run.fieldType }
+    });
   }
   if (run.hyperlink) {
     const real = ctx.rels.get(run.hyperlink.url);
@@ -7394,11 +7417,12 @@ function parseRunsFromPNode(pNode, drawingsOut, styles, pStyleRpr, themeFonts, p
       }
       return;
     }
-    const placeholder = kind === "PAGE" ? "{{page}}" : "{{numpages}}";
+    const placeholder = "1";
     const style = resolveRunStyle(rPrForStyle, baseRpr, baseRFonts, styles, themeFonts, placeholder);
     runs.push(style ? { text: placeholder, style, fieldType: kind } : { text: placeholder, fieldType: kind });
   };
   let pendingFieldRPr;
+  let pendingFieldResultRPr;
   let pendingFieldFallback = "";
   for (const child of nodeChildren(pNode)) {
     const name = nodeName(child);
@@ -7410,6 +7434,7 @@ function parseRunsFromPNode(pNode, drawingsOut, styles, pStyleRpr, themeFonts, p
         fieldInstr = "";
         inFieldResult = false;
         pendingFieldRPr = rPr;
+        pendingFieldResultRPr = void 0;
         pendingFieldFallback = "";
         continue;
       }
@@ -7419,11 +7444,12 @@ function parseRunsFromPNode(pNode, drawingsOut, styles, pStyleRpr, themeFonts, p
       }
       if ((signals == null ? void 0 : signals.fldChar) === "end") {
         if (fieldDepth > 0) {
-          emitField(pendingFieldRPr, pendingFieldFallback);
+          emitField(pendingFieldResultRPr != null ? pendingFieldResultRPr : pendingFieldRPr, pendingFieldFallback);
           fieldDepth--;
           fieldInstr = "";
           inFieldResult = false;
           pendingFieldRPr = void 0;
+          pendingFieldResultRPr = void 0;
           pendingFieldFallback = "";
         }
         continue;
@@ -7434,6 +7460,9 @@ function parseRunsFromPNode(pNode, drawingsOut, styles, pStyleRpr, themeFonts, p
           continue;
         }
         if (inFieldResult) {
+          if (pendingFieldResultRPr === void 0 && rPr !== void 0 && runTextFromR(child).length > 0) {
+            pendingFieldResultRPr = rPr;
+          }
           pendingFieldFallback += runTextFromR(child);
           continue;
         }
@@ -7466,7 +7495,7 @@ function parseRunsFromPNode(pNode, drawingsOut, styles, pStyleRpr, themeFonts, p
     }
   }
   if (fieldDepth > 0 && pendingFieldFallback.length > 0) {
-    const style = resolveRunStyle(pendingFieldRPr, baseRpr, baseRFonts, styles, themeFonts, pendingFieldFallback);
+    const style = resolveRunStyle(pendingFieldResultRPr != null ? pendingFieldResultRPr : pendingFieldRPr, baseRpr, baseRFonts, styles, themeFonts, pendingFieldFallback);
     runs.push(style ? { text: pendingFieldFallback, style } : { text: pendingFieldFallback });
   }
   return runs;
@@ -7848,7 +7877,7 @@ function parseHeaderFooterXml(xml, rootTag, ctx) {
   if (!root) return void 0;
   const drawingInfoMap = /* @__PURE__ */ new Map();
   const children = [];
-  for (const child of nodeChildren(root)) {
+  for (const child of flattenSdt(nodeChildren(root))) {
     const name = nodeName(child);
     try {
       if (name === "w:p") {
@@ -8426,7 +8455,7 @@ async function docxToUniverData(input) {
   const drawingInfoMap = /* @__PURE__ */ new Map();
   const children = [];
   if (body) {
-    for (const child of nodeChildren(body)) {
+    for (const child of flattenSdt(nodeChildren(body))) {
       const name = nodeName(child);
       try {
         if (name === "w:p") {
