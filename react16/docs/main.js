@@ -1,38 +1,38 @@
 import {
   UniverDocsMentionUIPlugin
-} from "../chunk-NWUV2KBV.js";
+} from "../chunk-VLZ4KDJI.js";
 import {
   SetActiveCommentOperation,
   ThreadCommentPanel,
   ThreadCommentPanelService,
   UniverThreadCommentUIPlugin
-} from "../chunk-VDFF4NMY.js";
-import "../chunk-3J4E3GFP.js";
+} from "../chunk-CWUINLTY.js";
+import "../chunk-GOQCGBFX.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-J4FYYWEY.js";
+} from "../chunk-FX7BDZPX.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-J3PVGPNI.js";
+} from "../chunk-FEVSF4A7.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
   ThreadCommentModel,
   getDT
 } from "../chunk-IBVO3ATC.js";
-import "../chunk-3C4OY2I7.js";
+import "../chunk-BI2UILIU.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-7HAQKVDX.js";
+} from "../chunk-TDPOH4IQ.js";
 import {
   FUniver
 } from "../chunk-HM2RZA4P.js";
-import "../chunk-5AQH5H5L.js";
+import "../chunk-BGDEWX3I.js";
 import {
   DEFAULT_DOCUMENT_DATA_SIMPLE
-} from "../chunk-SVW75NOL.js";
+} from "../chunk-RJJP26R3.js";
 import {
   BulletListCommand,
   CutContentCommand,
@@ -66,7 +66,7 @@ import {
   getAnchorBounding,
   replaceSelectionFactory,
   whenDocAndEditorFocused
-} from "../chunk-QVAAKY2I.js";
+} from "../chunk-VQXHD755.js";
 import "../chunk-LI6UXASZ.js";
 import {
   Button,
@@ -99,20 +99,20 @@ import {
   useDependency,
   useEvent,
   useObservable
-} from "../chunk-WAAGLRXD.js";
+} from "../chunk-3H2NVD65.js";
 import {
   zh_CN_default
 } from "../chunk-EB3DJFG6.js";
-import "../chunk-4LFMFKL5.js";
+import "../chunk-HMW7DLMS.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-EWRU3GCM.js";
+} from "../chunk-CNTBAGPE.js";
 import {
   IRenderManagerService,
   UniverRenderEnginePlugin,
   ptToPixel,
   withCurrentTypeOfRenderer
-} from "../chunk-7USV3ESF.js";
+} from "../chunk-PBSOXRSO.js";
 import {
   BehaviorSubject,
   BuildTextUtils,
@@ -7105,11 +7105,13 @@ var BORDER_DASH_MAP = {
   dotted: 2,
   dashed: 3
 };
+var DEFAULT_BORDER_COLOR_RGB = "#000000";
 function parseBorder(b) {
   const a = nodeAttrs(b);
   const out = {};
   const colorAttr = a["@_w:color"];
   if (colorAttr && colorAttr !== "auto") out.color = { rgb: `#${colorAttr.toUpperCase()}` };
+  else out.color = { rgb: DEFAULT_BORDER_COLOR_RGB };
   const sz = Number(a["@_w:sz"]);
   if (!Number.isNaN(sz)) out.width = Math.max(1, Math.round(sz / 6));
   const valAttr = a["@_w:val"];
