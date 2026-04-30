@@ -1,38 +1,38 @@
 import {
   UniverDocsMentionUIPlugin
-} from "../chunk-VLZ4KDJI.js";
+} from "../chunk-CTLKXGHM.js";
 import {
   SetActiveCommentOperation,
   ThreadCommentPanel,
   ThreadCommentPanelService,
   UniverThreadCommentUIPlugin
-} from "../chunk-CWUINLTY.js";
-import "../chunk-GOQCGBFX.js";
+} from "../chunk-YKKW2FPS.js";
+import "../chunk-3NE7KPNY.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-SRO3W2WC.js";
+} from "../chunk-UURNOEAU.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-FEVSF4A7.js";
+} from "../chunk-FFSSQRSL.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
   ThreadCommentModel,
   getDT
 } from "../chunk-IBVO3ATC.js";
-import "../chunk-BI2UILIU.js";
+import "../chunk-JGBSSIFR.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-TDPOH4IQ.js";
+} from "../chunk-TKU54CML.js";
 import {
   FUniver
 } from "../chunk-HM2RZA4P.js";
-import "../chunk-BGDEWX3I.js";
+import "../chunk-LLROKE42.js";
 import {
   DEFAULT_DOCUMENT_DATA_SIMPLE
-} from "../chunk-RJJP26R3.js";
+} from "../chunk-HCQ36VEC.js";
 import {
   BulletListCommand,
   CutContentCommand,
@@ -66,7 +66,7 @@ import {
   getAnchorBounding,
   replaceSelectionFactory,
   whenDocAndEditorFocused
-} from "../chunk-VQXHD755.js";
+} from "../chunk-EPGPLS2V.js";
 import "../chunk-LI6UXASZ.js";
 import {
   Button,
@@ -99,20 +99,20 @@ import {
   useDependency,
   useEvent,
   useObservable
-} from "../chunk-3H2NVD65.js";
+} from "../chunk-HDNFHLII.js";
 import {
   zh_CN_default
 } from "../chunk-EB3DJFG6.js";
-import "../chunk-HMW7DLMS.js";
+import "../chunk-J7KWERHJ.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-CNTBAGPE.js";
+} from "../chunk-OV4JCWTQ.js";
 import {
   IRenderManagerService,
   UniverRenderEnginePlugin,
   ptToPixel,
   withCurrentTypeOfRenderer
-} from "../chunk-PBSOXRSO.js";
+} from "../chunk-PHMHGCNA.js";
 import {
   BehaviorSubject,
   BuildTextUtils,
@@ -2526,6 +2526,30 @@ var require_jszip_min = __commonJS({
     });
   }
 });
+
+// ../packages/docs-exchange/src/utils/parse/border-dash.ts
+var DOCX_BORDER_TO_UNIVER_DASH = {
+  single: 1,
+  thick: 1,
+  double: 1,
+  triple: 1,
+  thinThickSmallGap: 1,
+  thickThinSmallGap: 1,
+  thinThickThinSmallGap: 1,
+  thinThickMediumGap: 1,
+  thickThinMediumGap: 1,
+  thinThickThinMediumGap: 1,
+  thinThickLargeGap: 1,
+  thickThinLargeGap: 1,
+  thinThickThinLargeGap: 1,
+  wave: 1,
+  doubleWave: 1,
+  dashSmallGap: 3,
+  dashed: 3,
+  dotDash: 4,
+  dotDotDash: 5,
+  dotted: 2
+};
 
 // ../node_modules/.pnpm/fast-xml-parser@5.7.2/node_modules/fast-xml-parser/src/util.js
 var nameStartChar = ":A-Za-z_\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD";
@@ -6666,35 +6690,6 @@ function emitParagraph(p, acc, ctx) {
   }
   acc.paragraphs.push(entry);
 }
-var DOCX_BORDER_TO_UNIVER_DASH = {
-  single: 1,
-  // SOLID
-  thick: 1,
-  double: 1,
-  // TODO(unsupported): Univer has no DOUBLE; collapses to SOLID
-  triple: 1,
-  // TODO(unsupported): collapse to SOLID
-  thinThickSmallGap: 1,
-  thickThinSmallGap: 1,
-  thinThickThinSmallGap: 1,
-  thinThickMediumGap: 1,
-  thickThinMediumGap: 1,
-  thinThickThinMediumGap: 1,
-  thinThickLargeGap: 1,
-  thickThinLargeGap: 1,
-  thinThickThinLargeGap: 1,
-  wave: 1,
-  // TODO(unsupported): wave/doubleWave collapse to SOLID
-  doubleWave: 1,
-  dashSmallGap: 3,
-  // DASH
-  dashed: 3,
-  dotDash: 3,
-  dotDotDash: 3,
-  dotted: 2
-  // DOT
-  // TODO(unsupported): 3D border styles (threeDEmboss/threeDEngrave/inset/outset) — collapse to SOLID
-};
 function borderToUniver(b) {
   var _a;
   if (!b) return void 0;
@@ -7100,11 +7095,6 @@ var HEADING_MAP = {
   Heading4: 7,
   Heading5: 8
 };
-var BORDER_DASH_MAP = {
-  single: 1,
-  dotted: 2,
-  dashed: 3
-};
 var DEFAULT_BORDER_COLOR_RGB = "#000000";
 function parseBorder(b) {
   const a = nodeAttrs(b);
@@ -7115,7 +7105,7 @@ function parseBorder(b) {
   const sz = Number(a["@_w:sz"]);
   if (!Number.isNaN(sz)) out.width = Math.max(1, Math.round(sz / 6));
   const valAttr = a["@_w:val"];
-  out.dashStyle = valAttr && BORDER_DASH_MAP[valAttr] || 1;
+  out.dashStyle = valAttr && DOCX_BORDER_TO_UNIVER_DASH[valAttr] || 1;
   const space = Number(a["@_w:space"]);
   if (!Number.isNaN(space)) out.padding = space;
   return out;
