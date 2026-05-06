@@ -103,10 +103,22 @@ describe('multi-section: fixtures/multi-section.docx', () => {
         expect(sourceSb[5].useFirstPageHeaderFooter).toBe(1);
         expect(sourceSb[5].defaultHeaderId).toBe('header2');
 
-        // Each promoted page-break entry inherits body-end pgSize/headerIds so
-        // the new page renders with the same layout as the surrounding pages.
+        // Each promoted page-break entry inherits from the inline sectPr it
+        // logically belongs to (the next inline sectPr that appears after the
+        // page-break paragraph in document order, or body-end if none). The
+        // first two page breaks fall under sectPr #0 (header1); the third one
+        // falls after the last inline sectPr so it inherits from body-end —
+        // body-end has no own header ref and carry-forward leaves it on
+        // header2 (the most recent default).
+        expect(pageBreakSb[0].defaultHeaderId).toBe('header1');
+        expect(pageBreakSb[1].defaultHeaderId).toBe('header1');
+        expect(pageBreakSb[2].defaultHeaderId).toBe('header2');
+        // None of the page-break entries should carry titlePg / first-page IDs
+        // (the page after a hard page break is not a section's first page).
         for (const pb of pageBreakSb) {
-            expect(pb.defaultHeaderId).toBe('header2');
+            expect(pb.useFirstPageHeaderFooter).toBeUndefined();
+            expect(pb.firstPageHeaderId).toBeUndefined();
+            expect(pb.firstPageFooterId).toBeUndefined();
         }
     });
 });
