@@ -52,7 +52,9 @@ describe('parseRunsFromParagraphXml', () => {
     it('handles w:tab and w:br', () => {
         const xml = '<w:p xmlns:w="x"><w:r><w:t>A</w:t><w:tab/><w:t>B</w:t><w:br/><w:t>C</w:t></w:r></w:p>';
         const runs = parseRunsFromParagraphXml(xml);
-        expect(runs.map((r: { text: string }) => r.text).join('')).toBe('A\tB C');
+        // <w:br/> emits LINE_BREAK (\x07) — soft line break within a paragraph,
+        // shaped by engine-render as a zero-width glyph that forces a new line.
+        expect(runs.map((r: { text: string }) => r.text).join('')).toBe('A\tB\x07C');
     });
 
     it('preserves multiple runs in order', () => {

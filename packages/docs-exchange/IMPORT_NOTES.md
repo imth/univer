@@ -89,21 +89,18 @@ Update this file when you add a TODO that crosses the importer/renderer boundary
 
 ### Soft line break (`<w:br/>`)
 
-- **Importer status:** flattened to a single space. `<w:br/>` (no `w:type`)
-  is OOXML's soft line break — the next run continues on a new visual line
-  inside the same paragraph.
-- **Why not emit a real break:** Univer's `DataStreamTreeTokenType` has
-  `PARAGRAPH (\r)`, `SECTION_BREAK (\n)`, `COLUMN_BREAK (\v)`, `PAGE_BREAK (\f)`
-  — but no soft-break token. Emitting `\n` corrupts the dataStream because
-  `view-model.parseDataStreamToTree` treats every `\n` as SECTION_BREAK and
-  shatters the body into spurious sections (this was the bug behind
-  `全格式.docx` rendering with no headers — the body's first 7 pages were
-  bound to a synthetic section 0 that had no header inheritance).
-- **Possible follow-up:** split the surrounding `<w:p>` at every `<w:br/>`
-  and emit one Univer paragraph per visual line, copying the source
-  paragraph's pStyle / numbering / borders onto each piece. Out of scope
-  here — the importer would need access to the splitter at the run-grouping
-  level rather than within `runTextFromR`.
+- **Importer status:** emitted as `DataStreamTreeTokenType.LINE_BREAK` (`\x07`).
+  `<w:br/>` is OOXML's soft line break — same paragraph, new visual line.
+- **Renderer status:** supported. `engine-render` shapes LINE_BREAK as a
+  zero-width glyph (`shaping.ts`); `lineBreakLineBreakExtension` makes the
+  line-breaker break before and after it; `_divideOperator` in
+  `layout-ruler.ts` marks the divide full when its last glyph is LINE_BREAK,
+  so the next word falls through to `_lineOperator` and starts a new line.
+  Paragraph-level effects (bullet, firstLineIndent, spacing.before/after,
+  border) are applied per-paragraph and remain correct across LINE_BREAKs.
+- **Out-of-scope follow-up:** clipboard serialization may want to translate
+  LINE_BREAK to `\n` (or a `<br>` in HTML) when copying out of Univer; today
+  the raw `\x07` would be pasted into external apps as the BEL control code.
 
 ## Paragraph borders
 

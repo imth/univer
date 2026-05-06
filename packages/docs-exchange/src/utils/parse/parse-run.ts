@@ -20,7 +20,7 @@ import type { StylesIndex } from './parse-styles';
 import type { ThemeFonts } from './parse-theme';
 import type { ParsedRun } from './types';
 import type { XmlNode } from './xml';
-import { generateRandomId } from '@univerjs/core';
+import { DataStreamTreeTokenType, generateRandomId } from '@univerjs/core';
 import { hpToPt } from '../units';
 import { parseDrawingFromXmlNode } from './parse-drawing';
 import { findChild, nodeAttrs, nodeChildren, nodeName, textOf, xmlParser } from './xml';
@@ -216,12 +216,10 @@ function runTextFromR(r: XmlNode): string {
         const name = nodeName(child);
         if (name === 'w:t') text += textOf(child);
         else if (name === 'w:tab') text += '\t';
-        // <w:br/> is a soft break; Univer's dataStream has no line-break
-        // token and a literal '\n' would be picked up as SECTION_BREAK by
-        // view-model.parseDataStreamToTree, shattering the body into bogus
-        // sections. Substitute a space until proper paragraph-splitting is
-        // wired up — see IMPORT_NOTES.md "Soft line break (<w:br/>)".
-        else if (name === 'w:br') text += ' ';
+        // <w:br/> (no w:type) is a soft line break — same paragraph, new visual
+        // line. Emit the LINE_BREAK token; engine-render shapes it as a zero-width
+        // glyph and the line-breaker / layout-ruler force a new line at it.
+        else if (name === 'w:br') text += DataStreamTreeTokenType.LINE_BREAK;
     }
     return text;
 }

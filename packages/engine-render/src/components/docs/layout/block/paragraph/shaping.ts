@@ -29,6 +29,7 @@ import { BreakPointType } from '../../line-breaker/break';
 import { LineBreakerHyphenEnhancer } from '../../line-breaker/enhancers/hyphen-enhancer';
 import { LineBreakerLinkEnhancer } from '../../line-breaker/enhancers/link-enhancer';
 import { customBlockLineBreakExtension } from '../../line-breaker/extensions/custom-block-linebreak-extension';
+import { lineBreakLineBreakExtension } from '../../line-breaker/extensions/line-break-extension';
 import { tabLineBreakExtension } from '../../line-breaker/extensions/tab-linebreak-extension';
 import { createSkeletonCustomBlockGlyph, createSkeletonLetterGlyph, createSkeletonTabGlyph, glyphShrinkLeft, glyphShrinkRight } from '../../model/glyph';
 import { getBoundingBox } from '../../model/line';
@@ -145,6 +146,7 @@ export function shaping(
     // Add custom extension for linebreak.
     tabLineBreakExtension(breaker);
     customBlockLineBreakExtension(breaker);
+    lineBreakLineBreakExtension(breaker);
 
     breaker = new LineBreakerLinkEnhancer(breaker) as unknown as LineBreaker;
 
@@ -192,6 +194,8 @@ export function shaping(
                     const charSpaceApply = getCharSpaceApply(charSpace, defaultTabStop, gridType, snapToGrid);
                     const newSpan = createSkeletonTabGlyph(config, charSpaceApply);
                     shapedGlyphs.push(newSpan);
+                } else if (char === DataStreamTreeTokenType.LINE_BREAK) {
+                    shapedGlyphs.push(createSkeletonLetterGlyph(char, config, 0));
                 } else if (startWithEmoji(char)) {
                     const newSpan = createSkeletonLetterGlyph(char, config);
                     shapedGlyphs.push(newSpan);
@@ -236,6 +240,11 @@ export function shaping(
                     }
 
                     shapedGlyphs.push(newGlyph);
+                    i += char.length;
+                    src = src.substring(char.length);
+                } else if (char === DataStreamTreeTokenType.LINE_BREAK) {
+                    const config = getFontCreateConfig(i, viewModel, paragraphNode, sectionBreakConfig, paragraph);
+                    shapedGlyphs.push(createSkeletonLetterGlyph(char, config, 0));
                     i += char.length;
                     src = src.substring(char.length);
                 } else if (/\s/.test(char) || hasCJK(char)) {

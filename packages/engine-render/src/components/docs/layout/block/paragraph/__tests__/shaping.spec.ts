@@ -118,6 +118,10 @@ vi.mock('../../../line-breaker/extensions/custom-block-linebreak-extension', () 
     customBlockLineBreakExtension: vi.fn(),
 }));
 
+vi.mock('../../../line-breaker/extensions/line-break-extension', () => ({
+    lineBreakLineBreakExtension: vi.fn(),
+}));
+
 vi.mock('../../../model/glyph', () => ({
     createSkeletonCustomBlockGlyph: (...args: any[]) => (h.createSkeletonCustomBlockGlyphMock as any)(...args),
     createSkeletonLetterGlyph: (...args: any[]) => (h.createSkeletonLetterGlyphMock as any)(...args),
