@@ -49,6 +49,7 @@ export enum DataStreamTreeTokenType {
 
     COLUMN_BREAK = '\v', // 换列
     PAGE_BREAK = '\f', // 换页
+    LINE_BREAK = '\x07', // 段内软换行（Word <w:br/>）：强制换到下一视觉行，但段落属性只算一次
     DOCS_END = '\0', // 文档结尾
     TAB = '\t', // 制表符
     // custom block.

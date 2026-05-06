@@ -403,6 +403,12 @@ function _divideOperator(
             }
             addGlyphToDivide(divide, glyphGroup, preOffsetLeft);
             updateDivideInfo(divide, { breakType: breakPointType });
+            // Soft line break (Word <w:br/>): zero-width LINE_BREAK glyph forces a
+            // new visual line within the same paragraph. Marking the divide full
+            // makes the next word fall through to _lineOperator.
+            if (glyphGroup[glyphGroup.length - 1]?.content === DataStreamTreeTokenType.LINE_BREAK) {
+                updateDivideInfo(divide, { isFull: true });
+            }
         }
     } else {
         _lineOperator(ctx, glyphGroup, pages, sectionBreakConfig, paragraphConfig, isParagraphFirstShapedText, breakPointType, defaultSpanLineHeight);
