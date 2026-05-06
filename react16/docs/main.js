@@ -1,38 +1,38 @@
 import {
   UniverDocsMentionUIPlugin
-} from "../chunk-CTLKXGHM.js";
+} from "../chunk-OSHQINEE.js";
 import {
   SetActiveCommentOperation,
   ThreadCommentPanel,
   ThreadCommentPanelService,
   UniverThreadCommentUIPlugin
-} from "../chunk-YKKW2FPS.js";
-import "../chunk-3NE7KPNY.js";
+} from "../chunk-NEX7NRAZ.js";
+import "../chunk-TTRDKJ5V.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-7RZ6C3BE.js";
+} from "../chunk-B2W5C7IH.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-FFSSQRSL.js";
+} from "../chunk-NYCJEMS2.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
   ThreadCommentModel,
   getDT
-} from "../chunk-IBVO3ATC.js";
-import "../chunk-JGBSSIFR.js";
+} from "../chunk-CB7V3IIA.js";
+import "../chunk-DH4W5MI2.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-TKU54CML.js";
+} from "../chunk-O2IPJ4FZ.js";
 import {
   FUniver
-} from "../chunk-HM2RZA4P.js";
-import "../chunk-LLROKE42.js";
+} from "../chunk-GLLJOGIP.js";
+import "../chunk-HIQGBEGJ.js";
 import {
   DEFAULT_DOCUMENT_DATA_SIMPLE
-} from "../chunk-HCQ36VEC.js";
+} from "../chunk-5HXVVKLM.js";
 import {
   BulletListCommand,
   CutContentCommand,
@@ -66,7 +66,7 @@ import {
   getAnchorBounding,
   replaceSelectionFactory,
   whenDocAndEditorFocused
-} from "../chunk-EPGPLS2V.js";
+} from "../chunk-JPEJESUU.js";
 import "../chunk-LI6UXASZ.js";
 import {
   Button,
@@ -99,20 +99,20 @@ import {
   useDependency,
   useEvent,
   useObservable
-} from "../chunk-HDNFHLII.js";
+} from "../chunk-TAIZCCTW.js";
 import {
   zh_CN_default
-} from "../chunk-EB3DJFG6.js";
-import "../chunk-J7KWERHJ.js";
+} from "../chunk-CDZYV7BA.js";
+import "../chunk-YCGSDOUF.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-OV4JCWTQ.js";
+} from "../chunk-KGVU6IBH.js";
 import {
   IRenderManagerService,
   UniverRenderEnginePlugin,
   ptToPixel,
   withCurrentTypeOfRenderer
-} from "../chunk-PHMHGCNA.js";
+} from "../chunk-TN3DLTSL.js";
 import {
   BehaviorSubject,
   BuildTextUtils,
@@ -150,7 +150,7 @@ import {
   sequenceExecute,
   tap,
   toDisposable
-} from "../chunk-KN22OUW2.js";
+} from "../chunk-RXFCYNLY.js";
 import "../chunk-EQ2B2W73.js";
 import {
   __commonJS,
@@ -7415,7 +7415,7 @@ function runTextFromR(r) {
     const name = nodeName(child);
     if (name === "w:t") text += textOf(child);
     else if (name === "w:tab") text += "	";
-    else if (name === "w:br") text += " ";
+    else if (name === "w:br") text += "\x07" /* LINE_BREAK */;
   }
   return text;
 }
