@@ -10,7 +10,7 @@ import {
 import "../chunk-3NE7KPNY.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-5TIRTOQC.js";
+} from "../chunk-7RZ6C3BE.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
@@ -8672,11 +8672,15 @@ var DocxImportOperation = {
     if (!bytes) return false;
     try {
       const data = await docxToUniverData(bytes);
+      const previous = instanceService.getCurrentUnitOfType(1 /* UNIVER_DOC */);
       const unit = instanceService.createUnit(
         1 /* UNIVER_DOC */,
         data
       );
       instanceService.focusUnit(unit.getUnitId());
+      if (previous && previous.getUnitId() !== unit.getUnitId()) {
+        instanceService.disposeUnit(previous.getUnitId());
+      }
       return true;
     } catch (err) {
       logService.error("[docs-exchange-ui] DOCX import failed:", err);
