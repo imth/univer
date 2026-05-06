@@ -57,6 +57,26 @@ describe('parseRunsFromParagraphXml', () => {
         expect(runs.map((r: { text: string }) => r.text).join('')).toBe('A\tB\x07C');
     });
 
+    it('emits PAGE_BREAK for <w:br w:type="page"/>', () => {
+        const xml = '<w:p xmlns:w="x"><w:r><w:t>A</w:t><w:br w:type="page"/><w:t>B</w:t></w:r></w:p>';
+        const runs = parseRunsFromParagraphXml(xml);
+        // PAGE_BREAK = '\f'; linebreaking.ts ends a page when a word ends with it.
+        expect(runs.map((r: { text: string }) => r.text).join('')).toBe('A\fB');
+    });
+
+    it('emits COLUMN_BREAK for <w:br w:type="column"/>', () => {
+        const xml = '<w:p xmlns:w="x"><w:r><w:t>A</w:t><w:br w:type="column"/><w:t>B</w:t></w:r></w:p>';
+        const runs = parseRunsFromParagraphXml(xml);
+        // COLUMN_BREAK = '\v'.
+        expect(runs.map((r: { text: string }) => r.text).join('')).toBe('A\vB');
+    });
+
+    it('treats <w:br w:type="textWrapping"/> as soft line break', () => {
+        const xml = '<w:p xmlns:w="x"><w:r><w:t>A</w:t><w:br w:type="textWrapping"/><w:t>B</w:t></w:r></w:p>';
+        const runs = parseRunsFromParagraphXml(xml);
+        expect(runs.map((r: { text: string }) => r.text).join('')).toBe('A\x07B');
+    });
+
     it('preserves multiple runs in order', () => {
         const xml = '<w:p xmlns:w="x"><w:r><w:t>A</w:t></w:r><w:r><w:rPr><w:i/></w:rPr><w:t>B</w:t></w:r></w:p>';
         const runs = parseRunsFromParagraphXml(xml);

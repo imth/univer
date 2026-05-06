@@ -27,8 +27,6 @@ import { findChild, nodeAttrs, nodeChildren, nodeName, textOf, xmlParser } from 
 
 const uuidv4 = () => generateRandomId();
 
-// TODO(unsupported): <w:br w:type="page"/> — treated as plain newline like <w:br/>
-
 /**
  * Word's 16 named highlight colors (ECMA-376 §17.18.40 ST_HighlightColor).
  * "none" → no highlight. Anything else maps to a fixed RGB.
@@ -214,12 +212,21 @@ function runTextFromR(r: XmlNode): string {
     let text = '';
     for (const child of nodeChildren(r)) {
         const name = nodeName(child);
-        if (name === 'w:t') text += textOf(child);
-        else if (name === 'w:tab') text += '\t';
-        // <w:br/> (no w:type) is a soft line break — same paragraph, new visual
-        // line. Emit the LINE_BREAK token; engine-render shapes it as a zero-width
-        // glyph and the line-breaker / layout-ruler force a new line at it.
-        else if (name === 'w:br') text += DataStreamTreeTokenType.LINE_BREAK;
+        if (name === 'w:t') {
+            text += textOf(child);
+        } else if (name === 'w:tab') {
+            text += '\t';
+        } else if (name === 'w:br') {
+            // <w:br w:type="..."/>: page → PAGE_BREAK, column → COLUMN_BREAK,
+            // textWrapping (or absent) → LINE_BREAK (soft line break: same
+            // paragraph, new visual line). engine-render shapes LINE_BREAK as a
+            // zero-width glyph and forces a new line at it; PAGE/COLUMN break
+            // are handled by linebreaking.ts as `text.endsWith(...)` triggers.
+            const brType = nodeAttrs(child)['@_w:type'];
+            if (brType === 'page') text += DataStreamTreeTokenType.PAGE_BREAK;
+            else if (brType === 'column') text += DataStreamTreeTokenType.COLUMN_BREAK;
+            else text += DataStreamTreeTokenType.LINE_BREAK;
+        }
     }
     return text;
 }

@@ -87,6 +87,34 @@ Update this file when you add a TODO that crosses the importer/renderer boundary
 
 ## Inline content
 
+### Hard page break (`<w:br w:type="page"/>`)
+
+- **Importer status:** translated to a `sectionType: NEXT_PAGE` section break
+  (`\n` token + `body.sectionBreaks[]` entry), NOT to the inline `\f`
+  (`PAGE_BREAK`) token. `parse-run.ts` still emits `\f` at the run level so
+  parsers downstream can see the original signal, but `assemble.ts` detects
+  "bare page-break paragraphs" — `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`
+  with no other content (Word's "Insert > Page Break" output, also python-docx's
+  default) — and converts each one to a NEXT_PAGE section break. The new entry
+  inherits the body-end sectPr's `pageSize` / `pageOrient` / `margin*` /
+  `*HeaderId` / `*FooterId` so the new page renders identically to the
+  surrounding pages, but **not** the body-end's `sectionType` (which would
+  overwrite NEXT_PAGE).
+- **Why not just emit `\f`?** Two reasons. (1) `engine-render`'s glyph layer
+  shapes PAGE_BREAK as a zero-width PLACEHOLDER glyph with empty `content`, so
+  `linebreaking.ts`'s `text.endsWith('\f')` trigger is dead code in real
+  layout — only its `streamType` survives, and the existing renderer doesn't
+  inspect `streamType` for PAGE_BREAK. (2) Even if it did, the bare page-break
+  paragraph still owns a `\r` paragraph mark that gets laid out as a blank line
+  at the top of the new page. Section breaks bypass both problems:
+  `doc-skeleton.ts` opens a fresh page at any non-`CONTINUOUS` section
+  boundary, and the next paragraph sits flush at the page top.
+- **Edge cases:** a `<w:br w:type="page"/>` inside a paragraph that ALSO has
+  visible text or list/section semantics is not "bare" — those keep the inline
+  `\f` token. Rendering coverage of mid-paragraph page breaks via `\f` is
+  therefore limited (see `linebreaking.ts` note above); these are rare in
+  practice (Word emits them as bare paragraphs).
+
 ### Soft line break (`<w:br/>`)
 
 - **Importer status:** emitted as `DataStreamTreeTokenType.LINE_BREAK` (`\x07`).

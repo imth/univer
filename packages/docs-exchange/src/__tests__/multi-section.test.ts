@@ -47,6 +47,12 @@ describe('multi-section: fixtures/multi-section.docx', () => {
         // on the sectionBreak entry instead.
         expect(doc.documentStyle.useFirstPageHeaderFooter).toBeUndefined();
 
+        // Document-level section breaks come from two sources:
+        //   1. Inline `<w:pPr><w:sectPr>` and the body-end sectPr — these carry
+        //      headers/footers/orient/sectionType from the source.
+        //   2. Bare page-break paragraphs (`<w:p><w:r><w:br w:type="page"/></w:r></w:p>`)
+        //      promoted to NEXT_PAGE section breaks. These inherit the body-end
+        //      sectPr's fields and additionally set sectionType=NEXT_PAGE (=2).
         // Filter out the table-cell SECTION_BREAKs (they're bare { startIndex }).
         const sb = doc.body!.sectionBreaks!.filter((b) =>
             b.defaultHeaderId !== undefined
@@ -58,36 +64,49 @@ describe('multi-section: fixtures/multi-section.docx', () => {
             || b.pageOrient !== undefined
         );
 
-        // 6 source sectPrs in 全格式.docx → 6 document-level section breaks.
-        expect(sb.length).toBe(6);
+        // 全格式.docx has 3 bare page-break paragraphs that we promote to
+        // NEXT_PAGE section breaks. Pick those out for separate inspection.
+        const SectionType_NEXT_PAGE = 2;
+        const pageBreakSb = sb.filter((b) => b.sectionType === SectionType_NEXT_PAGE);
+        expect(pageBreakSb.length).toBe(3);
+
+        // The 6 source sectPrs (excluding our promoted page-break entries).
+        const sourceSb = sb.filter((b) => b.sectionType !== SectionType_NEXT_PAGE);
+        expect(sourceSb.length).toBe(6);
 
         // sectPr #0: portrait, header1 + footer1.
-        expect(sb[0].defaultHeaderId).toBe('header1');
-        expect(sb[0].defaultFooterId).toBe('footer1');
-        expect(sb[0].pageOrient).toBeUndefined(); // portrait is the default (0), not emitted explicitly
+        expect(sourceSb[0].defaultHeaderId).toBe('header1');
+        expect(sourceSb[0].defaultFooterId).toBe('footer1');
+        expect(sourceSb[0].pageOrient).toBeUndefined(); // portrait is the default (0), not emitted explicitly
 
         // sectPr #1: continuous, no own headerRef → inherits header1 from sectPr #0
         // (ECMA-376 §17.6 cross-section header inheritance).
-        expect(sb[1].sectionType).toBe(1); // SectionType.CONTINUOUS
-        expect(sb[1].defaultHeaderId).toBe('header1');
+        expect(sourceSb[1].sectionType).toBe(1); // SectionType.CONTINUOUS
+        expect(sourceSb[1].defaultHeaderId).toBe('header1');
 
         // sectPr #2: landscape, own headerRef → header2.
-        expect(sb[2].pageOrient).toBe(1); // landscape
-        expect(sb[2].defaultHeaderId).toBe('header2');
+        expect(sourceSb[2].pageOrient).toBe(1); // landscape
+        expect(sourceSb[2].defaultHeaderId).toBe('header2');
 
         // sectPr #3: first-page header, titlePg=true. Inherits default from sectPr #2.
-        expect(sb[3].firstPageHeaderId).toBe('header3');
-        expect(sb[3].defaultHeaderId).toBe('header2');
-        expect(sb[3].useFirstPageHeaderFooter).toBe(1);
+        expect(sourceSb[3].firstPageHeaderId).toBe('header3');
+        expect(sourceSb[3].defaultHeaderId).toBe('header2');
+        expect(sourceSb[3].useFirstPageHeaderFooter).toBe(1);
 
         // sectPr #4: continuous + titlePg, inherits default from sectPr #3 (still header2).
-        expect(sb[4].sectionType).toBe(1);
-        expect(sb[4].useFirstPageHeaderFooter).toBe(1);
-        expect(sb[4].defaultHeaderId).toBe('header2');
+        expect(sourceSb[4].sectionType).toBe(1);
+        expect(sourceSb[4].useFirstPageHeaderFooter).toBe(1);
+        expect(sourceSb[4].defaultHeaderId).toBe('header2');
 
         // sectPr #5: body-end break. No own ref but inherits header2 from the chain.
-        expect(sb[5].sectionType).toBe(1);
-        expect(sb[5].useFirstPageHeaderFooter).toBe(1);
-        expect(sb[5].defaultHeaderId).toBe('header2');
+        expect(sourceSb[5].sectionType).toBe(1);
+        expect(sourceSb[5].useFirstPageHeaderFooter).toBe(1);
+        expect(sourceSb[5].defaultHeaderId).toBe('header2');
+
+        // Each promoted page-break entry inherits body-end pgSize/headerIds so
+        // the new page renders with the same layout as the surrounding pages.
+        for (const pb of pageBreakSb) {
+            expect(pb.defaultHeaderId).toBe('header2');
+        }
     });
 });
