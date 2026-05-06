@@ -10,7 +10,7 @@ import {
 import "../chunk-3NE7KPNY.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-UURNOEAU.js";
+} from "../chunk-ZFLYHDPL.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
@@ -6689,6 +6689,46 @@ function emitParagraph(p, acc, ctx) {
     }
   }
   acc.paragraphs.push(entry);
+  if (p.sectionBreakAfter) {
+    acc.sectionBreaks.push({
+      startIndex: acc.data.length,
+      ...sectionToBreakFields(p.sectionBreakAfter)
+    });
+    acc.data += "\n";
+  }
+}
+var SECTION_TYPE_BY_NAME = {
+  continuous: 1 /* CONTINUOUS */,
+  nextPage: 2 /* NEXT_PAGE */,
+  evenPage: 3 /* EVEN_PAGE */,
+  oddPage: 4 /* ODD_PAGE */
+};
+function sectionToBreakFields(parsed) {
+  const out = {};
+  if (parsed.sectionBreakDefaults.linePitch !== void 0) out.linePitch = parsed.sectionBreakDefaults.linePitch;
+  if (parsed.sectionBreakDefaults.gridType !== void 0) out.gridType = parsed.sectionBreakDefaults.gridType;
+  const ds = parsed.documentStyle;
+  if (ds.pageSize) out.pageSize = ds.pageSize;
+  if (ds.pageOrient !== void 0) out.pageOrient = ds.pageOrient;
+  if (ds.marginTop !== void 0) out.marginTop = ds.marginTop;
+  if (ds.marginBottom !== void 0) out.marginBottom = ds.marginBottom;
+  if (ds.marginLeft !== void 0) out.marginLeft = ds.marginLeft;
+  if (ds.marginRight !== void 0) out.marginRight = ds.marginRight;
+  if (ds.marginHeader !== void 0) out.marginHeader = ds.marginHeader;
+  if (ds.marginFooter !== void 0) out.marginFooter = ds.marginFooter;
+  if (parsed.titlePage) out.useFirstPageHeaderFooter = 1 /* TRUE */;
+  if (parsed.sectionTypeRaw && parsed.sectionTypeRaw in SECTION_TYPE_BY_NAME) {
+    out.sectionType = SECTION_TYPE_BY_NAME[parsed.sectionTypeRaw];
+  }
+  const h = parsed.resolvedHeaderIds;
+  if (h == null ? void 0 : h.default) out.defaultHeaderId = h.default;
+  if (h == null ? void 0 : h.first) out.firstPageHeaderId = h.first;
+  if (h == null ? void 0 : h.even) out.evenPageHeaderId = h.even;
+  const f = parsed.resolvedFooterIds;
+  if (f == null ? void 0 : f.default) out.defaultFooterId = f.default;
+  if (f == null ? void 0 : f.first) out.firstPageFooterId = f.first;
+  if (f == null ? void 0 : f.even) out.evenPageFooterId = f.even;
+  return out;
 }
 function borderToUniver(b) {
   var _a;
@@ -6752,7 +6792,11 @@ function emitTable(t, acc, ctx) {
     for (const cell of row) {
       acc.data += TABLE_CELL_START;
       for (const p of cell.paragraphs) {
-        emitParagraph(p, acc, ctx);
+        emitParagraph(
+          p.sectionBreakAfter ? { ...p, sectionBreakAfter: void 0 } : p,
+          acc,
+          ctx
+        );
       }
       acc.sectionBreaks.push({ startIndex: acc.data.length });
       acc.data += "\n";
@@ -6924,11 +6968,17 @@ function assembleDocument(children, ctx) {
   if (acc.tables.length > 0) body.tables = acc.tables;
   const docEndIndex = Math.max(0, acc.data.length - 1);
   if (!acc.sectionBreaks.some((sb) => sb.startIndex === docEndIndex)) {
-    acc.sectionBreaks.push({ startIndex: docEndIndex });
+    const tail = ctx.bodyEndSection ? sectionToBreakFields(ctx.bodyEndSection) : {};
+    acc.sectionBreaks.push({ startIndex: docEndIndex, ...tail });
   }
   if (ctx.sectionBreakDefaults && Object.keys(ctx.sectionBreakDefaults).length > 0) {
     for (const sb of acc.sectionBreaks) {
-      Object.assign(sb, ctx.sectionBreakDefaults, { startIndex: sb.startIndex });
+      if (sb.linePitch === void 0 && ctx.sectionBreakDefaults.linePitch !== void 0) {
+        sb.linePitch = ctx.sectionBreakDefaults.linePitch;
+      }
+      if (sb.gridType === void 0 && ctx.sectionBreakDefaults.gridType !== void 0) {
+        sb.gridType = ctx.sectionBreakDefaults.gridType;
+      }
     }
   }
   body.sectionBreaks = acc.sectionBreaks;
@@ -7365,7 +7415,7 @@ function runTextFromR(r) {
     const name = nodeName(child);
     if (name === "w:t") text += textOf(child);
     else if (name === "w:tab") text += "	";
-    else if (name === "w:br") text += "\n";
+    else if (name === "w:br") text += " ";
   }
   return text;
 }
@@ -7515,6 +7565,107 @@ function resolveRunStyle(rPr, baseRpr, baseRFonts, styles, themeFonts, text) {
   return merged;
 }
 
+// ../packages/docs-exchange/src/utils/parse/parse-section.ts
+var DEFAULT_A4 = { width: 793.7, height: 1122.7 };
+var PAGE_ORIENT_PORTRAIT = 0;
+var PAGE_ORIENT_LANDSCAPE = 1;
+var DOCUMENT_FLAVOR_TRADITIONAL = 1;
+var GRID_TYPE_BY_NAME = {
+  default: 0,
+  lines: 1,
+  linesAndChars: 2,
+  snapToChars: 3
+};
+function dxaAttrToPx(value) {
+  if (value === void 0) return void 0;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return void 0;
+  return dxaToPx(n);
+}
+function parseSectionProperties(body) {
+  const sectPr = body ? findChild(body, "w:sectPr") : void 0;
+  if (!sectPr) {
+    return {
+      documentStyle: { pageSize: { ...DEFAULT_A4 }, documentFlavor: DOCUMENT_FLAVOR_TRADITIONAL },
+      sectionBreakDefaults: {},
+      headerRefs: {},
+      footerRefs: {},
+      titlePage: false
+    };
+  }
+  return parseSectionPropertiesFromNode(sectPr);
+}
+function parseSectionPropertiesFromNode(sectPr) {
+  var _a, _b;
+  const style = { documentFlavor: DOCUMENT_FLAVOR_TRADITIONAL };
+  const sectionBreakDefaults = {};
+  const headerRefs = {};
+  const footerRefs = {};
+  for (const ref of findChildren(sectPr, "w:headerReference")) {
+    const a = nodeAttrs(ref);
+    const type = (_a = a["@_w:type"]) != null ? _a : "default";
+    const rId = a["@_r:id"];
+    if (rId && (type === "default" || type === "first" || type === "even")) headerRefs[type] = rId;
+  }
+  for (const ref of findChildren(sectPr, "w:footerReference")) {
+    const a = nodeAttrs(ref);
+    const type = (_b = a["@_w:type"]) != null ? _b : "default";
+    const rId = a["@_r:id"];
+    if (rId && (type === "default" || type === "first" || type === "even")) footerRefs[type] = rId;
+  }
+  const titlePage = findChild(sectPr, "w:titlePg") !== void 0;
+  const typeNode = findChild(sectPr, "w:type");
+  const sectionTypeRaw = typeNode ? nodeAttrs(typeNode)["@_w:val"] : void 0;
+  const pgSz = findChild(sectPr, "w:pgSz");
+  if (pgSz) {
+    const attrs = nodeAttrs(pgSz);
+    const width = dxaAttrToPx(attrs["@_w:w"]);
+    const height = dxaAttrToPx(attrs["@_w:h"]);
+    style.pageSize = {
+      width: width != null ? width : DEFAULT_A4.width,
+      height: height != null ? height : DEFAULT_A4.height
+    };
+    if (attrs["@_w:orient"] === "landscape") {
+      style.pageOrient = PAGE_ORIENT_LANDSCAPE;
+    } else if (attrs["@_w:orient"] === "portrait") {
+      style.pageOrient = PAGE_ORIENT_PORTRAIT;
+    }
+  } else {
+    style.pageSize = { ...DEFAULT_A4 };
+  }
+  const pgMar = findChild(sectPr, "w:pgMar");
+  if (pgMar) {
+    const attrs = nodeAttrs(pgMar);
+    const top = dxaAttrToPx(attrs["@_w:top"]);
+    const right = dxaAttrToPx(attrs["@_w:right"]);
+    const bottom = dxaAttrToPx(attrs["@_w:bottom"]);
+    const left = dxaAttrToPx(attrs["@_w:left"]);
+    const header = dxaAttrToPx(attrs["@_w:header"]);
+    const footer = dxaAttrToPx(attrs["@_w:footer"]);
+    if (top !== void 0) style.marginTop = top;
+    if (right !== void 0) style.marginRight = right;
+    if (bottom !== void 0) style.marginBottom = bottom;
+    if (left !== void 0) style.marginLeft = left;
+    if (header !== void 0) style.marginHeader = header;
+    if (footer !== void 0) style.marginFooter = footer;
+  }
+  const docGrid = findChild(sectPr, "w:docGrid");
+  if (docGrid) {
+    const attrs = nodeAttrs(docGrid);
+    const linePitch = dxaAttrToPx(attrs["@_w:linePitch"]);
+    if (linePitch !== void 0) sectionBreakDefaults.linePitch = linePitch;
+    const typeName = attrs["@_w:type"];
+    if (typeName !== void 0 && typeName in GRID_TYPE_BY_NAME) {
+      sectionBreakDefaults.gridType = GRID_TYPE_BY_NAME[typeName];
+    }
+  }
+  return { documentStyle: style, sectionBreakDefaults, headerRefs, footerRefs, titlePage, sectionTypeRaw };
+}
+function parseEvenAndOddHeaders(settingsXml) {
+  if (!settingsXml) return false;
+  return /<w:evenAndOddHeaders\b/.test(settingsXml);
+}
+
 // ../packages/docs-exchange/src/utils/parse/parse-paragraph.ts
 function parseBullet(pNode) {
   var _a;
@@ -7566,6 +7717,8 @@ function parseParagraph(pNode, drawingsOut, styles, themeFonts) {
   if (style) out.style = style;
   const bullet = parseBullet(pNode);
   if (bullet) out.bullet = bullet;
+  const inlineSectPr = pPr ? findChild(pPr, "w:sectPr") : void 0;
+  if (inlineSectPr) out.sectionBreakAfter = parseSectionPropertiesFromNode(inlineSectPr);
   return out;
 }
 
@@ -7978,102 +8131,6 @@ function parseNumbering(numberingXml) {
   return result;
 }
 
-// ../packages/docs-exchange/src/utils/parse/parse-section.ts
-var DEFAULT_A4 = { width: 793.7, height: 1122.7 };
-var PAGE_ORIENT_PORTRAIT = 0;
-var PAGE_ORIENT_LANDSCAPE = 1;
-var DOCUMENT_FLAVOR_TRADITIONAL = 1;
-var GRID_TYPE_BY_NAME = {
-  default: 0,
-  lines: 1,
-  linesAndChars: 2,
-  snapToChars: 3
-};
-function dxaAttrToPx(value) {
-  if (value === void 0) return void 0;
-  const n = Number(value);
-  if (!Number.isFinite(n)) return void 0;
-  return dxaToPx(n);
-}
-function parseSectionProperties(body) {
-  var _a, _b;
-  const sectPr = body ? findChild(body, "w:sectPr") : void 0;
-  if (!sectPr) {
-    return {
-      documentStyle: { pageSize: { ...DEFAULT_A4 }, documentFlavor: DOCUMENT_FLAVOR_TRADITIONAL },
-      sectionBreakDefaults: {},
-      headerRefs: {},
-      footerRefs: {},
-      titlePage: false
-    };
-  }
-  const style = { documentFlavor: DOCUMENT_FLAVOR_TRADITIONAL };
-  const sectionBreakDefaults = {};
-  const headerRefs = {};
-  const footerRefs = {};
-  for (const ref of findChildren(sectPr, "w:headerReference")) {
-    const a = nodeAttrs(ref);
-    const type = (_a = a["@_w:type"]) != null ? _a : "default";
-    const rId = a["@_r:id"];
-    if (rId && (type === "default" || type === "first" || type === "even")) headerRefs[type] = rId;
-  }
-  for (const ref of findChildren(sectPr, "w:footerReference")) {
-    const a = nodeAttrs(ref);
-    const type = (_b = a["@_w:type"]) != null ? _b : "default";
-    const rId = a["@_r:id"];
-    if (rId && (type === "default" || type === "first" || type === "even")) footerRefs[type] = rId;
-  }
-  const titlePage = findChild(sectPr, "w:titlePg") !== void 0;
-  const pgSz = findChild(sectPr, "w:pgSz");
-  if (pgSz) {
-    const attrs = nodeAttrs(pgSz);
-    const width = dxaAttrToPx(attrs["@_w:w"]);
-    const height = dxaAttrToPx(attrs["@_w:h"]);
-    style.pageSize = {
-      width: width != null ? width : DEFAULT_A4.width,
-      height: height != null ? height : DEFAULT_A4.height
-    };
-    if (attrs["@_w:orient"] === "landscape") {
-      style.pageOrient = PAGE_ORIENT_LANDSCAPE;
-    } else if (attrs["@_w:orient"] === "portrait") {
-      style.pageOrient = PAGE_ORIENT_PORTRAIT;
-    }
-  } else {
-    style.pageSize = { ...DEFAULT_A4 };
-  }
-  const pgMar = findChild(sectPr, "w:pgMar");
-  if (pgMar) {
-    const attrs = nodeAttrs(pgMar);
-    const top = dxaAttrToPx(attrs["@_w:top"]);
-    const right = dxaAttrToPx(attrs["@_w:right"]);
-    const bottom = dxaAttrToPx(attrs["@_w:bottom"]);
-    const left = dxaAttrToPx(attrs["@_w:left"]);
-    const header = dxaAttrToPx(attrs["@_w:header"]);
-    const footer = dxaAttrToPx(attrs["@_w:footer"]);
-    if (top !== void 0) style.marginTop = top;
-    if (right !== void 0) style.marginRight = right;
-    if (bottom !== void 0) style.marginBottom = bottom;
-    if (left !== void 0) style.marginLeft = left;
-    if (header !== void 0) style.marginHeader = header;
-    if (footer !== void 0) style.marginFooter = footer;
-  }
-  const docGrid = findChild(sectPr, "w:docGrid");
-  if (docGrid) {
-    const attrs = nodeAttrs(docGrid);
-    const linePitch = dxaAttrToPx(attrs["@_w:linePitch"]);
-    if (linePitch !== void 0) sectionBreakDefaults.linePitch = linePitch;
-    const typeName = attrs["@_w:type"];
-    if (typeName !== void 0 && typeName in GRID_TYPE_BY_NAME) {
-      sectionBreakDefaults.gridType = GRID_TYPE_BY_NAME[typeName];
-    }
-  }
-  return { documentStyle: style, sectionBreakDefaults, headerRefs, footerRefs, titlePage };
-}
-function parseEvenAndOddHeaders(settingsXml) {
-  if (!settingsXml) return false;
-  return /<w:evenAndOddHeaders\b/.test(settingsXml);
-}
-
 // ../packages/docs-exchange/src/utils/parse/parse-styles.ts
 var EMPTY_INDEX = {
   docDefaults: {},
@@ -8435,7 +8492,7 @@ function readFontGroup(group) {
 
 // ../packages/docs-exchange/src/docx-to-univer.ts
 async function docxToUniverData(input) {
-  var _a, _b, _c, _d;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
   const bundle = await readOoxmlBundle(input);
   const numbering = parseNumbering(bundle.numberingXml);
   const rels = parseRelationships(bundle.relsXml);
@@ -8460,7 +8517,14 @@ async function docxToUniverData(input) {
       }
     }
   }
-  const { documentStyle, sectionBreakDefaults, headerRefs, footerRefs, titlePage } = parseSectionProperties(body);
+  const { documentStyle, sectionBreakDefaults } = parseSectionProperties(body);
+  const bodyEndSection = parseSectionProperties(body);
+  const inlineSections = [];
+  for (const c of children) {
+    if (c.kind === "paragraph" && c.paragraph.sectionBreakAfter) {
+      inlineSections.push(c.paragraph.sectionBreakAfter);
+    }
+  }
   const headers = {};
   const footers = {};
   const extraDrawings = {};
@@ -8497,39 +8561,77 @@ async function docxToUniverData(input) {
     if (parsed.tableSource) Object.assign(extraTableSource, parsed.tableSource);
     return stem;
   };
-  const defaultHeaderId = parseHF(refToStem(headerRefs.default), "header");
-  const firstPageHeaderId = parseHF(refToStem(headerRefs.first), "header");
-  const evenPageHeaderId = parseHF(refToStem(headerRefs.even), "header");
-  const defaultFooterId = parseHF(refToStem(footerRefs.default), "footer");
-  const firstPageFooterId = parseHF(refToStem(footerRefs.first), "footer");
-  const evenPageFooterId = parseHF(refToStem(footerRefs.even), "footer");
+  const resolveSection = (sec) => {
+    sec.resolvedHeaderIds = {
+      default: parseHF(refToStem(sec.headerRefs.default), "header"),
+      first: parseHF(refToStem(sec.headerRefs.first), "header"),
+      even: parseHF(refToStem(sec.headerRefs.even), "header")
+    };
+    sec.resolvedFooterIds = {
+      default: parseHF(refToStem(sec.footerRefs.default), "footer"),
+      first: parseHF(refToStem(sec.footerRefs.first), "footer"),
+      even: parseHF(refToStem(sec.footerRefs.even), "footer")
+    };
+  };
+  for (const sec of inlineSections) resolveSection(sec);
+  resolveSection(bodyEndSection);
+  const pickFallbackSection = () => {
+    const hasAnyRef = (s) => {
+      var _a2, _b2, _c2, _d2, _e2, _f2;
+      return ((_a2 = s.resolvedHeaderIds) == null ? void 0 : _a2.default) || ((_b2 = s.resolvedHeaderIds) == null ? void 0 : _b2.first) || ((_c2 = s.resolvedHeaderIds) == null ? void 0 : _c2.even) || ((_d2 = s.resolvedFooterIds) == null ? void 0 : _d2.default) || ((_e2 = s.resolvedFooterIds) == null ? void 0 : _e2.first) || ((_f2 = s.resolvedFooterIds) == null ? void 0 : _f2.even);
+    };
+    if (hasAnyRef(bodyEndSection)) return bodyEndSection;
+    return inlineSections.find(hasAnyRef);
+  };
+  const fallback = pickFallbackSection();
+  const fallbackHeaderIds = (_a = fallback == null ? void 0 : fallback.resolvedHeaderIds) != null ? _a : {};
+  const fallbackFooterIds = (_b = fallback == null ? void 0 : fallback.resolvedFooterIds) != null ? _b : {};
+  const allSections = [...inlineSections, bodyEndSection];
+  const carried = { default: void 0, first: void 0, even: void 0 };
+  const carriedF = { default: void 0, first: void 0, even: void 0 };
+  for (const s of allSections) {
+    const h = (_c = s.resolvedHeaderIds) != null ? _c : s.resolvedHeaderIds = {};
+    const f = (_d = s.resolvedFooterIds) != null ? _d : s.resolvedFooterIds = {};
+    h.default = (_e = h.default) != null ? _e : carried.default;
+    h.first = (_f = h.first) != null ? _f : carried.first;
+    h.even = (_g = h.even) != null ? _g : carried.even;
+    f.default = (_h = f.default) != null ? _h : carriedF.default;
+    f.first = (_i = f.first) != null ? _i : carriedF.first;
+    f.even = (_j = f.even) != null ? _j : carriedF.even;
+    carried.default = h.default;
+    carried.first = h.first;
+    carried.even = h.even;
+    carriedF.default = f.default;
+    carriedF.first = f.first;
+    carriedF.even = f.even;
+  }
   const evenAndOdd = parseEvenAndOddHeaders(bundle.settingsXml);
-  if (defaultHeaderId) documentStyle.defaultHeaderId = defaultHeaderId;
-  if (defaultFooterId) documentStyle.defaultFooterId = defaultFooterId;
-  if (firstPageHeaderId) documentStyle.firstPageHeaderId = firstPageHeaderId;
-  if (firstPageFooterId) documentStyle.firstPageFooterId = firstPageFooterId;
-  if (evenPageHeaderId) documentStyle.evenPageHeaderId = evenPageHeaderId;
-  if (evenPageFooterId) documentStyle.evenPageFooterId = evenPageFooterId;
-  if (titlePage) documentStyle.useFirstPageHeaderFooter = 1;
+  if (fallbackHeaderIds.default) documentStyle.defaultHeaderId = fallbackHeaderIds.default;
+  if (fallbackFooterIds.default) documentStyle.defaultFooterId = fallbackFooterIds.default;
+  if (fallbackHeaderIds.first) documentStyle.firstPageHeaderId = fallbackHeaderIds.first;
+  if (fallbackFooterIds.first) documentStyle.firstPageFooterId = fallbackFooterIds.first;
+  if (fallbackHeaderIds.even) documentStyle.evenPageHeaderId = fallbackHeaderIds.even;
+  if (fallbackFooterIds.even) documentStyle.evenPageFooterId = fallbackFooterIds.even;
   if (evenAndOdd) documentStyle.evenAndOddHeaders = 1;
   const docData = assembleDocument(children, {
     numbering,
     rels,
-    media: (_a = bundle.media) != null ? _a : /* @__PURE__ */ new Map(),
+    media: (_k = bundle.media) != null ? _k : /* @__PURE__ */ new Map(),
     drawingInfoMap,
     documentStyle,
-    sectionBreakDefaults
+    sectionBreakDefaults,
+    bodyEndSection
   });
   if (Object.keys(headers).length > 0) docData.headers = headers;
   if (Object.keys(footers).length > 0) docData.footers = footers;
   if (Object.keys(extraDrawings).length > 0) {
-    docData.drawings = { ...(_b = docData.drawings) != null ? _b : {}, ...extraDrawings };
+    docData.drawings = { ...(_l = docData.drawings) != null ? _l : {}, ...extraDrawings };
   }
   if (Object.keys(extraLists).length > 0) {
-    docData.lists = { ...(_c = docData.lists) != null ? _c : {}, ...extraLists };
+    docData.lists = { ...(_m = docData.lists) != null ? _m : {}, ...extraLists };
   }
   if (Object.keys(extraTableSource).length > 0) {
-    docData.tableSource = { ...(_d = docData.tableSource) != null ? _d : {}, ...extraTableSource };
+    docData.tableSource = { ...(_n = docData.tableSource) != null ? _n : {}, ...extraTableSource };
   }
   return docData;
 }
