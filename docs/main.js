@@ -1,38 +1,38 @@
 import {
   UniverDocsMentionUIPlugin
-} from "../chunk-OSHQINEE.js";
+} from "../chunk-YVO24X5P.js";
 import {
   SetActiveCommentOperation,
   ThreadCommentPanel,
   ThreadCommentPanelService,
   UniverThreadCommentUIPlugin
-} from "../chunk-NEX7NRAZ.js";
-import "../chunk-TTRDKJ5V.js";
+} from "../chunk-UTLZ3HOU.js";
+import "../chunk-W3FESKEO.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-MWIYFC3I.js";
+} from "../chunk-6V66AY76.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-NYCJEMS2.js";
+} from "../chunk-OLTJTSGC.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
   ThreadCommentModel,
   getDT
 } from "../chunk-CB7V3IIA.js";
-import "../chunk-DH4W5MI2.js";
+import "../chunk-WKLWJH5R.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-O2IPJ4FZ.js";
+} from "../chunk-VXDMYCCW.js";
 import {
   FUniver
 } from "../chunk-GLLJOGIP.js";
-import "../chunk-HIQGBEGJ.js";
+import "../chunk-CHSE5JSO.js";
 import {
   DEFAULT_DOCUMENT_DATA_SIMPLE
-} from "../chunk-5HXVVKLM.js";
+} from "../chunk-KKXBLOVV.js";
 import {
   BulletListCommand,
   CutContentCommand,
@@ -66,7 +66,7 @@ import {
   getAnchorBounding,
   replaceSelectionFactory,
   whenDocAndEditorFocused
-} from "../chunk-JPEJESUU.js";
+} from "../chunk-OQB6QELS.js";
 import "../chunk-LI6UXASZ.js";
 import {
   Button,
@@ -99,20 +99,20 @@ import {
   useDependency,
   useEvent,
   useObservable
-} from "../chunk-TAIZCCTW.js";
+} from "../chunk-ME367ETE.js";
 import {
   zh_CN_default
 } from "../chunk-CDZYV7BA.js";
-import "../chunk-YCGSDOUF.js";
+import "../chunk-P4DTESLN.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-KGVU6IBH.js";
+} from "../chunk-WFHVUUKE.js";
 import {
   IRenderManagerService,
   UniverRenderEnginePlugin,
   ptToPixel,
   withCurrentTypeOfRenderer
-} from "../chunk-TN3DLTSL.js";
+} from "../chunk-NDMH6LA4.js";
 import {
   BehaviorSubject,
   BuildTextUtils,
@@ -6649,6 +6649,27 @@ function emitRun(run, acc, ctx) {
     }
   }
 }
+function isBarePageBreakParagraph(p) {
+  if (p.bullet || p.sectionBreakAfter) return false;
+  let sawPageBreak = false;
+  for (const run of p.runs) {
+    if (run.drawingId) return false;
+    for (const ch of run.text) {
+      if (ch === "\f") sawPageBreak = true;
+      else return false;
+    }
+  }
+  return sawPageBreak;
+}
+function countPageBreaks(p) {
+  let n = 0;
+  for (const run of p.runs) {
+    for (const ch of run.text) {
+      if (ch === "\f") n++;
+    }
+  }
+  return n;
+}
 function emitParagraph(p, acc, ctx) {
   var _a;
   for (const run of p.runs) emitRun(run, acc, ctx);
@@ -6909,9 +6930,30 @@ function assembleDocument(children, ctx) {
     tableSource: {},
     listsUsed: /* @__PURE__ */ new Map()
   };
+  const pageBreakFields = () => {
+    const inherited = ctx.bodyEndSection ? sectionToBreakFields(ctx.bodyEndSection) : {};
+    return { ...inherited, sectionType: 2 /* NEXT_PAGE */ };
+  };
+  const flushBarePageBreaks = (count) => {
+    for (let i = 0; i < count; i++) {
+      acc.sectionBreaks.push({
+        startIndex: acc.data.length,
+        // index of the '\n' we're about to write
+        ...pageBreakFields()
+      });
+      acc.data += "\n";
+    }
+  };
   for (const child of children) {
-    if (child.kind === "paragraph") emitParagraph(child.paragraph, acc, ctx);
-    else emitTable(child.table, acc, ctx);
+    if (child.kind === "paragraph" && isBarePageBreakParagraph(child.paragraph)) {
+      flushBarePageBreaks(countPageBreaks(child.paragraph));
+      continue;
+    }
+    if (child.kind === "paragraph") {
+      emitParagraph(child.paragraph, acc, ctx);
+    } else {
+      emitTable(child.table, acc, ctx);
+    }
   }
   acc.data += "\n";
   const numFmtToGlyphType = (format) => {
@@ -7413,9 +7455,16 @@ function runTextFromR(r) {
   let text = "";
   for (const child of nodeChildren(r)) {
     const name = nodeName(child);
-    if (name === "w:t") text += textOf(child);
-    else if (name === "w:tab") text += "	";
-    else if (name === "w:br") text += "\x07" /* LINE_BREAK */;
+    if (name === "w:t") {
+      text += textOf(child);
+    } else if (name === "w:tab") {
+      text += "	";
+    } else if (name === "w:br") {
+      const brType = nodeAttrs(child)["@_w:type"];
+      if (brType === "page") text += "\f" /* PAGE_BREAK */;
+      else if (brType === "column") text += "\v" /* COLUMN_BREAK */;
+      else text += "\x07" /* LINE_BREAK */;
+    }
   }
   return text;
 }
