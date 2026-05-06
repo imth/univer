@@ -1128,6 +1128,13 @@ function __getParagraphSpace(
                 // Remove the marginTop of the current line.
                 marginTop = 0;
             }
+        } else {
+            // Word/WPS suppress paragraph spacing-before when the paragraph is the
+            // first content on a page or column (ECMA-376 §17.3.1.33). Without
+            // this, a Heading paragraph that lands at the top of a new page after
+            // a section break renders with its full spaceAbove as blank, non-
+            // selectable space above it.
+            marginTop = 0;
         }
         return {
             marginTop,

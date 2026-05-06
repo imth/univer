@@ -901,3 +901,94 @@ describe('assembleDocument — inline sectionBreakAfter', () => {
         expect(tail.gridType).toBe(1);
     });
 });
+
+describe('assembleDocument — bare page-break paragraph → NEXT_PAGE section break', () => {
+    const ctx = { numbering: new Map(), rels: new Map(), media: new Map() };
+    const SectionType_NEXT_PAGE = 2;
+
+    it('translates <w:p><w:r><w:br type=page/></w:r></w:p> to a NEXT_PAGE section break', () => {
+        // python-docx style: a paragraph whose runs are exactly '\f'.
+        const children: DocumentChild[] = [
+            { kind: 'paragraph', paragraph: { runs: [{ text: 'before' }] } },
+            { kind: 'paragraph', paragraph: { runs: [{ text: '\f' }] } }, // bare page break
+            { kind: 'paragraph', paragraph: { runs: [{ text: 'after' }] } },
+        ];
+        const doc = assembleDocument(children, ctx);
+        // No '\f' anywhere — page break is now structural (\n + section break).
+        expect(doc.body!.dataStream).toBe('before\r\nafter\r\n');
+        // Two paragraph entries; the bare page-break paragraph is gone.
+        expect(doc.body!.paragraphs!.map((p) => p.startIndex)).toEqual([6, 13]);
+        // Exactly one extra section break for the page break, with NEXT_PAGE.
+        const nextPage = doc.body!.sectionBreaks!.filter((b) => b.sectionType === SectionType_NEXT_PAGE);
+        expect(nextPage.length).toBe(1);
+        // It sits at the '\n' index between 'before\r' and 'after'.
+        expect(nextPage[0].startIndex).toBe(7);
+    });
+
+    it('emits one NEXT_PAGE section break per consecutive page-break paragraph', () => {
+        const children: DocumentChild[] = [
+            { kind: 'paragraph', paragraph: { runs: [{ text: 'A' }] } },
+            { kind: 'paragraph', paragraph: { runs: [{ text: '\f' }] } },
+            { kind: 'paragraph', paragraph: { runs: [{ text: '\f' }] } },
+            { kind: 'paragraph', paragraph: { runs: [{ text: 'B' }] } },
+        ];
+        const doc = assembleDocument(children, ctx);
+        // A\r \n \n B\r \n  → two consecutive section breaks between A and B.
+        expect(doc.body!.dataStream).toBe('A\r\n\nB\r\n');
+        const nextPage = doc.body!.sectionBreaks!.filter((b) => b.sectionType === SectionType_NEXT_PAGE);
+        expect(nextPage.length).toBe(2);
+        expect(nextPage.map((b) => b.startIndex)).toEqual([2, 3]);
+    });
+
+    it('still emits the trailing NEXT_PAGE when document ends with a page break', () => {
+        // Word: a page break with nothing after it produces one extra blank page.
+        const children: DocumentChild[] = [
+            { kind: 'paragraph', paragraph: { runs: [{ text: 'tail' }] } },
+            { kind: 'paragraph', paragraph: { runs: [{ text: '\f' }] } },
+        ];
+        const doc = assembleDocument(children, ctx);
+        // 'tail\r' then '\n' for the page break, then another '\n' for the
+        // doc-end marker that assembleDocument always appends.
+        expect(doc.body!.dataStream).toBe('tail\r\n\n');
+        const nextPage = doc.body!.sectionBreaks!.filter((b) => b.sectionType === SectionType_NEXT_PAGE);
+        expect(nextPage.length).toBe(1);
+        expect(nextPage[0].startIndex).toBe(5);
+    });
+
+    it('keeps a bare page-break paragraph that has bullet semantics (treats as real)', () => {
+        // Bullet on an empty page-break paragraph isn't realistic, but if it
+        // happens we play it safe and keep the paragraph rather than silently
+        // losing the list state. The page-break stays in the dataStream as `\f`.
+        const children: DocumentChild[] = [
+            { kind: 'paragraph', paragraph: { runs: [{ text: '\f' }], bullet: { numId: 'l1', ilvl: 0 } } },
+            { kind: 'paragraph', paragraph: { runs: [{ text: 'after' }] } },
+        ];
+        const numbering: Map<string, ParsedNumberingDef> = new Map([[
+            'l1',
+            { numId: 'l1', levels: [{ format: 'bullet', text: '•', start: 1 }] } as unknown as ParsedNumberingDef,
+        ]]);
+        const doc = assembleDocument(children, { ...ctx, numbering });
+        expect(doc.body!.dataStream).toBe('\f\rafter\r\n');
+    });
+
+    it('inherits body-end section pgSize / orient / headerIds onto the NEXT_PAGE entry', () => {
+        const children: DocumentChild[] = [
+            { kind: 'paragraph', paragraph: { runs: [{ text: 'a' }] } },
+            { kind: 'paragraph', paragraph: { runs: [{ text: '\f' }] } },
+            { kind: 'paragraph', paragraph: { runs: [{ text: 'b' }] } },
+        ];
+        const doc = assembleDocument(children, {
+            ...ctx,
+            bodyEndSection: {
+                documentStyle: { pageOrient: 1 }, // landscape
+                sectionBreakDefaults: {},
+                titlePage: false,
+                resolvedHeaderIds: { default: 'header9' },
+            } as unknown as Parameters<typeof assembleDocument>[1]['bodyEndSection'],
+        });
+        const nextPage = doc.body!.sectionBreaks!.filter((b) => b.sectionType === SectionType_NEXT_PAGE);
+        expect(nextPage.length).toBe(1);
+        expect(nextPage[0].pageOrient).toBe(1);
+        expect(nextPage[0].defaultHeaderId).toBe('header9');
+    });
+});
