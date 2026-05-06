@@ -10,7 +10,7 @@ import {
 import "../chunk-3NE7KPNY.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-ESK5ZYNO.js";
+} from "../chunk-BWA4GTWV.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
@@ -8612,7 +8612,6 @@ async function docxToUniverData(input) {
   if (fallbackFooterIds.first) documentStyle.firstPageFooterId = fallbackFooterIds.first;
   if (fallbackHeaderIds.even) documentStyle.evenPageHeaderId = fallbackHeaderIds.even;
   if (fallbackFooterIds.even) documentStyle.evenPageFooterId = fallbackFooterIds.even;
-  if (bodyEndSection.titlePage) documentStyle.useFirstPageHeaderFooter = 1;
   if (evenAndOdd) documentStyle.evenAndOddHeaders = 1;
   const docData = assembleDocument(children, {
     numbering,

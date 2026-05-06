@@ -22,7 +22,7 @@ import {
 import "./chunk-3ZCHNMG2.js";
 import {
   UniverDebuggerPlugin
-} from "./chunk-6VQVBZFA.js";
+} from "./chunk-BWA4GTWV.js";
 import "./chunk-FFSSQRSL.js";
 import {
   UniverWatermarkPlugin
@@ -42,7 +42,7 @@ import "./chunk-KN22OUW2.js";
 import "./chunk-EQ2B2W73.js";
 import "./chunk-24OICD5T.js";
 
-// src/sheets-multi-units/very-lazy.ts
+// src/sheets-no-worker/very-lazy.ts
 var IS_E2E = false;
 function getVeryLazyPlugins() {
   const plugins = [
