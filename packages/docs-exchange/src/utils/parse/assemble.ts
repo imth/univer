@@ -525,20 +525,54 @@ export function assembleDocument(children: DocumentChild[], ctx: AssembleContext
     // requires linebreaking.ts to inspect glyph.streamType because the glyph's
     // `content` is empty (so `text.endsWith('\f')` never fires).
     //
-    // We inherit the body-end section's pgSize / orient / margins / headerIds so
-    // the new page renders identically to the surrounding pages — but NOT the
-    // body-end section's own sectionType (often 'continuous'), which would
-    // overwrite our NEXT_PAGE intent.
-    const pageBreakFields = (): Partial<ISectionBreak> => {
-        const inherited = ctx.bodyEndSection ? sectionToBreakFields(ctx.bodyEndSection) : {};
-        return { ...inherited, sectionType: SectionType.NEXT_PAGE };
+    // Field inheritance for the synthesized NEXT_PAGE entry:
+    // The new page logically belongs to the SAME OOXML section that contains
+    // the page break — i.e. the next inline <w:pPr><w:sectPr> that appears
+    // after this page break in the document, or body-end if none. We inherit
+    // that section's PAGE properties (pgSize / orient / margins) and DEFAULT
+    // header/footer IDs so the new page renders identically to the surrounding
+    // pages of its section. We do NOT inherit:
+    //   - sectionType (its 'continuous' would overwrite NEXT_PAGE)
+    //   - useFirstPageHeaderFooter / firstPage*Id (the page after a hard page
+    //     break is NOT the first page of a section)
+    //
+    // Walk children once to find, for each page-break paragraph, which inline
+    // sectPr it falls under.
+    const pageBreakOwners: Array<ParsedSection | undefined> = (() => {
+        const out: Array<ParsedSection | undefined> = [];
+        const future: ParsedSection[] = [];
+        for (let i = children.length - 1; i >= 0; i--) {
+            const c = children[i];
+            if (c.kind === 'paragraph') {
+                if (c.paragraph.sectionBreakAfter) future.unshift(c.paragraph.sectionBreakAfter);
+                if (isBarePageBreakParagraph(c.paragraph)) {
+                    const owner = future[0] ?? ctx.bodyEndSection;
+                    for (let n = 0; n < countPageBreaks(c.paragraph); n++) out.unshift(owner);
+                }
+            }
+        }
+        return out;
+    })();
+    let pageBreakIdx = 0;
+
+    const pageBreakFields = (owner: ParsedSection | undefined): Partial<ISectionBreak> => {
+        const inherited = owner ? sectionToBreakFields(owner) : {};
+        const {
+            sectionType: _st,
+            useFirstPageHeaderFooter: _u,
+            firstPageHeaderId: _fh,
+            firstPageFooterId: _ff,
+            ...rest
+        } = inherited;
+        return { ...rest, sectionType: SectionType.NEXT_PAGE };
     };
 
     const flushBarePageBreaks = (count: number) => {
         for (let i = 0; i < count; i++) {
+            const owner = pageBreakOwners[pageBreakIdx++];
             acc.sectionBreaks.push({
                 startIndex: acc.data.length, // index of the '\n' we're about to write
-                ...pageBreakFields(),
+                ...pageBreakFields(owner),
             });
             acc.data += '\n';
         }

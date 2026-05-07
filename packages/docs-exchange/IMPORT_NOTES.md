@@ -70,6 +70,17 @@ Update this file when you add a TODO that crosses the importer/renderer boundary
   downstream layout / pointer-mapping paths still use stale page metrics
   somewhere — out of scope for an importer-only change. Reproducible with
   `全格式.docx` (page 10 landscape).
+- **Concrete symptom (footer position):** on the landscape page, the
+  footer text ("Page footer — python-docx") is painted in the body area
+  roughly at the y-coordinate where the footer would sit on a *portrait*
+  page (≈ pageHeight_portrait − marginFooter), and the actual landscape
+  footer slot at the bottom of the page is empty. The portrait page that
+  precedes the landscape section also shows no footer — the footer slot
+  on that page appears to be consumed by the landscape section's layout
+  pass. Both symptoms point at stale page metrics in the renderer, not at
+  the importer's per-section break entry (verified: the landscape
+  `sectionBreak` correctly carries `pageSize: 1056×816`, `pageOrient: 1`,
+  and `defaultFooterId: footer1`).
 - **Workaround:** none on the importer side. Documents that stay in a
   single orientation render correctly.
 
