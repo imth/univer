@@ -267,6 +267,11 @@ export class Documents extends DocComponent {
             for (const section of sections) {
                 const { columns } = section;
 
+                // Save/restore around translateSection: section.top is page-relative, so
+                // without isolating it, offsets accumulate across sections on a
+                // multi-section page and leak into this page's footer and every
+                // subsequent page's header/body/footer.
+                this._drawLiquid.translateSave();
                 this._drawLiquid.translateSection(section);
 
                 for (const column of columns) {
@@ -480,6 +485,8 @@ export class Documents extends DocComponent {
 
                     this._drawLiquid.translateRestore();
                 }
+
+                this._drawLiquid.translateRestore();
             }
 
             this._resetRotation(ctx, finalAngle);
@@ -643,6 +650,8 @@ export class Documents extends DocComponent {
         for (const section of sections) {
             const { columns } = section;
 
+            // See note on the body draw loop above: translateSection must be wrapped
+            // in save/restore so section.top doesn't accumulate across sections.
             this._drawLiquid.translateSave();
             this._drawLiquid.translateSection(section);
 
@@ -898,6 +907,8 @@ export class Documents extends DocComponent {
         for (const section of sections) {
             const { columns } = section;
 
+            // See note on the body draw loop: translateSection must be wrapped in
+            // save/restore so section.top doesn't accumulate across sections.
             this._drawLiquid.translateSave();
             this._drawLiquid.translateSection(section);
 
