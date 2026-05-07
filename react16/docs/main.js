@@ -10,7 +10,7 @@ import {
 import "../chunk-W3FESKEO.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-4WVNZYT5.js";
+} from "../chunk-E2TPAHW4.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
@@ -6930,16 +6930,41 @@ function assembleDocument(children, ctx) {
     tableSource: {},
     listsUsed: /* @__PURE__ */ new Map()
   };
-  const pageBreakFields = () => {
-    const inherited = ctx.bodyEndSection ? sectionToBreakFields(ctx.bodyEndSection) : {};
-    return { ...inherited, sectionType: 2 /* NEXT_PAGE */ };
+  const pageBreakOwners = (() => {
+    var _a2;
+    const out = [];
+    const future = [];
+    for (let i = children.length - 1; i >= 0; i--) {
+      const c = children[i];
+      if (c.kind === "paragraph") {
+        if (c.paragraph.sectionBreakAfter) future.unshift(c.paragraph.sectionBreakAfter);
+        if (isBarePageBreakParagraph(c.paragraph)) {
+          const owner = (_a2 = future[0]) != null ? _a2 : ctx.bodyEndSection;
+          for (let n = 0; n < countPageBreaks(c.paragraph); n++) out.unshift(owner);
+        }
+      }
+    }
+    return out;
+  })();
+  let pageBreakIdx = 0;
+  const pageBreakFields = (owner) => {
+    const inherited = owner ? sectionToBreakFields(owner) : {};
+    const {
+      sectionType: _st,
+      useFirstPageHeaderFooter: _u,
+      firstPageHeaderId: _fh,
+      firstPageFooterId: _ff,
+      ...rest
+    } = inherited;
+    return { ...rest, sectionType: 2 /* NEXT_PAGE */ };
   };
   const flushBarePageBreaks = (count) => {
     for (let i = 0; i < count; i++) {
+      const owner = pageBreakOwners[pageBreakIdx++];
       acc.sectionBreaks.push({
         startIndex: acc.data.length,
         // index of the '\n' we're about to write
-        ...pageBreakFields()
+        ...pageBreakFields(owner)
       });
       acc.data += "\n";
     }

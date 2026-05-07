@@ -6,7 +6,7 @@ import "../chunk-CQY74AWC.js";
 import "../chunk-CLMLYKFF.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-4WVNZYT5.js";
+} from "../chunk-E2TPAHW4.js";
 import "../chunk-OLTJTSGC.js";
 import "../chunk-WKLWJH5R.js";
 import "../chunk-VXDMYCCW.js";
