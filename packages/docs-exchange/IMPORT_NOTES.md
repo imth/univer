@@ -62,27 +62,36 @@ Update this file when you add a TODO that crosses the importer/renderer boundary
   a `sectionBreak` entry with the swapped `pageSize` (1056×816 in Univer
   units), `pageOrient: PageOrientType.LANDSCAPE`, and its own
   `defaultHeaderId` — verified against `全格式.docx` sectPr #2.
-- **Renderer status:** broken. When the document switches orientation
-  mid-stream (portrait → landscape → portrait), the landscape page renders
-  with header/footer placement off, and hit-testing on the landscape page
-  is misaligned (clicking text selects the wrong run / cursor lands at the
-  wrong column). The skeleton page is created at the new size but
-  downstream layout / pointer-mapping paths still use stale page metrics
-  somewhere — out of scope for an importer-only change. Reproducible with
-  `全格式.docx` (page 10 landscape).
-- **Concrete symptom (footer position):** on the landscape page, the
-  footer text ("Page footer — python-docx") is painted in the body area
-  roughly at the y-coordinate where the footer would sit on a *portrait*
-  page (≈ pageHeight_portrait − marginFooter), and the actual landscape
-  footer slot at the bottom of the page is empty. The portrait page that
-  precedes the landscape section also shows no footer — the footer slot
-  on that page appears to be consumed by the landscape section's layout
-  pass. Both symptoms point at stale page metrics in the renderer, not at
-  the importer's per-section break entry (verified: the landscape
-  `sectionBreak` correctly carries `pageSize: 1056×816`, `pageOrient: 1`,
-  and `defaultFooterId: footer1`).
-- **Workaround:** none on the importer side. Documents that stay in a
-  single orientation render correctly.
+- **Renderer status:** fixed. Two compounding bugs in `engine-render`:
+  1. The `skeHeaders / skeFooters` cache in `page.ts` was clobbering
+     the inner per-pageWidth map on every populate (`new Map([[pageWidth,
+     x]])`), so a portrait→landscape transition wiped the portrait entry
+     and a landscape→portrait wiped the landscape one. Fixed by mutating
+     the existing inner map (`set(pageWidth, …)` instead of replace).
+  2. The body section loop in `document.ts` called
+     `_drawLiquid.translateSection(section)` without a surrounding
+     `translateSave / translateRestore`, so `section.top` accumulated
+     across iterations within a page (and leaked into the footer of that
+     page and every subsequent page's header/body/footer once a
+     multi-section page existed). For `全格式.docx` page 6 has two
+     sections — the second's `top = 407.07` permanently shifted the
+     liquid, which painted page 6's footer at portrait_y + 407 (inside
+     page 7's body area), then page 7's header / body / footer all
+     drew 407 px low. Fixed by wrapping the inner section body with a
+     `translateSave / translateRestore` pair around `translateSection`.
+  Verified end-to-end with `全格式.docx`: portrait page 6 footer renders
+  in its own footer slot, landscape page 7 shows "Landscape Header" in
+  the header slot, body content at the top of the body area, footer at
+  the bottom; cursor lands in landscape body text on click.
+- **Out-of-scope follow-up:** `pageNumber` does not increment across
+  NEXT_PAGE section boundaries that share the previous page's number
+  (e.g. landscape sectPr #2 and the portrait page that follows both
+  show `pageNumber: 5` in the skeleton). This affects PAGE field
+  substitution on those pages but not header/footer placement. The
+  bug lives in `doc-skeleton.ts:1154` where `createSkeletonPage` is
+  called with `curSkeletonPage?.pageNumber ?? pageNumberStart` —
+  carrying forward the previous number rather than incrementing for a
+  fresh page.
 
 ### Section type — `nextColumn`
 

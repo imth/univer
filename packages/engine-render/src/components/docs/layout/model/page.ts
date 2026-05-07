@@ -110,7 +110,13 @@ export function createSkeletonPage(
                 true
             );
 
-            skeHeaders.set(headerId, new Map([[pageWidth, header]]));
+            // Reuse the existing inner map: portrait and landscape sections share the
+            // same headerId but have different pageWidths. Replacing the map with
+            // `new Map([[pageWidth, header]])` would wipe the other orientation's
+            // cached entry on every transition.
+            const headerWidthMap = skeHeaders.get(headerId) ?? new Map();
+            headerWidthMap.set(pageWidth, header);
+            skeHeaders.set(headerId, headerWidthMap);
         }
         page.headerId = headerId;
     }
@@ -128,7 +134,10 @@ export function createSkeletonPage(
                 false
             );
 
-            skeFooters.set(footerId, new Map([[pageWidth, footer]]));
+            // Same orientation-cache rationale as headers above.
+            const footerWidthMap = skeFooters.get(footerId) ?? new Map();
+            footerWidthMap.set(pageWidth, footer);
+            skeFooters.set(footerId, footerWidthMap);
         }
         page.footerId = footerId;
     }
