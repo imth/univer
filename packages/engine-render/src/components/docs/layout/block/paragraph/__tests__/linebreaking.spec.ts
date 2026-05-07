@@ -143,12 +143,18 @@ describe('linebreaking', () => {
         const shapedTextList = [
             {
                 text: `A${DataStreamTreeTokenType.PAGE_BREAK}`,
-                glyphs: [{ content: 'A' }],
+                glyphs: [
+                    { content: 'A' },
+                    { content: '', streamType: DataStreamTreeTokenType.PAGE_BREAK },
+                ],
                 breakPointType: 0,
             },
             {
                 text: `B${DataStreamTreeTokenType.COLUMN_BREAK}`,
-                glyphs: [{ content: 'B' }],
+                glyphs: [
+                    { content: 'B' },
+                    { content: '', streamType: DataStreamTreeTokenType.COLUMN_BREAK },
+                ],
                 breakPointType: 0,
             },
             {
@@ -201,7 +207,10 @@ describe('linebreaking', () => {
             viewModel,
             [{
                 text: `X${DataStreamTreeTokenType.COLUMN_BREAK}`,
-                glyphs: [{ content: 'X' }],
+                glyphs: [
+                    { content: 'X' },
+                    { content: '', streamType: DataStreamTreeTokenType.COLUMN_BREAK },
+                ],
                 breakPointType: 0,
             }] as any,
             {

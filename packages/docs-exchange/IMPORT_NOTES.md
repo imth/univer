@@ -134,20 +134,36 @@ Update this file when you add a TODO that crosses the importer/renderer boundary
   `*HeaderId` / `*FooterId` so the new page renders identically to the
   surrounding pages, but **not** the body-end's `sectionType` (which would
   overwrite NEXT_PAGE).
-- **Why not just emit `\f`?** Two reasons. (1) `engine-render`'s glyph layer
-  shapes PAGE_BREAK as a zero-width PLACEHOLDER glyph with empty `content`, so
-  `linebreaking.ts`'s `text.endsWith('\f')` trigger is dead code in real
-  layout — only its `streamType` survives, and the existing renderer doesn't
-  inspect `streamType` for PAGE_BREAK. (2) Even if it did, the bare page-break
-  paragraph still owns a `\r` paragraph mark that gets laid out as a blank line
-  at the top of the new page. Section breaks bypass both problems:
-  `doc-skeleton.ts` opens a fresh page at any non-`CONTINUOUS` section
-  boundary, and the next paragraph sits flush at the page top.
-- **Edge cases:** a `<w:br w:type="page"/>` inside a paragraph that ALSO has
-  visible text or list/section semantics is not "bare" — those keep the inline
-  `\f` token. Rendering coverage of mid-paragraph page breaks via `\f` is
-  therefore limited (see `linebreaking.ts` note above); these are rare in
-  practice (Word emits them as bare paragraphs).
+- **Why the importer still rewrites bare page-break paragraphs:** the bare
+  `<w:p><w:r><w:br w:type="page"/></w:r></w:p>` paragraph carries a `\r`
+  paragraph mark; if we left it as inline `\f` the renderer would lay out a
+  blank line at the top of the new page (the empty paragraph). Section breaks
+  bypass that — `doc-skeleton.ts` opens a fresh page at any non-`CONTINUOUS`
+  section boundary, and the next paragraph sits flush at the page top.
+- **Mid-paragraph `\f`:** supported. `engine-render` shapes PAGE_BREAK as a
+  zero-width PLACEHOLDER glyph with empty `content` but preserves
+  `streamType: '\f'`. `pageColumnBreakExtension` makes `\f` a line-breaker
+  break-before/after rule so shaping terminates a chunk at the break, and
+  `linebreaking.ts` checks the last glyph's `streamType` (instead of the joined
+  text, which lost the `\f` to PLACEHOLDER) to dispatch a new page with
+  `BreakType.PAGE`. Rare in real Word docs (Word emits page breaks as bare
+  paragraphs) but well-defined when present.
+
+### Hard column break (`<w:br w:type="column"/>`)
+
+- **Importer status:** emitted as `DataStreamTreeTokenType.COLUMN_BREAK`
+  (`\v`) at the run level (see `parse-run.ts`). Unlike page break we do NOT
+  translate column breaks to section breaks, because OOXML allows them in the
+  middle of a paragraph (Word's `<w:r><w:t>before</w:t><w:br w:type="column"/></w:r><w:r><w:t>after</w:t></w:r>`
+  inside one `<w:p>` is the canonical form), and a section break would
+  illegally split the paragraph in two.
+- **Renderer status:** supported. Same plumbing as mid-paragraph `\f`:
+  PLACEHOLDER glyph carries `streamType: '\v'`,
+  `pageColumnBreakExtension` forces a shaping break at it, and
+  `linebreaking.ts` dispatches via `getLastNotFullColumnInfo` — multi-column
+  sections jump to the next column (`setColumnFullState`), single-column
+  sections (the only kind Univer renders today) open a new page with
+  `BreakType.COLUMN`.
 
 ### Soft line break (`<w:br/>`)
 

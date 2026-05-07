@@ -30,6 +30,7 @@ import { LineBreakerHyphenEnhancer } from '../../line-breaker/enhancers/hyphen-e
 import { LineBreakerLinkEnhancer } from '../../line-breaker/enhancers/link-enhancer';
 import { customBlockLineBreakExtension } from '../../line-breaker/extensions/custom-block-linebreak-extension';
 import { lineBreakLineBreakExtension } from '../../line-breaker/extensions/line-break-extension';
+import { pageColumnBreakExtension } from '../../line-breaker/extensions/page-column-break-extension';
 import { tabLineBreakExtension } from '../../line-breaker/extensions/tab-linebreak-extension';
 import { createSkeletonCustomBlockGlyph, createSkeletonLetterGlyph, createSkeletonTabGlyph, glyphShrinkLeft, glyphShrinkRight } from '../../model/glyph';
 import { getBoundingBox } from '../../model/line';
@@ -147,6 +148,7 @@ export function shaping(
     tabLineBreakExtension(breaker);
     customBlockLineBreakExtension(breaker);
     lineBreakLineBreakExtension(breaker);
+    pageColumnBreakExtension(breaker);
 
     breaker = new LineBreakerLinkEnhancer(breaker) as unknown as LineBreaker;
 
