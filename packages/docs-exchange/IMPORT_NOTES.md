@@ -62,7 +62,7 @@ Update this file when you add a TODO that crosses the importer/renderer boundary
   a `sectionBreak` entry with the swapped `pageSize` (1056×816 in Univer
   units), `pageOrient: PageOrientType.LANDSCAPE`, and its own
   `defaultHeaderId` — verified against `全格式.docx` sectPr #2.
-- **Renderer status:** fixed. Two compounding bugs in `engine-render`:
+- **Renderer status:** fixed. Three compounding bugs in `engine-render`:
   1. The `skeHeaders / skeFooters` cache in `page.ts` was clobbering
      the inner per-pageWidth map on every populate (`new Map([[pageWidth,
      x]])`), so a portrait→landscape transition wiped the portrait entry
@@ -79,6 +79,20 @@ Update this file when you add a TODO that crosses the importer/renderer boundary
      page 7's body area), then page 7's header / body / footer all
      drew 407 px low. Fixed by wrapping the inner section body with a
      `translateSave / translateRestore` pair around `translateSection`.
+  3. First-page header/footer (`<w:titlePg/>` →
+     `useFirstPageHeaderFooter`) was scoped to the document's first
+     page (`pageNumber === pageNumberStart`) instead of each section's
+     first page. In OOXML `titlePg` is per-section: the "Different
+     First Page Header" applies to the first page of EVERY section
+     that sets it. `全格式.docx` has a section after the landscape one
+     with its own `titlePg` + `firstPageHeaderId` — Univer rendered
+     that section's default header on its first page instead of the
+     first-page header. Fixed by switching the test to
+     `breakType === BreakType.SECTION`: a page born from a section
+     break is a section-first-page; an overflow continuation page
+     (`BreakType.PAGE`) is not. Verified end-to-end: post-landscape
+     section page shows "FIRST PAGE ONLY header" with no footer; the
+     pages after it revert to the section's default header/footer.
   Verified end-to-end with `全格式.docx`: portrait page 6 footer renders
   in its own footer slot, landscape page 7 shows "Landscape Header" in
   the header slot, body content at the top of the body area, footer at

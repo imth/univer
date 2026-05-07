@@ -87,7 +87,12 @@ export function createSkeletonPage(
 
     let headerId = defaultHeaderId ?? '';
     let footerId = defaultFooterId ?? '';
-    if (pageNumber === pageNumberStart && useFirstPageHeaderFooter === BooleanNumber.TRUE) {
+    // Word's <w:titlePg/> is per-section: the "first page" header/footer applies to
+    // the first page of EACH section, not just the first page of the document.
+    // A page created via a section break has breakType === SECTION; an overflow
+    // continuation page has breakType === PAGE.
+    const isSectionFirstPage = breakType === BreakType.SECTION;
+    if (isSectionFirstPage && useFirstPageHeaderFooter === BooleanNumber.TRUE) {
         headerId = firstPageHeaderId ?? '';
         footerId = firstPageFooterId ?? '';
     } else if (pageNumber % 2 === 0 && evenAndOddHeaders === BooleanNumber.TRUE) {
