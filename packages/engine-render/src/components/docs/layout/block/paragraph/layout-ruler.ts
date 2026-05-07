@@ -31,7 +31,7 @@ import type {
     ILayoutContext,
 } from '../../tools';
 import { BooleanNumber, DataStreamTreeTokenType, GridType, NAMED_STYLE_SPACE_MAP, ObjectRelativeFromV, PositionedObjectLayoutType, SpacingRule, TableTextWrapType } from '@univerjs/core';
-import { GlyphType, LineType } from '../../../../../basics/i-document-skeleton-cached';
+import { BreakType, GlyphType, LineType } from '../../../../../basics/i-document-skeleton-cached';
 import { BreakPointType } from '../../line-breaker/break';
 import { addGlyphToDivide, createSkeletonBulletGlyph } from '../../model/glyph';
 import {
@@ -1064,7 +1064,10 @@ function _pageOperator(
     const curSkeletonPage: IDocumentSkeletonPage = getLastPage(pages);
     const { skeHeaders, skeFooters } = paragraphConfig;
 
-    pages.push(createSkeletonPage(ctx, sectionBreakConfig, { skeHeaders, skeFooters }, curSkeletonPage?.pageNumber + 1));
+    // Page overflow: a line/column couldn't fit, so we open a continuation page.
+    // This is NOT a section's first page, so pass BreakType.PAGE to keep the
+    // first-page header/footer (<w:titlePg/>) from being applied.
+    pages.push(createSkeletonPage(ctx, sectionBreakConfig, { skeHeaders, skeFooters }, curSkeletonPage?.pageNumber + 1, BreakType.PAGE));
     _columnOperator(ctx, glyphGroup, pages, sectionBreakConfig, paragraphConfig, isParagraphFirstShapedText, breakPointType, defaultSpanLineHeight);
 }
 

@@ -21,6 +21,7 @@ import type { DataStreamTreeNode } from '../../view-model/data-stream-tree-node'
 import type { DocumentViewModel } from '../../view-model/document-view-model';
 import type { ILayoutContext } from '../tools';
 import { DataStreamTreeNodeType } from '@univerjs/core';
+import { BreakType } from '../../../../basics/i-document-skeleton-cached';
 import { createSkeletonPage } from '../model/page';
 import { dealWithBlockError } from './block-error';
 import { dealWidthParagraph } from './paragraph/paragraph-layout';
@@ -66,11 +67,17 @@ export function dealWithSection(
         if (paragraphNode.nodeType === DataStreamTreeNodeType.PARAGRAPH) {
             // Paragraph 段落
             if (ctx.paragraphsOpenNewPage.has(paragraphNode.endIndex)) {
+                // Forced page break from float-object collision: the new page is an
+                // overflow continuation of the current section, NOT a new section's
+                // first page. Pass BreakType.PAGE so it isn't treated as a
+                // section-first page (which would apply <w:titlePg/> first-page
+                // header/footer).
                 currentPageCache = createSkeletonPage(
                     ctx,
                     sectionBreakConfig,
                     ctx.skeletonResourceReference,
-                    currentPageCache.pageNumber + 1
+                    currentPageCache.pageNumber + 1,
+                    BreakType.PAGE
                 );
             }
             skeletonPages = dealWidthParagraph(

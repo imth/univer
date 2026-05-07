@@ -16,7 +16,7 @@
 
 import { BooleanNumber, ColumnSeparatorType, PageOrientType } from '@univerjs/core';
 import { describe, expect, it, vi } from 'vitest';
-import { DocumentSkeletonPageType } from '../../../../../basics/i-document-skeleton-cached';
+import { BreakType, DocumentSkeletonPageType } from '../../../../../basics/i-document-skeleton-cached';
 
 import {
     createNullCellPage,
@@ -126,7 +126,11 @@ describe('page model', () => {
         expect(skeletonResourceReference.skeHeaders.get('h-first')?.has(200)).toBe(true);
         expect(skeletonResourceReference.skeFooters.get('f-first')?.has(200)).toBe(true);
 
-        const evenPage = createSkeletonPage(ctx, sectionBreakConfig, skeletonResourceReference, 2);
+        // Even-page header/footer applies to overflow continuation pages within a
+        // section. A page born from a section break (BreakType.SECTION) is the
+        // section's first page and would take the <w:titlePg/> first-page
+        // header/footer instead — pass BreakType.PAGE here to model an overflow.
+        const evenPage = createSkeletonPage(ctx, sectionBreakConfig, skeletonResourceReference, 2, BreakType.PAGE);
         expect(evenPage.headerId).toBe('h-even');
         expect(evenPage.footerId).toBe('f-even');
     });
