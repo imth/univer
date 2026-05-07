@@ -1,38 +1,38 @@
 import {
   UniverDocsMentionUIPlugin
-} from "../chunk-PAYPIOUB.js";
+} from "../chunk-GXVWGKXW.js";
 import {
   SetActiveCommentOperation,
   ThreadCommentPanel,
   ThreadCommentPanelService,
   UniverThreadCommentUIPlugin
-} from "../chunk-HA4U4KWS.js";
-import "../chunk-ZUNJW7GA.js";
+} from "../chunk-WVSGLBI5.js";
+import "../chunk-2Q3G77NI.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-XIRZBNOE.js";
+} from "../chunk-ZD2T4STL.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-FEMKZ7XI.js";
+} from "../chunk-JHX2I7ZT.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
   ThreadCommentModel,
   getDT
 } from "../chunk-CB7V3IIA.js";
-import "../chunk-622JGF2V.js";
+import "../chunk-EENPKLZZ.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-MIS5AI4E.js";
+} from "../chunk-H677YOA4.js";
 import {
   FUniver
 } from "../chunk-GLLJOGIP.js";
-import "../chunk-A2IMCSEE.js";
+import "../chunk-G6CJXC4A.js";
 import {
   DEFAULT_DOCUMENT_DATA_SIMPLE
-} from "../chunk-KQ25NPPU.js";
+} from "../chunk-YQZE33SE.js";
 import {
   BulletListCommand,
   CutContentCommand,
@@ -66,7 +66,7 @@ import {
   getAnchorBounding,
   replaceSelectionFactory,
   whenDocAndEditorFocused
-} from "../chunk-C72FZPR3.js";
+} from "../chunk-XF2DIZSE.js";
 import "../chunk-LI6UXASZ.js";
 import {
   Button,
@@ -99,20 +99,20 @@ import {
   useDependency,
   useEvent,
   useObservable
-} from "../chunk-3W5OARJG.js";
+} from "../chunk-JGZS7AX4.js";
 import {
   zh_CN_default
 } from "../chunk-CDZYV7BA.js";
-import "../chunk-6OAZQ7KO.js";
+import "../chunk-OSVIMPGP.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-4GH4Q4IP.js";
+} from "../chunk-TZZREQS5.js";
 import {
   IRenderManagerService,
   UniverRenderEnginePlugin,
   ptToPixel,
   withCurrentTypeOfRenderer
-} from "../chunk-LVPQOPM6.js";
+} from "../chunk-Z5E4FBP3.js";
 import {
   BehaviorSubject,
   BuildTextUtils,
