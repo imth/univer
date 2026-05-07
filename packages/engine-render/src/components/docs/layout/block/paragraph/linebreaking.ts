@@ -226,7 +226,7 @@ export function lineBreaking(
 
     let allPages = [curPage];
     let isParagraphFirstShapedText = true; // 第一个分词
-    for (const [_index, { text, glyphs, breakPointType }] of shapedTextList.entries()) {
+    for (const [_index, { glyphs, breakPointType }] of shapedTextList.entries()) {
         const pushPending = () => {
             if (glyphs.length === 0) {
                 return;
@@ -245,7 +245,15 @@ export function lineBreaking(
             isParagraphFirstShapedText = false;
         };
 
-        if (text.endsWith(DataStreamTreeTokenType.PAGE_BREAK)) {
+        // PAGE_BREAK / COLUMN_BREAK glyphs are PLACEHOLDER (zero-width, content
+        // wiped to '') so the joined `text` never carries the raw '\f' / '\v'.
+        // Inspect the last glyph's streamType instead. The pageColumnBreakExtension
+        // line-breaker rule guarantees the chunk terminates exactly at the break,
+        // so the last glyph is the break glyph when it fires.
+        const lastGlyph = glyphs[glyphs.length - 1];
+        const lastStreamType = lastGlyph?.streamType;
+
+        if (lastStreamType === DataStreamTreeTokenType.PAGE_BREAK) {
             pushPending();
             allPages.push(
                 createSkeletonPage(
@@ -259,9 +267,10 @@ export function lineBreaking(
             paragraphNonInlineSkeDrawings.clear();
             paragraphInlineSkeDrawings.clear();
             continue;
-        } else if (text.endsWith(DataStreamTreeTokenType.COLUMN_BREAK)) {
+        } else if (lastStreamType === DataStreamTreeTokenType.COLUMN_BREAK) {
             pushPending();
-            // 换列标识，还在同一个节内
+            // Same section, jump to next column. If we're already on the last
+            // column (or the section is single-column), open a new page.
             const lastPage = allPages[allPages.length - 1];
             const columnInfo = getLastNotFullColumnInfo(lastPage);
 
