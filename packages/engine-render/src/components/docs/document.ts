@@ -616,7 +616,14 @@ export class Documents extends DocComponent {
         x += marginLeft + (left ?? 0);
         y -= line.marginTop;
         y -= line.paddingTop;
-        y += marginTop + top + line.lineHeight + (line.borderBottom?.padding ?? 0);
+        // `line.lineHeight` includes any spaceBelow that was folded into the
+        // last line by __getParagraphSpace (see layout-ruler.ts §17.3.1.33),
+        // recorded as `line.marginBottom`. Word draws the bottom border
+        // BETWEEN the text and the spaceBelow, so subtract marginBottom to
+        // anchor at the text baseline-of-line, then add the OOXML w:space
+        // padding (which is the gap from the text to the border).
+        const lineMarginBottom = line.marginBottom ?? 0;
+        y += marginTop + top + line.lineHeight - lineMarginBottom + (line.borderBottom?.padding ?? 0);
 
         ctx.save();
         ctx.setLineWidthByPrecision(1);
