@@ -31,7 +31,14 @@ export interface IGeneralWatermarkConfig {
     spacingY: number;
     rotate: number;
     opacity: number;
-
+    /**
+     * Optional anchor — when set, the renderer ignores `x/y` and pins the
+     * watermark to a page edge or centerline instead. Mirrors VML's
+     * `mso-position-horizontal/vertical` and DrawingML's `wp:positionH/V align`,
+     * which is how Word/WPS describe non-tiled watermarks.
+     */
+    horizontalAlign?: 'start' | 'center' | 'end';
+    verticalAlign?: 'start' | 'center' | 'end';
 }
 
 export interface ITextWatermarkConfig extends IGeneralWatermarkConfig {
@@ -41,6 +48,18 @@ export interface ITextWatermarkConfig extends IGeneralWatermarkConfig {
     bold: boolean;
     italic: boolean;
     direction: 'ltr' | 'rtl' | 'inherit';
+    fontFamily?: string;
+    /**
+     * VML "fitshape" — when set, the renderer non-uniformly scales the
+     * glyphs to fill an explicit box (boxWidth × boxHeight in CSS px),
+     * mirroring how Word/WPS render their stretchy text watermarks
+     * (the textpath font-size is just a baseline, the visible glyph
+     * dimensions come from the shape's style:width/height). When unset,
+     * the watermark renders at the configured fontSize with the glyphs'
+     * natural width.
+     */
+    boxWidth?: number;
+    boxHeight?: number;
 }
 
 export interface IImageWatermarkConfig extends IGeneralWatermarkConfig {

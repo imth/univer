@@ -77,8 +77,14 @@ export interface IDocumentOffsetConfig extends IPageMarginLayout {
 
 export class Documents extends DocComponent {
     private readonly _pageRender$ = new Subject<IPageRenderConfig>();
+    // Fired BEFORE each page's body/header/footer draw, so subscribers
+    // can paint a layer beneath the document content (e.g. watermarks,
+    // which Word/WPS render under the text). ctx is at the document
+    // origin — translate by (pageLeft, pageTop) to reach the page.
+    private readonly _pageBackgroundRender$ = new Subject<IPageRenderConfig>();
 
     readonly pageRender$ = this._pageRender$.asObservable();
+    readonly pageBackgroundRender$ = this._pageBackgroundRender$.asObservable();
 
     private _drawLiquid: Nullable<Liquid> = new Liquid();
 
@@ -98,6 +104,7 @@ export class Documents extends DocComponent {
         super.dispose();
 
         this._pageRender$.complete();
+        this._pageBackgroundRender$.complete();
         this._drawLiquid = null;
     }
 
@@ -220,6 +227,13 @@ export class Documents extends DocComponent {
 
                 continue;
             }
+
+            this._pageBackgroundRender$.next({
+                page,
+                pageLeft,
+                pageTop,
+                ctx,
+            });
 
             if (skeTables.size > 0) {
                 this._drawTable(
