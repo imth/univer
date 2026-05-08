@@ -1,38 +1,38 @@
 import {
   UniverDocsMentionUIPlugin
-} from "../chunk-WSHYDUY4.js";
+} from "../chunk-QMAWFV3X.js";
 import {
   SetActiveCommentOperation,
   ThreadCommentPanel,
   ThreadCommentPanelService,
   UniverThreadCommentUIPlugin
-} from "../chunk-PELNZATT.js";
-import "../chunk-NFIBSJAD.js";
+} from "../chunk-ZK4YA7J5.js";
+import "../chunk-O42KXLND.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-BYYZ2QK5.js";
+} from "../chunk-L6PI6VZS.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-APHEZZDH.js";
+} from "../chunk-O57ZKDID.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
   ThreadCommentModel,
   getDT
 } from "../chunk-CB7V3IIA.js";
-import "../chunk-75BPAYSL.js";
+import "../chunk-CQOIX53H.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-OP4JPT24.js";
+} from "../chunk-XROPR5BN.js";
 import {
   FUniver
 } from "../chunk-GLLJOGIP.js";
-import "../chunk-RHAV7LHU.js";
+import "../chunk-OTTVWBEA.js";
 import {
   DEFAULT_DOCUMENT_DATA_SIMPLE
-} from "../chunk-W5OPKFXQ.js";
+} from "../chunk-BJBNBCOY.js";
 import {
   BulletListCommand,
   CutContentCommand,
@@ -66,7 +66,7 @@ import {
   getAnchorBounding,
   replaceSelectionFactory,
   whenDocAndEditorFocused
-} from "../chunk-H7LC445H.js";
+} from "../chunk-SRBSH6F4.js";
 import "../chunk-LI6UXASZ.js";
 import {
   Button,
@@ -99,20 +99,20 @@ import {
   useDependency,
   useEvent,
   useObservable
-} from "../chunk-W7B5HECI.js";
+} from "../chunk-LTAJG2GS.js";
 import {
   zh_CN_default
 } from "../chunk-CDZYV7BA.js";
-import "../chunk-PVJZH4UA.js";
+import "../chunk-55QJK6MU.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-ZCFMLIOH.js";
+} from "../chunk-ZZJA2GVV.js";
 import {
   IRenderManagerService,
   UniverRenderEnginePlugin,
   ptToPixel,
   withCurrentTypeOfRenderer
-} from "../chunk-NCYBCTVB.js";
+} from "../chunk-73QXLKSZ.js";
 import {
   BehaviorSubject,
   BuildTextUtils,
@@ -7003,6 +7003,30 @@ function assembleDocument(children, ctx) {
         return 2;
     }
   };
+  const SYMBOL_BULLET_MAP = {
+    "\uF0B7": "\u2022",
+    // Symbol U+F0B7 \u2022 (round bullet, default in "List Bullet")
+    "\xB7": "\u2022",
+    // middle dot \u00B7 \u2022
+    "\uF0A7": "\u25A0",
+    // Symbol U+F0A7 \u25A0 (filled square)
+    "\uF0A8": "\u25A1",
+    // Symbol U+F0A8 \u25A1 (empty square)
+    "\uF0B0": "\xB0",
+    // Symbol U+F0B0 \u00B0 (degree)
+    "\uF076": "\u2713",
+    // Wingdings U+F076 \u2713
+    "\uF0FC": "\u2713",
+    // Wingdings U+F0FC \u2713 alt
+    "\uF0FB": "\u2717"
+    // Wingdings U+F0FB \u2717 alt
+  };
+  const normaliseBulletGlyph = (s) => {
+    var _a2;
+    let out = "";
+    for (const ch of s) out += (_a2 = SYMBOL_BULLET_MAP[ch]) != null ? _a2 : ch;
+    return out;
+  };
   const lists = {};
   for (const [numId, def] of acc.listsUsed) {
     lists[numId] = {
@@ -7022,6 +7046,12 @@ function assembleDocument(children, ctx) {
           startNumber: Math.max(0, l.start - 1),
           glyphType: numFmtToGlyphType(l.format)
         };
+        if (l.format === "bullet") {
+          const symbol = normaliseBulletGlyph(l.text);
+          entry.glyphSymbol = symbol;
+          entry.glyphFormat = ` %${l.ilvl + 1}`;
+          if (l.fontFamily) entry.textStyle = { ff: l.fontFamily };
+        }
         if (Object.keys(props).length > 0) {
           entry.paragraphProperties = props;
         }
@@ -7423,6 +7453,11 @@ function parseRPr(rPr) {
       case "w:strike":
         if (isToggleOn(attrs["@_w:val"])) style.st = { s: 1 };
         break;
+      // OOXML §17.3.2.9 — separate element from <w:strike/>; renderer
+      // treats `st.t = DOUBLE` as two stacked strike lines.
+      case "w:dstrike":
+        if (isToggleOn(attrs["@_w:val"])) style.st = { s: 1, t: 10 /* DOUBLE */ };
+        break;
       case "w:sz": {
         const val = Number(attrs["@_w:val"]);
         if (!Number.isNaN(val)) style.fs = hpToPt(val);
@@ -7783,9 +7818,8 @@ function parseEvenAndOddHeaders(settingsXml) {
 }
 
 // ../packages/docs-exchange/src/utils/parse/parse-paragraph.ts
-function parseBullet(pNode) {
+function parseBulletFromPPr(pPr) {
   var _a;
-  const pPr = findChild(pNode, "w:pPr");
   if (!pPr) return void 0;
   const numPr = findChild(pPr, "w:numPr");
   if (!numPr) return void 0;
@@ -7796,6 +7830,9 @@ function parseBullet(pNode) {
   if (numIdVal === "0") return void 0;
   const ilvlVal = ilvl ? Number((_a = nodeAttrs(ilvl)["@_w:val"]) != null ? _a : "0") : 0;
   return { numId: numIdVal, ilvl: Number.isNaN(ilvlVal) ? 0 : ilvlVal };
+}
+function parseBullet(pNode) {
+  return parseBulletFromPPr(findChild(pNode, "w:pPr"));
 }
 function mergePPr(parent, child) {
   var _a, _b, _c;
@@ -7819,6 +7856,7 @@ function mergePPr(parent, child) {
   return merged;
 }
 function parseParagraph(pNode, drawingsOut, styles, themeFonts) {
+  var _a;
   const pPr = findChild(pNode, "w:pPr");
   const styleRef = pPrStyleRef(pPr);
   const resolved = styles == null ? void 0 : styles.resolvePStyle(styleRef);
@@ -7831,7 +7869,7 @@ function parseParagraph(pNode, drawingsOut, styles, themeFonts) {
     runs: parseRunsFromPNode(pNode, drawingsOut, styles, pStyleRpr, themeFonts, pStyleRFonts)
   };
   if (style) out.style = style;
-  const bullet = parseBullet(pNode);
+  const bullet = (_a = parseBullet(pNode)) != null ? _a : resolved == null ? void 0 : resolved.bullet;
   if (bullet) out.bullet = bullet;
   const inlineSectPr = pPr ? findChild(pPr, "w:sectPr") : void 0;
   if (inlineSectPr) out.sectionBreakAfter = parseSectionPropertiesFromNode(inlineSectPr);
@@ -8186,7 +8224,7 @@ function parseLevels(absNum) {
     const startNode = findChild(lvl, "w:start");
     const rPr = findChild(lvl, "w:rPr");
     const rFonts = rPr ? findChild(rPr, "w:rFonts") : void 0;
-    const fontFamily = rFonts ? ((_b = nodeAttrs(rFonts)["@_w:ascii"]) != null ? _b : "").toLowerCase() : void 0;
+    const fontFamily = rFonts ? ((_b = nodeAttrs(rFonts)["@_w:ascii"]) != null ? _b : "") || void 0 : void 0;
     const lvlPPr = findChild(lvl, "w:pPr");
     const lvlStyle = parsePPr(lvlPPr);
     const raw = {
@@ -8206,7 +8244,7 @@ function parseLevels(absNum) {
 function deriveListType(levels) {
   const lvl0 = levels[0];
   if (lvl0 && lvl0.format === "bullet") {
-    const isCheckbox = CHECKBOX_GLYPHS.has(lvl0.text) || (lvl0.fontFamily ? CHECKBOX_FONTS.has(lvl0.fontFamily) : false);
+    const isCheckbox = CHECKBOX_GLYPHS.has(lvl0.text) || (lvl0.fontFamily ? CHECKBOX_FONTS.has(lvl0.fontFamily.toLowerCase()) : false);
     if (isCheckbox) return { listType: "CHECK_LIST", isCheckbox: true };
     return { listType: "BULLET_LIST", isCheckbox: false };
   }
@@ -8235,11 +8273,12 @@ function parseNumbering(numberingXml) {
     const absId = absRef ? (_c = nodeAttrs(absRef)["@_w:val"]) != null ? _c : "" : "";
     const rawLevels = (_d = abstractMap.get(absId)) != null ? _d : [];
     const { listType, isCheckbox } = deriveListType(rawLevels);
-    const levels = rawLevels.map(({ ilvl, format, text, start, indentStart, hanging, indentFirstLine }) => {
+    const levels = rawLevels.map(({ ilvl, format, text, start, indentStart, hanging, indentFirstLine, fontFamily }) => {
       const lvl = { ilvl, format, text, start };
       if (indentStart) lvl.indentStart = indentStart;
       if (hanging) lvl.hanging = hanging;
       if (indentFirstLine) lvl.indentFirstLine = indentFirstLine;
+      if (fontFamily) lvl.fontFamily = fontFamily;
       return lvl;
     });
     result.set(numId, { numId, abstractNumId: absId, levels, isCheckbox, listType });
@@ -8316,6 +8355,8 @@ function parseNamedStyle(styleNode) {
   if (basedOn) out.basedOn = basedOn;
   const parsedPPr = parsePPr(pPr);
   if (parsedPPr) out.pPr = parsedPPr;
+  const bullet = parseBulletFromPPr(pPr);
+  if (bullet) out.bullet = bullet;
   const parsedRPr = parseRPr(rPr);
   if (parsedRPr) out.rPr = parsedRPr;
   const rfonts = extractRFonts(rPr);
@@ -8489,15 +8530,18 @@ function resolveChain(styleId, styles) {
   let pPr;
   let rPr;
   let rFonts;
+  let bullet;
   for (let i = chain.length - 1; i >= 0; i--) {
     pPr = mergePPr2(pPr, chain[i].pPr);
     rPr = mergeRPr(rPr, chain[i].rPr);
     rFonts = mergeRFonts2(rFonts, chain[i].rFonts);
+    if (chain[i].bullet) bullet = chain[i].bullet;
   }
   const out = {};
   if (pPr) out.pPr = pPr;
   if (rPr) out.rPr = rPr;
   if (rFonts) out.rFonts = rFonts;
+  if (bullet) out.bullet = bullet;
   return out;
 }
 function parseStyles(stylesXml) {
