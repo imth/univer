@@ -23,8 +23,7 @@ import { parseRunsFromPNode } from './parse-run';
 import { parseSectionPropertiesFromNode } from './parse-section';
 import { findChild, nodeAttrs } from './xml';
 
-function parseBullet(pNode: Record<string, unknown>): ParsedBullet | undefined {
-    const pPr = findChild(pNode, 'w:pPr');
+function parseBulletFromPPr(pPr: Record<string, unknown> | undefined): ParsedBullet | undefined {
     if (!pPr) return undefined;
     const numPr = findChild(pPr, 'w:numPr');
     if (!numPr) return undefined;
@@ -32,11 +31,17 @@ function parseBullet(pNode: Record<string, unknown>): ParsedBullet | undefined {
     const ilvl = findChild(numPr, 'w:ilvl');
     const numIdVal = numId ? nodeAttrs(numId)['@_w:val'] : undefined;
     if (!numIdVal) return undefined;
-  // numId="0" in DOCX means "no list" (explicitly suppress inherited list)
+    // numId="0" in DOCX means "no list" (explicitly suppress inherited list)
     if (numIdVal === '0') return undefined;
     const ilvlVal = ilvl ? Number(nodeAttrs(ilvl)['@_w:val'] ?? '0') : 0;
     return { numId: numIdVal, ilvl: Number.isNaN(ilvlVal) ? 0 : ilvlVal };
 }
+
+function parseBullet(pNode: Record<string, unknown>): ParsedBullet | undefined {
+    return parseBulletFromPPr(findChild(pNode, 'w:pPr'));
+}
+
+export { parseBulletFromPPr };
 
 function mergePPr(
     parent: ParsedParagraphStyle | undefined,
@@ -88,7 +93,10 @@ export function parseParagraph(
         runs: parseRunsFromPNode(pNode, drawingsOut, styles, pStyleRpr, themeFonts, pStyleRFonts),
     };
     if (style) out.style = style;
-    const bullet = parseBullet(pNode);
+    // Bullet resolution: inline numPr wins, otherwise inherit from the
+    // referenced paragraph style (Word's `ListBullet*` / `ListNumber*` carry
+    // numPr at the style level, not on each paragraph).
+    const bullet = parseBullet(pNode) ?? resolved?.bullet;
     if (bullet) out.bullet = bullet;
 
   // Inline `<w:pPr><w:sectPr>`: this paragraph terminates a document section.
