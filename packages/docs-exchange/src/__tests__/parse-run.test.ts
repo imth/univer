@@ -15,6 +15,7 @@
  */
 
 import type { ThemeFonts } from '../utils/parse/parse-theme';
+import { TextDecoration } from '@univerjs/core';
 import { describe, expect, it } from 'vitest';
 import {
     extractRFonts,
@@ -95,6 +96,45 @@ describe('parseRunsFromParagraphXml', () => {
         const runs = parseRunsFromParagraphXml(xml);
         expect(runs[0].style?.bl).toBeUndefined();
         expect(runs[0].style?.ul).toBeUndefined();
+    });
+
+    it('maps w:u w:val to TextDecoration enum', () => {
+        const cases: Array<[string, TextDecoration]> = [
+            ['single', TextDecoration.SINGLE],
+            ['double', TextDecoration.DOUBLE],
+            ['thick', TextDecoration.THICK],
+            ['dotted', TextDecoration.DOTTED],
+            ['dottedHeavy', TextDecoration.DOTTED_HEAVY],
+            ['dash', TextDecoration.DASH],
+            ['dashedHeavy', TextDecoration.DASHED_HEAVY],
+            ['dashLong', TextDecoration.DASH_LONG],
+            ['dashLongHeavy', TextDecoration.DASH_LONG_HEAVY],
+            ['dotDash', TextDecoration.DOT_DASH],
+            ['dashDotHeavy', TextDecoration.DASH_DOT_HEAVY],
+            ['dotDotDash', TextDecoration.DOT_DOT_DASH],
+            ['dashDotDotHeavy', TextDecoration.DASH_DOT_DOT_HEAVY],
+            ['wave', TextDecoration.WAVE],
+            ['wavyHeavy', TextDecoration.WAVY_HEAVY],
+            ['wavyDouble', TextDecoration.WAVY_DOUBLE],
+            ['words', TextDecoration.WORDS],
+        ];
+        for (const [val, expected] of cases) {
+            const xml = `<w:p xmlns:w="x"><w:r><w:rPr><w:u w:val="${val}"/></w:rPr><w:t>X</w:t></w:r></w:p>`;
+            const runs = parseRunsFromParagraphXml(xml);
+            expect(runs[0].style?.ul, val).toEqual({ s: 1, t: expected });
+        }
+    });
+
+    it('falls back to plain underline (no t) for an unknown w:u w:val', () => {
+        const xml = '<w:p xmlns:w="x"><w:r><w:rPr><w:u w:val="madeUp"/></w:rPr><w:t>X</w:t></w:r></w:p>';
+        const runs = parseRunsFromParagraphXml(xml);
+        expect(runs[0].style?.ul).toEqual({ s: 1 });
+    });
+
+    it('treats <w:u/> with no w:val as plain underline', () => {
+        const xml = '<w:p xmlns:w="x"><w:r><w:rPr><w:u/></w:rPr><w:t>X</w:t></w:r></w:p>';
+        const runs = parseRunsFromParagraphXml(xml);
+        expect(runs[0].style?.ul).toEqual({ s: 1 });
     });
 
     it('drops bogus empty-URL hyperlinks (missing r:id) and emits plain run', () => {
