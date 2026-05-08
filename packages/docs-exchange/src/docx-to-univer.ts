@@ -36,10 +36,22 @@ import {
     parseStyles,
     parseTable,
     parseTheme,
+    parseWatermarksBySource,
     readOoxmlBundle,
 
     xmlParser,
 } from './utils/parse/index';
+
+// Per-doc watermark resource name. Must match DOC_WATERMARK_PLUGIN exported
+// by @univerjs/docs-watermark — DocsWatermarkResourceController matches on
+// this string when ResourceLoaderService dispatches onLoad. Inlined to
+// avoid pulling @univerjs/docs-watermark (and its engine-render runtime
+// deps) into the importer.
+const DOC_WATERMARK_PLUGIN = 'DOC_WATERMARK_PLUGIN';
+
+// Univer's IWatermarkConfigWithType shape. Inlined for the same reason.
+const WATERMARK_TYPE_TEXT = 'text';
+const WATERMARK_TYPE_IMAGE = 'image';
 
 export async function docxToUniverData(input: DocxInput): Promise<IDocumentData> {
     const bundle = await readOoxmlBundle(input);
@@ -231,6 +243,63 @@ export async function docxToUniverData(input: DocxInput): Promise<IDocumentData>
     }
     if (Object.keys(extraTableSource).length > 0) {
         docData.tableSource = { ...(docData.tableSource ?? {}), ...extraTableSource };
+    }
+
+    // Watermark — Word stores watermarks as VML shapes inside any
+    // header (and occasionally a footer). Each header/footer file may
+    // or may not carry one or more watermarks; section breaks bind
+    // pages to one of those headers/footers, so a section that points
+    // to a source without a watermark renders blank — the standard
+    // "no watermark on landscape pages" behaviour. We map each
+    // header/footer stem to its parsed watermark list and hand the
+    // whole map to @univerjs/docs-watermark via IDocumentData.resources,
+    // where it travels with snapshot/collab.
+    const headerRelsByStem = new Map<string, Map<string, import('./utils/parse/types').ParsedRelationship>>();
+    for (const [stem, relsXml] of bundle.headerRels ?? new Map()) {
+        headerRelsByStem.set(stem, parseHeaderFooterRels(relsXml));
+    }
+    const footerRelsByStem = new Map<string, Map<string, import('./utils/parse/types').ParsedRelationship>>();
+    for (const [stem, relsXml] of bundle.footerRels ?? new Map()) {
+        footerRelsByStem.set(stem, parseHeaderFooterRels(relsXml));
+    }
+    const media = bundle.media ?? new Map<string, Uint8Array>();
+    const watermarksByHeader = parseWatermarksBySource(
+        bundle.headers ?? new Map(),
+        'w:hdr',
+        headerRelsByStem,
+        media
+    );
+    const watermarksByFooter = parseWatermarksBySource(
+        bundle.footers ?? new Map(),
+        'w:ftr',
+        footerRelsByStem,
+        media
+    );
+
+    if (watermarksByHeader.size > 0 || watermarksByFooter.size > 0) {
+        const toConfigList = (items: Array<import('./utils/parse/parse-watermark').IParsedWatermark>) =>
+            items.map((wm) => {
+                if (wm.type === 'text') {
+                    return { type: WATERMARK_TYPE_TEXT, config: { text: wm } };
+                }
+                // Image watermark: engine-render's IImageWatermarkConfig uses `url`
+                // as the image source. We inline the data URL there so the resource
+                // is self-contained (no media-table indirection across snapshot).
+                const { dataUrl, ...rest } = wm;
+                return {
+                    type: WATERMARK_TYPE_IMAGE,
+                    config: { image: { ...rest, url: dataUrl } },
+                };
+            });
+        const byHeader: Record<string, Array<{ type: string; config: unknown }>> = {};
+        for (const [stem, items] of watermarksByHeader) byHeader[stem] = toConfigList(items);
+        const byFooter: Record<string, Array<{ type: string; config: unknown }>> = {};
+        for (const [stem, items] of watermarksByFooter) byFooter[stem] = toConfigList(items);
+        docData.resources = docData.resources ?? [];
+        docData.resources.push({
+            name: DOC_WATERMARK_PLUGIN,
+            data: JSON.stringify({ byHeader, byFooter }),
+        });
     }
 
     return docData;

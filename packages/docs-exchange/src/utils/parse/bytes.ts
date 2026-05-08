@@ -14,19 +14,13 @@
  * limitations under the License.
  */
 
-export * from './assemble';
-export * from './ooxml-reader';
-export * from './parse-drawing';
-export * from './parse-header-footer';
-export * from './parse-hyperlink';
-export * from './parse-numbering';
-export * from './parse-paragraph';
-export * from './parse-paragraph-style';
-export * from './parse-run';
-export * from './parse-section';
-export * from './parse-styles';
-export * from './parse-table';
-export * from './parse-theme';
-export * from './parse-watermark';
-export * from './types';
-export * from './xml';
+// Convert raw bytes to a base64 string. Chunked to avoid blowing the
+// arguments-length limit on large media payloads.
+export function bytesToBase64(bytes: Uint8Array): string {
+    let binary = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk) as unknown as number[]);
+    }
+    return btoa(binary);
+}

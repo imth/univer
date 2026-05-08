@@ -17,16 +17,8 @@
 import type { ISimpleDrawing } from '../types';
 import type { ParsedRelationship } from './types';
 import type { XmlNode } from './xml';
+import { bytesToBase64 } from './bytes';
 import { nodeAttrs, nodeChildren, nodeName, xmlParser } from './xml';
-
-function bytesToBase64(bytes: Uint8Array): string {
-    let binary = '';
-    const chunk = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunk) {
-        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk) as unknown as number[]);
-    }
-    return btoa(binary);
-}
 
 // TODO(unsupported): wp:anchor positioned drawings (only wp:inline is handled), wrap modes
 //   (wp:wrapSquare/Tight/Through), a:xfrm rot (rotation), image cropping (a:srcRect)

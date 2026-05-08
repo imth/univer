@@ -31,6 +31,7 @@
         "@univerjs/docs-quick-insert-ui": "workspace:*",
         "@univerjs/docs-thread-comment-ui": "workspace:*",
         "@univerjs/docs-ui": "workspace:*",
+        "@univerjs/docs-watermark": "workspace:*",
         "@univerjs/drawing": "workspace:*",
         "@univerjs/drawing-ui": "workspace:*",
         "@univerjs/engine-formula": "workspace:*",
