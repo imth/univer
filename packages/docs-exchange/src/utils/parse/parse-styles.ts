@@ -17,6 +17,7 @@
 import type { IUniverTextStyle } from '../types';
 import type { RFontsAttrs } from './parse-run';
 import type {
+    ParsedBullet,
     ParsedCell,
     ParsedCellBorders,
     ParsedCellMargin,
@@ -25,6 +26,7 @@ import type {
 } from './types';
 import type { XmlNode } from './xml';
 import { dxaToPx } from '../units';
+import { parseBulletFromPPr } from './parse-paragraph';
 import { parsePPr } from './parse-paragraph-style';
 import { extractRFonts, parseRPr } from './parse-run';
 import { findChild, findChildren, nodeAttrs, nodeChildren, nodeName, xmlParser } from './xml';
@@ -34,6 +36,13 @@ export interface NamedStyle {
     pPr?: ParsedParagraphStyle;
     rPr?: IUniverTextStyle;
     rFonts?: RFontsAttrs;
+    /**
+     * Numbering reference parsed from `<w:pPr><w:numPr>` inside the style.
+     * Word's built-in `ListBullet`/`ListNumber*` styles attach bullet behaviour
+     * here rather than inline, so paragraphs that just `<w:pStyle val="ListBullet"/>`
+     * inherit the list via this field.
+     */
+    bullet?: ParsedBullet;
 }
 
 /**
@@ -68,6 +77,7 @@ export interface ResolvedStyle {
     pPr?: ParsedParagraphStyle;
     rPr?: IUniverTextStyle;
     rFonts?: RFontsAttrs;
+    bullet?: ParsedBullet;
 }
 
 export interface ResolvedTableStyle {
@@ -175,6 +185,8 @@ function parseNamedStyle(styleNode: XmlNode): NamedStyle {
     if (basedOn) out.basedOn = basedOn;
     const parsedPPr = parsePPr(pPr);
     if (parsedPPr) out.pPr = parsedPPr;
+    const bullet = parseBulletFromPPr(pPr as Record<string, unknown> | undefined);
+    if (bullet) out.bullet = bullet;
     const parsedRPr = parseRPr(rPr);
     if (parsedRPr) out.rPr = parsedRPr;
     const rfonts = extractRFonts(rPr);
@@ -377,15 +389,21 @@ function resolveChain(styleId: string | undefined, styles: Map<string, NamedStyl
     let pPr: ParsedParagraphStyle | undefined;
     let rPr: IUniverTextStyle | undefined;
     let rFonts: RFontsAttrs | undefined;
+    // Bullet inheritance: walk root → leaf and let any descendant's bullet
+    // replace the parent's. Word treats numPr as a single-unit setting, so
+    // there's no per-field merge — last-defined wins.
+    let bullet: ParsedBullet | undefined;
     for (let i = chain.length - 1; i >= 0; i--) {
         pPr = mergePPr(pPr, chain[i].pPr);
         rPr = mergeRPr(rPr, chain[i].rPr);
         rFonts = mergeRFonts(rFonts, chain[i].rFonts);
+        if (chain[i].bullet) bullet = chain[i].bullet;
     }
     const out: ResolvedStyle = {};
     if (pPr) out.pPr = pPr;
     if (rPr) out.rPr = rPr;
     if (rFonts) out.rFonts = rFonts;
+    if (bullet) out.bullet = bullet;
     return out;
 }
 

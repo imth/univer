@@ -617,6 +617,26 @@ export function assembleDocument(children: DocumentChild[], ctx: AssembleContext
         }
     };
 
+  // Word stores bullet characters as Symbol/Wingdings private-area code points
+  // (e.g. U+F0B7 in Symbol = "\u2022"). Map the common ones to standard
+  // Unicode so the bullet renders even if the Symbol/Wingdings font isn't
+  // loaded. Reference: Symbol & Wingdings code charts.
+    const SYMBOL_BULLET_MAP: Record<string, string> = {
+        '\uF0B7': '\u2022', // Symbol U+F0B7 \u2022 (round bullet, default in "List Bullet")
+        '\u00B7': '\u2022', // middle dot \u00B7 \u2022
+        '\uF0A7': '\u25A0', // Symbol U+F0A7 \u25A0 (filled square)
+        '\uF0A8': '\u25A1', // Symbol U+F0A8 \u25A1 (empty square)
+        '\uF0B0': '\u00B0', // Symbol U+F0B0 \u00B0 (degree)
+        '\uF076': '\u2713', // Wingdings U+F076 \u2713
+        '\uF0FC': '\u2713', // Wingdings U+F0FC \u2713 alt
+        '\uF0FB': '\u2717', // Wingdings U+F0FB \u2717 alt
+    };
+    const normaliseBulletGlyph = (s: string): string => {
+        let out = '';
+        for (const ch of s) out += SYMBOL_BULLET_MAP[ch] ?? ch;
+        return out;
+    };
+
     const lists: Record<string, IListData> = {};
     for (const [numId, def] of acc.listsUsed) {
         lists[numId] = {
@@ -636,6 +656,17 @@ export function assembleDocument(children: DocumentChild[], ctx: AssembleContext
                     startNumber: Math.max(0, l.start - 1),
                     glyphType: numFmtToGlyphType(l.format),
                 };
+                if (l.format === 'bullet') {
+                    // Bullet glyphs in Word are symbol-font private-area characters
+                    // (e.g. U+F0B7 = "•" in Symbol). Univer renders bullets via
+                    // `glyphSymbol`, so map the PUA char to standard Unicode and pass
+                    // the original font through as textStyle.ff for fidelity when the
+                    // Symbol/Wingdings font is available.
+                    const symbol = normaliseBulletGlyph(l.text);
+                    entry.glyphSymbol = symbol;
+                    entry.glyphFormat = ` %${l.ilvl + 1}`;
+                    if (l.fontFamily) entry.textStyle = { ff: l.fontFamily };
+                }
                 if (Object.keys(props).length > 0) {
                     entry.paragraphProperties = props as IListData['nestingLevel'][number]['paragraphProperties'];
                 }

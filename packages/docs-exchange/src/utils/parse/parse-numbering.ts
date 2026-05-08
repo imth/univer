@@ -37,7 +37,7 @@ function parseLevels(absNum: Record<string, unknown>): RawLevel[] {
         const startNode = findChild(lvl, 'w:start');
         const rPr = findChild(lvl, 'w:rPr');
         const rFonts = rPr ? findChild(rPr, 'w:rFonts') : undefined;
-        const fontFamily = rFonts ? (nodeAttrs(rFonts)['@_w:ascii'] ?? '').toLowerCase() : undefined;
+        const fontFamily = rFonts ? (nodeAttrs(rFonts)['@_w:ascii'] ?? '') || undefined : undefined;
         const lvlPPr = findChild(lvl, 'w:pPr');
         const lvlStyle = parsePPr(lvlPPr);
         const raw: RawLevel = {
@@ -62,7 +62,8 @@ function deriveListType(levels: RawLevel[]): {
     const lvl0 = levels[0];
     if (lvl0 && lvl0.format === 'bullet') {
         const isCheckbox =
-            CHECKBOX_GLYPHS.has(lvl0.text) || (lvl0.fontFamily ? CHECKBOX_FONTS.has(lvl0.fontFamily) : false);
+            CHECKBOX_GLYPHS.has(lvl0.text)
+            || (lvl0.fontFamily ? CHECKBOX_FONTS.has(lvl0.fontFamily.toLowerCase()) : false);
         if (isCheckbox) return { listType: 'CHECK_LIST', isCheckbox: true };
         return { listType: 'BULLET_LIST', isCheckbox: false };
     }
@@ -95,11 +96,12 @@ export function parseNumbering(numberingXml: string | undefined): Map<string, Pa
         const absId = absRef ? (nodeAttrs(absRef)['@_w:val'] ?? '') : '';
         const rawLevels = abstractMap.get(absId) ?? [];
         const { listType, isCheckbox } = deriveListType(rawLevels);
-        const levels: ParsedNumberingLevel[] = rawLevels.map(({ ilvl, format, text, start, indentStart, hanging, indentFirstLine }) => {
+        const levels: ParsedNumberingLevel[] = rawLevels.map(({ ilvl, format, text, start, indentStart, hanging, indentFirstLine, fontFamily }) => {
             const lvl: ParsedNumberingLevel = { ilvl, format, text, start };
             if (indentStart) lvl.indentStart = indentStart;
             if (hanging) lvl.hanging = hanging;
             if (indentFirstLine) lvl.indentFirstLine = indentFirstLine;
+            if (fontFamily) lvl.fontFamily = fontFamily;
             return lvl;
         });
         result.set(numId, { numId, abstractNumId: absId, levels, isCheckbox, listType });
