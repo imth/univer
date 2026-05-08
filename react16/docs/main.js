@@ -10,7 +10,7 @@ import {
 import "../chunk-NFIBSJAD.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-OSURBOFX.js";
+} from "../chunk-HZ73MJIX.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
@@ -7380,6 +7380,25 @@ var HIGHLIGHT_COLORS = {
 function isToggleOn(val) {
   return val !== "0" && val !== "false" && val !== "none";
 }
+var UNDERLINE_VAL_TO_DECORATION = {
+  single: 12 /* SINGLE */,
+  double: 10 /* DOUBLE */,
+  thick: 13 /* THICK */,
+  dotted: 8 /* DOTTED */,
+  dottedHeavy: 9 /* DOTTED_HEAVY */,
+  dash: 0 /* DASH */,
+  dashedHeavy: 3 /* DASHED_HEAVY */,
+  dashLong: 4 /* DASH_LONG */,
+  dashLongHeavy: 5 /* DASH_LONG_HEAVY */,
+  dotDash: 6 /* DOT_DASH */,
+  dashDotHeavy: 2 /* DASH_DOT_HEAVY */,
+  dotDotDash: 7 /* DOT_DOT_DASH */,
+  dashDotDotHeavy: 1 /* DASH_DOT_DOT_HEAVY */,
+  wave: 14 /* WAVE */,
+  wavyHeavy: 16 /* WAVY_HEAVY */,
+  wavyDouble: 15 /* WAVY_DOUBLE */,
+  words: 17 /* WORDS */
+};
 function parseRPr(rPr) {
   if (!rPr) return void 0;
   const style = {};
@@ -7393,9 +7412,14 @@ function parseRPr(rPr) {
       case "w:i":
         if (isToggleOn(attrs["@_w:val"])) style.it = 1;
         break;
-      case "w:u":
-        if (isToggleOn(attrs["@_w:val"])) style.ul = { s: 1 };
+      case "w:u": {
+        const val = attrs["@_w:val"];
+        if (val === "none") break;
+        if (!isToggleOn(val)) break;
+        const t = val ? UNDERLINE_VAL_TO_DECORATION[val] : void 0;
+        style.ul = t != null ? { s: 1, t } : { s: 1 };
         break;
+      }
       case "w:strike":
         if (isToggleOn(attrs["@_w:val"])) style.st = { s: 1 };
         break;
