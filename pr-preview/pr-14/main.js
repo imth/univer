@@ -219,11 +219,11 @@ if (true) {
     // eslint-disable-next-line node/prefer-global/process
     NODE_ENV: "production",
     // eslint-disable-next-line node/prefer-global/process
-    GIT_COMMIT_HASH: "7550d56",
+    GIT_COMMIT_HASH: "54b5e22",
     // eslint-disable-next-line node/prefer-global/process
     GIT_REF_NAME: "feat/docx-watermark-import",
     // eslint-disable-next-line node/prefer-global/process
-    BUILD_TIME: "2026-05-08T08:18:44.777Z"
+    BUILD_TIME: "2026-05-08T08:24:51.607Z"
   });
 }
 function DemoList({ items }) {
