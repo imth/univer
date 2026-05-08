@@ -20,7 +20,7 @@ import type { StylesIndex } from './parse-styles';
 import type { ThemeFonts } from './parse-theme';
 import type { ParsedRun } from './types';
 import type { XmlNode } from './xml';
-import { DataStreamTreeTokenType, generateRandomId } from '@univerjs/core';
+import { DataStreamTreeTokenType, generateRandomId, TextDecoration } from '@univerjs/core';
 import { hpToPt } from '../units';
 import { parseDrawingFromXmlNode } from './parse-drawing';
 import { findChild, nodeAttrs, nodeChildren, nodeName, textOf, xmlParser } from './xml';
@@ -54,6 +54,29 @@ function isToggleOn(val: string | undefined): boolean {
     return val !== '0' && val !== 'false' && val !== 'none';
 }
 
+// OOXML §17.18.99 ST_Underline → Univer TextDecoration. Word's `w:val`
+// is closed-set; values not in this map fall back to a plain single
+// underline (matches Word's own renderer for unknown patterns).
+const UNDERLINE_VAL_TO_DECORATION: Record<string, TextDecoration> = {
+    single: TextDecoration.SINGLE,
+    double: TextDecoration.DOUBLE,
+    thick: TextDecoration.THICK,
+    dotted: TextDecoration.DOTTED,
+    dottedHeavy: TextDecoration.DOTTED_HEAVY,
+    dash: TextDecoration.DASH,
+    dashedHeavy: TextDecoration.DASHED_HEAVY,
+    dashLong: TextDecoration.DASH_LONG,
+    dashLongHeavy: TextDecoration.DASH_LONG_HEAVY,
+    dotDash: TextDecoration.DOT_DASH,
+    dashDotHeavy: TextDecoration.DASH_DOT_HEAVY,
+    dotDotDash: TextDecoration.DOT_DOT_DASH,
+    dashDotDotHeavy: TextDecoration.DASH_DOT_DOT_HEAVY,
+    wave: TextDecoration.WAVE,
+    wavyHeavy: TextDecoration.WAVY_HEAVY,
+    wavyDouble: TextDecoration.WAVY_DOUBLE,
+    words: TextDecoration.WORDS,
+};
+
 export function parseRPr(rPr: XmlNode | undefined): IUniverTextStyle | undefined {
     if (!rPr) return undefined;
     const style: IUniverTextStyle = {};
@@ -67,9 +90,17 @@ export function parseRPr(rPr: XmlNode | undefined): IUniverTextStyle | undefined
             case 'w:i':
                 if (isToggleOn(attrs['@_w:val'])) style.it = 1;
                 break;
-            case 'w:u':
-                if (isToggleOn(attrs['@_w:val'])) style.ul = { s: 1 };
+            case 'w:u': {
+                const val = attrs['@_w:val'];
+                // `<w:u w:val="none"/>` explicitly turns underline off in
+                // an inheritance chain — emit nothing so downstream merge
+                // doesn't reinstate it.
+                if (val === 'none') break;
+                if (!isToggleOn(val)) break;
+                const t = val ? UNDERLINE_VAL_TO_DECORATION[val] : undefined;
+                style.ul = t != null ? { s: 1, t } : { s: 1 };
                 break;
+            }
             case 'w:strike':
                 if (isToggleOn(attrs['@_w:val'])) style.st = { s: 1 };
                 break;
