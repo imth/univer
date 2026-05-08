@@ -25,6 +25,7 @@ import { UniverDocsMentionUIPlugin } from '@univerjs/docs-mention-ui';
 import { UniverDocsQuickInsertUIPlugin } from '@univerjs/docs-quick-insert-ui';
 import { UniverDocsThreadCommentUIPlugin } from '@univerjs/docs-thread-comment-ui';
 import { UniverDocsUIPlugin } from '@univerjs/docs-ui';
+import { UniverDocsWatermarkPlugin } from '@univerjs/docs-watermark';
 import { UniverFormulaEnginePlugin } from '@univerjs/engine-formula';
 import { UniverRenderEnginePlugin } from '@univerjs/engine-render';
 import { DEFAULT_DOCUMENT_DATA_SIMPLE } from '@univerjs/mockdata';
@@ -66,6 +67,7 @@ univer.registerPlugin(UniverDocsThreadCommentUIPlugin);
 univer.registerPlugin(UniverDocsHyperLinkUIPlugin);
 univer.registerPlugin(UniverDocsMentionUIPlugin);
 univer.registerPlugin(UniverDocsQuickInsertUIPlugin);
+univer.registerPlugin(UniverDocsWatermarkPlugin);
 
 if (!IS_E2E) {
     univer.createUnit(UniverInstanceType.UNIVER_DOC, DEFAULT_DOCUMENT_DATA_SIMPLE);

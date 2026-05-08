@@ -393,7 +393,7 @@ export function parseRunsFromPNode(
             if (text.length > 0) runs.push(style ? { text, style } : { text });
       // Handle drawing content
             const drawingNode = findChild(child, 'w:drawing');
-            if (drawingNode && drawingsOut) {
+            if (drawingNode && drawingsOut && !isWatermarkDrawing(drawingNode)) {
                 const info = parseDrawingFromXmlNode(drawingNode);
                 if (info) {
                     const drawingId = uuidv4();
@@ -433,6 +433,29 @@ function mergeRpr(
     if (!parent) return child;
     if (!child) return parent;
     return { ...parent, ...child };
+}
+
+// A <w:drawing> is a "picture watermark" (DrawingML form, used by modern
+// Word/WPS) when it carries a <wp:anchor> with a <wp:docPr name> that
+// matches "Watermark" — Word's canonical names are "WordPictureWatermark*"
+// and "PowerPlusWaterMarkObject*". Watermarks belong to a per-page
+// overlay (handled by docs-watermark via the resource map), NOT to the
+// header's text body, so we drop them here to avoid them being laid out
+// inline and pushing real content around.
+function isWatermarkDrawing(drawing: XmlNode): boolean {
+    const find = (node: XmlNode, tag: string): XmlNode | undefined => {
+        for (const c of nodeChildren(node)) {
+            if (nodeName(c) === tag) return c;
+            const inner = find(c, tag);
+            if (inner) return inner;
+        }
+        return undefined;
+    };
+    const anchor = find(drawing, 'wp:anchor');
+    if (!anchor) return false;
+    const docPr = find(anchor, 'wp:docPr');
+    const name = docPr ? (nodeAttrs(docPr)['@_name'] ?? '') : '';
+    return /watermark/i.test(name);
 }
 
 /** Apply the full inheritance chain: docDefaults+pStyle (passed in baseRpr/baseRFonts) → rStyle → inline rPr. */

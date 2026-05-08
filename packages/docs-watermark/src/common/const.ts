@@ -14,19 +14,12 @@
  * limitations under the License.
  */
 
-export * from './assemble';
-export * from './ooxml-reader';
-export * from './parse-drawing';
-export * from './parse-header-footer';
-export * from './parse-hyperlink';
-export * from './parse-numbering';
-export * from './parse-paragraph';
-export * from './parse-paragraph-style';
-export * from './parse-run';
-export * from './parse-section';
-export * from './parse-styles';
-export * from './parse-table';
-export * from './parse-theme';
-export * from './parse-watermark';
-export * from './types';
-export * from './xml';
+export const DOCS_WATERMARK_PLUGIN_NAME = 'UNIVER_DOCS_WATERMARK_PLUGIN';
+
+// Resource key stored on IDocumentData.resources. Must match the
+// `DOC_*_PLUGIN` pattern enforced by IResourceManagerService for doc
+// businesses. This string is shared with @univerjs/docs-exchange so
+// imported DOCX watermarks land in the right slot.
+export const DOC_WATERMARK_PLUGIN = 'DOC_WATERMARK_PLUGIN';
+
+export const DOCS_WATERMARK_RENDER_LAYER_INDEX = 10;

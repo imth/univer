@@ -14,19 +14,6 @@
  * limitations under the License.
  */
 
-export * from './assemble';
-export * from './ooxml-reader';
-export * from './parse-drawing';
-export * from './parse-header-footer';
-export * from './parse-hyperlink';
-export * from './parse-numbering';
-export * from './parse-paragraph';
-export * from './parse-paragraph-style';
-export * from './parse-run';
-export * from './parse-section';
-export * from './parse-styles';
-export * from './parse-table';
-export * from './parse-theme';
-export * from './parse-watermark';
-export * from './types';
-export * from './xml';
+export { DOC_WATERMARK_PLUGIN, DOCS_WATERMARK_PLUGIN_NAME, DOCS_WATERMARK_RENDER_LAYER_INDEX } from './common/const';
+export { UniverDocsWatermarkPlugin } from './plugin';
+export { DocsWatermarkService } from './services/docs-watermark.service';
