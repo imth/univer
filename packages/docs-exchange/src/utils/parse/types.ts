@@ -208,6 +208,12 @@ export interface ParsedNumberingLevel {
     indentStart?: { v: number };
     hanging?: { v: number };
     indentFirstLine?: { v: number };
+  /**
+   * Font for the bullet glyph from <w:lvl><w:rPr><w:rFonts w:ascii=...>.
+   * Word stores `Symbol`/`Wingdings` here so the private-area code points in
+   * `text` resolve to the right glyphs (e.g. U+F0B7 → "•" in Symbol).
+   */
+    fontFamily?: string;
 }
 
 export interface ParsedNumberingDef {
