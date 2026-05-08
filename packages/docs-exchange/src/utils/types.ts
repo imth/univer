@@ -18,7 +18,7 @@ export interface IUniverTextStyle {
     bl?: 0 | 1;
     it?: 0 | 1;
     ul?: { s: 0 | 1; t?: number };
-    st?: { s: 0 | 1 };
+    st?: { s: 0 | 1; t?: number };
     fs?: number;
     ff?: string;
     cl?: { rgb: string };

@@ -137,6 +137,24 @@ describe('parseRunsFromParagraphXml', () => {
         expect(runs[0].style?.ul).toEqual({ s: 1 });
     });
 
+    it('captures plain strikethrough (w:strike)', () => {
+        const xml = '<w:p xmlns:w="x"><w:r><w:rPr><w:strike/></w:rPr><w:t>X</w:t></w:r></w:p>';
+        const runs = parseRunsFromParagraphXml(xml);
+        expect(runs[0].style?.st).toEqual({ s: 1 });
+    });
+
+    it('captures double strikethrough (w:dstrike) as st with t=DOUBLE', () => {
+        const xml = '<w:p xmlns:w="x"><w:r><w:rPr><w:dstrike/></w:rPr><w:t>X</w:t></w:r></w:p>';
+        const runs = parseRunsFromParagraphXml(xml);
+        expect(runs[0].style?.st).toEqual({ s: 1, t: TextDecoration.DOUBLE });
+    });
+
+    it('honours w:val="0" / "false" to disable w:dstrike', () => {
+        const xml = '<w:p xmlns:w="x"><w:r><w:rPr><w:dstrike w:val="0"/></w:rPr><w:t>X</w:t></w:r></w:p>';
+        const runs = parseRunsFromParagraphXml(xml);
+        expect(runs[0].style?.st).toBeUndefined();
+    });
+
     it('drops bogus empty-URL hyperlinks (missing r:id) and emits plain run', () => {
         const xml = '<w:p xmlns:w="x"><w:hyperlink><w:r><w:t>x</w:t></w:r></w:hyperlink></w:p>';
         const runs = parseRunsFromParagraphXml(xml);

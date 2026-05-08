@@ -104,6 +104,11 @@ export function parseRPr(rPr: XmlNode | undefined): IUniverTextStyle | undefined
             case 'w:strike':
                 if (isToggleOn(attrs['@_w:val'])) style.st = { s: 1 };
                 break;
+            // OOXML §17.3.2.9 — separate element from <w:strike/>; renderer
+            // treats `st.t = DOUBLE` as two stacked strike lines.
+            case 'w:dstrike':
+                if (isToggleOn(attrs['@_w:val'])) style.st = { s: 1, t: TextDecoration.DOUBLE };
+                break;
             case 'w:sz': {
                 const val = Number(attrs['@_w:val']);
                 if (!Number.isNaN(val)) style.fs = hpToPt(val);
