@@ -1,38 +1,38 @@
 import {
   UniverDocsMentionUIPlugin
-} from "../chunk-CHYUDBM4.js";
+} from "../chunk-WSHYDUY4.js";
 import {
   SetActiveCommentOperation,
   ThreadCommentPanel,
   ThreadCommentPanelService,
   UniverThreadCommentUIPlugin
-} from "../chunk-JH3FFNZQ.js";
-import "../chunk-6CAI3WVH.js";
+} from "../chunk-PELNZATT.js";
+import "../chunk-NFIBSJAD.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-QHZX5DX4.js";
+} from "../chunk-OSURBOFX.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-S6XI6XHZ.js";
+} from "../chunk-APHEZZDH.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
   ThreadCommentModel,
   getDT
 } from "../chunk-CB7V3IIA.js";
-import "../chunk-3K2X7H57.js";
+import "../chunk-75BPAYSL.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-3S3BSE65.js";
+} from "../chunk-OP4JPT24.js";
 import {
   FUniver
 } from "../chunk-GLLJOGIP.js";
-import "../chunk-YGIF56FI.js";
+import "../chunk-RHAV7LHU.js";
 import {
   DEFAULT_DOCUMENT_DATA_SIMPLE
-} from "../chunk-TS3SH2KF.js";
+} from "../chunk-W5OPKFXQ.js";
 import {
   BulletListCommand,
   CutContentCommand,
@@ -66,7 +66,7 @@ import {
   getAnchorBounding,
   replaceSelectionFactory,
   whenDocAndEditorFocused
-} from "../chunk-LFPIB5AQ.js";
+} from "../chunk-H7LC445H.js";
 import "../chunk-LI6UXASZ.js";
 import {
   Button,
@@ -99,20 +99,20 @@ import {
   useDependency,
   useEvent,
   useObservable
-} from "../chunk-532SQ457.js";
+} from "../chunk-W7B5HECI.js";
 import {
   zh_CN_default
 } from "../chunk-CDZYV7BA.js";
-import "../chunk-QBIHOX7Z.js";
+import "../chunk-PVJZH4UA.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-EXRU3EBB.js";
+} from "../chunk-ZCFMLIOH.js";
 import {
   IRenderManagerService,
   UniverRenderEnginePlugin,
   ptToPixel,
   withCurrentTypeOfRenderer
-} from "../chunk-YP3FTPWW.js";
+} from "../chunk-NCYBCTVB.js";
 import {
   BehaviorSubject,
   BuildTextUtils,
@@ -2550,6 +2550,16 @@ var DOCX_BORDER_TO_UNIVER_DASH = {
   dotDotDash: 5,
   dotted: 2
 };
+
+// ../packages/docs-exchange/src/utils/parse/bytes.ts
+function bytesToBase64(bytes) {
+  let binary = "";
+  const chunk = 32768;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
 
 // ../node_modules/.pnpm/fast-xml-parser@5.7.2/node_modules/fast-xml-parser/src/util.js
 var nameStartChar = ":A-Za-z_\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD";
@@ -6534,14 +6544,6 @@ function flattenSdt(nodes) {
 }
 
 // ../packages/docs-exchange/src/utils/parse/parse-drawing.ts
-function bytesToBase64(bytes) {
-  let binary = "";
-  const chunk = 32768;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
 var EMU_PER_PX = 9525;
 function findFirstByName(node, target) {
   if (!node || typeof node !== "object") return void 0;
@@ -7588,7 +7590,7 @@ function parseRunsFromPNode(pNode, drawingsOut, styles, pStyleRpr, themeFonts, p
       const style = resolveRunStyle(rPr, baseRpr, baseRFonts, styles, themeFonts, text);
       if (text.length > 0) runs.push(style ? { text, style } : { text });
       const drawingNode = findChild(child, "w:drawing");
-      if (drawingNode && drawingsOut) {
+      if (drawingNode && drawingsOut && !isWatermarkDrawing(drawingNode)) {
         const info = parseDrawingFromXmlNode(drawingNode);
         if (info) {
           const drawingId = uuidv42();
@@ -7620,6 +7622,22 @@ function mergeRpr(parent, child) {
   if (!parent) return child;
   if (!child) return parent;
   return { ...parent, ...child };
+}
+function isWatermarkDrawing(drawing) {
+  var _a;
+  const find = (node, tag) => {
+    for (const c of nodeChildren(node)) {
+      if (nodeName(c) === tag) return c;
+      const inner = find(c, tag);
+      if (inner) return inner;
+    }
+    return void 0;
+  };
+  const anchor = find(drawing, "wp:anchor");
+  if (!anchor) return false;
+  const docPr = find(anchor, "wp:docPr");
+  const name = docPr ? (_a = nodeAttrs(docPr)["@_name"]) != null ? _a : "" : "";
+  return /watermark/i.test(name);
 }
 function resolveRunStyle(rPr, baseRpr, baseRFonts, styles, themeFonts, text) {
   let merged = baseRpr;
@@ -8564,9 +8582,342 @@ function readFontGroup(group) {
   return out;
 }
 
+// ../packages/docs-exchange/src/utils/parse/parse-watermark.ts
+var DEFAULT_TEXT_WATERMARK = {
+  type: "text",
+  content: "",
+  fontFamily: "Arial",
+  fontSize: 144,
+  color: "rgb(192,192,192)",
+  bold: false,
+  italic: false,
+  direction: "ltr",
+  x: 0,
+  y: 0,
+  repeat: false,
+  spacingX: 0,
+  spacingY: 0,
+  // No fallback rotation: a watermark with no explicit rotation in
+  // either VML style:rotation or DrawingML xfrm@rot is upright. The
+  // old "DRAFT defaults to -45" assumption is wrong for any modern
+  // writer (WPS, current Word "Insert > Watermark") — they always
+  // emit an explicit rotation when one is wanted.
+  rotate: 0,
+  opacity: 0.5
+};
+var DEFAULT_IMAGE_WATERMARK = {
+  type: "image",
+  x: 0,
+  y: 0,
+  repeat: false,
+  spacingX: 0,
+  spacingY: 0,
+  rotate: 0,
+  opacity: 0.5,
+  maintainAspectRatio: true
+};
+function parseWatermarksBySource(sources, rootTag, relsByStem, media) {
+  var _a;
+  const out = /* @__PURE__ */ new Map();
+  for (const [stem, xml] of sources) {
+    const rels = (_a = relsByStem == null ? void 0 : relsByStem.get(stem)) != null ? _a : /* @__PURE__ */ new Map();
+    const items = parseWatermarksFromXml(xml, rootTag, { rels, media });
+    if (items.length > 0) out.set(stem, items);
+  }
+  return out;
+}
+function parseWatermarksFromXml(xml, rootTag, opts) {
+  let parsed;
+  try {
+    parsed = xmlParser.parse(xml);
+  } catch {
+    return [];
+  }
+  const root = parsed.find((n) => nodeName(n) === rootTag);
+  if (!root) return [];
+  const shapes = collectVmlWatermarkShapes(root);
+  const out = [];
+  for (const shape of shapes) {
+    const wm = parseShapeAsWatermark(shape, opts);
+    if (wm) out.push(wm);
+  }
+  const anchors = collectDrawingMlWatermarkAnchors(root);
+  for (const anchor of anchors) {
+    const wm = parseDrawingMlAnchorAsImage(anchor, opts);
+    if (wm) out.push(wm);
+  }
+  return out;
+}
+function parseShapeAsWatermark(shape, opts) {
+  const textpath = findChildDeep(shape, "v:textpath");
+  if (textpath) return parseTextShape(shape, textpath);
+  const imagedata = findChildDeep(shape, "v:imagedata");
+  if (imagedata) return parseImageShape(shape, imagedata, opts);
+  return null;
+}
+function parseTextShape(shape, textpath) {
+  var _a, _b, _c, _d, _e;
+  const tpAttrs = nodeAttrs(textpath);
+  const content = tpAttrs["@_string"];
+  if (!content) return null;
+  const shapeAttrs = nodeAttrs(shape);
+  const tpStyle = parseInlineStyle((_a = tpAttrs["@_style"]) != null ? _a : "");
+  const shapeStyle = parseInlineStyle((_b = shapeAttrs["@_style"]) != null ? _b : "");
+  const fillcolor = vmlFillColorToCss(shapeAttrs["@_fillcolor"]);
+  const opacity = parseFillOpacity(shape);
+  const rotate = parseRotation(shapeStyle.rotation);
+  const fontFamily = parseFontFamily(tpStyle["font-family"]);
+  const fontWeight = ((_c = tpStyle["font-weight"]) != null ? _c : "").trim().toLowerCase();
+  const fontStyle = ((_d = tpStyle["font-style"]) != null ? _d : "").trim().toLowerCase();
+  const textpathFontPt = parsePtNumber(tpStyle["font-size"]);
+  const shapeWidthPt = parsePtNumber(shapeStyle.width);
+  const shapeHeightPt = parsePtNumber(shapeStyle.height);
+  const fitshape = String((_e = tpAttrs["@_fitshape"]) != null ? _e : "").toLowerCase() === "t";
+  const ptSize = textpathFontPt != null ? textpathFontPt : shapeHeightPt;
+  const fontSize = ptSize != null ? Math.round(ptSize * (96 / 72)) : DEFAULT_TEXT_WATERMARK.fontSize;
+  const boxWidth = fitshape && shapeWidthPt != null ? Math.round(shapeWidthPt * (96 / 72)) : void 0;
+  const boxHeight = fitshape && shapeHeightPt != null ? Math.round(shapeHeightPt * (96 / 72)) : void 0;
+  return {
+    ...DEFAULT_TEXT_WATERMARK,
+    content,
+    fontFamily: fontFamily != null ? fontFamily : DEFAULT_TEXT_WATERMARK.fontFamily,
+    fontSize,
+    color: fillcolor != null ? fillcolor : DEFAULT_TEXT_WATERMARK.color,
+    opacity: opacity != null ? opacity : DEFAULT_TEXT_WATERMARK.opacity,
+    rotate: rotate != null ? rotate : DEFAULT_TEXT_WATERMARK.rotate,
+    // bold / italic / weight: Word watermarks rarely set these, but
+    // when font-weight or font-style is present we honour them.
+    bold: fontWeight === "bold" || /^[5-9]\d{2}$/.test(fontWeight),
+    italic: fontStyle === "italic" || fontStyle === "oblique",
+    ...vmlMsoAnchors(shapeStyle),
+    ...boxWidth != null ? { boxWidth } : {},
+    ...boxHeight != null ? { boxHeight } : {}
+  };
+}
+function parseImageShape(shape, imagedata, opts) {
+  var _a, _b, _c, _d, _e;
+  const imgAttrs = nodeAttrs(imagedata);
+  const rId = (_b = (_a = imgAttrs["@_r:id"]) != null ? _a : imgAttrs["@_r:pict"]) != null ? _b : imgAttrs["@_id"];
+  if (!rId) return null;
+  const rel = opts.rels.get(rId);
+  if (!rel || !rel.target) return null;
+  const path = resolveMediaPath2(rel.target);
+  const bytes = opts.media.get(path);
+  if (!bytes) return null;
+  const ext = ((_c = path.split(".").pop()) != null ? _c : "png").toLowerCase();
+  const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "gif" ? "image/gif" : ext === "bmp" ? "image/bmp" : ext === "svg" ? "image/svg+xml" : "image/png";
+  const dataUrl = `data:${mime};base64,${bytesToBase64(bytes)}`;
+  const shapeAttrs = nodeAttrs(shape);
+  const shapeStyle = parseInlineStyle((_d = shapeAttrs["@_style"]) != null ? _d : "");
+  const widthPt = parsePtNumber(shapeStyle.width);
+  const heightPt = parsePtNumber(shapeStyle.height);
+  const width = widthPt != null ? Math.round(widthPt * (96 / 72)) : 468;
+  const height = heightPt != null ? Math.round(heightPt * (96 / 72)) : 351;
+  const originRatio = height > 0 ? width / height : 1;
+  const opacity = (_e = parseFillOpacity(shape)) != null ? _e : parseImagedataOpacity(imagedata);
+  const rotate = parseRotation(shapeStyle.rotation);
+  return {
+    ...DEFAULT_IMAGE_WATERMARK,
+    dataUrl,
+    width,
+    height,
+    originRatio,
+    opacity: opacity != null ? opacity : DEFAULT_IMAGE_WATERMARK.opacity,
+    rotate: rotate != null ? rotate : DEFAULT_IMAGE_WATERMARK.rotate,
+    ...vmlMsoAnchors(shapeStyle)
+  };
+}
+function collectVmlWatermarkShapes(node) {
+  const out = [];
+  const visit = (n) => {
+    var _a, _b;
+    for (const child of nodeChildren(n)) {
+      if (nodeName(child) === "v:shape") {
+        const attrs = nodeAttrs(child);
+        const id = (_a = attrs["@_id"]) != null ? _a : "";
+        const type = (_b = attrs["@_type"]) != null ? _b : "";
+        const looksLikeWatermark = /watermark/i.test(id) || type === "#_x0000_t136" || // t75 (image) without "watermark" in the id usually
+        // means an inline image, not a watermark — but Word's
+        // picture-watermark template always uses t75 inside a
+        // <w:pict>. We only treat t75 as a watermark when the
+        // shape id explicitly contains "WaterMark" or
+        // "PictureWatermark", or when it's the only shape in
+        // a <w:pict>. The first heuristic catches Word
+        // canonical output; the second is handled implicitly
+        // by the absence of competing shapes in the header.
+        type === "#_x0000_t75" && /watermark|pict/i.test(id);
+        if (looksLikeWatermark) out.push(child);
+      }
+      visit(child);
+    }
+  };
+  visit(node);
+  return out;
+}
+function findChildDeep(node, tagName) {
+  for (const child of nodeChildren(node)) {
+    if (nodeName(child) === tagName) return child;
+    const inner = findChildDeep(child, tagName);
+    if (inner) return inner;
+  }
+  return null;
+}
+function collectDrawingMlWatermarkAnchors(node) {
+  const out = [];
+  const visit = (n) => {
+    var _a, _b;
+    for (const child of nodeChildren(n)) {
+      if (nodeName(child) === "wp:anchor") {
+        const attrs = nodeAttrs(child);
+        const behindDoc = String((_a = attrs["@_behindDoc"]) != null ? _a : "") === "1";
+        const docPr = findChildDeep(child, "wp:docPr");
+        const name = docPr ? (_b = nodeAttrs(docPr)["@_name"]) != null ? _b : "" : "";
+        const looksLikeWatermark = /watermark/i.test(name) || behindDoc && /watermark/i.test(name);
+        if (looksLikeWatermark) out.push(child);
+      }
+      visit(child);
+    }
+  };
+  visit(node);
+  return out;
+}
+function parseDrawingMlAnchorAsImage(anchor, opts) {
+  var _a, _b, _c;
+  const info = parseDrawingFromXmlNode(anchor);
+  if (!info) return null;
+  const rel = opts.rels.get(info.rId);
+  if (!rel || !rel.target) return null;
+  const path = resolveMediaPath2(rel.target);
+  const bytes = opts.media.get(path);
+  if (!bytes) return null;
+  const ext = ((_a = path.split(".").pop()) != null ? _a : "png").toLowerCase();
+  const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "gif" ? "image/gif" : ext === "bmp" ? "image/bmp" : ext === "svg" ? "image/svg+xml" : "image/png";
+  const dataUrl = `data:${mime};base64,${bytesToBase64(bytes)}`;
+  const width = (_b = info.widthPx) != null ? _b : 468;
+  const height = (_c = info.heightPx) != null ? _c : 351;
+  const originRatio = height > 0 ? width / height : 1;
+  const xfrm = findChildDeep(anchor, "a:xfrm");
+  let rotate = 0;
+  if (xfrm) {
+    const rotAttr = nodeAttrs(xfrm)["@_rot"];
+    if (rotAttr != null) {
+      const n = Number(rotAttr);
+      if (Number.isFinite(n)) rotate = n / 6e4;
+    }
+  }
+  const posH = findChildDeep(anchor, "wp:positionH");
+  const posV = findChildDeep(anchor, "wp:positionV");
+  const horizontalAlign = positionAlignFrom(posH, "h");
+  const verticalAlign = positionAlignFrom(posV, "v");
+  return {
+    ...DEFAULT_IMAGE_WATERMARK,
+    dataUrl,
+    width,
+    height,
+    originRatio,
+    rotate,
+    ...horizontalAlign ? { horizontalAlign } : {},
+    ...verticalAlign ? { verticalAlign } : {}
+  };
+}
+function positionAlignFrom(node, axis) {
+  var _a;
+  if (!node) return void 0;
+  const align = findChildDeep(node, "wp:align");
+  if (!align) return void 0;
+  const text = String(typeof align === "object" ? (_a = align["#text"]) != null ? _a : "" : align != null ? align : "").toLowerCase().trim();
+  if (axis === "h") {
+    if (text === "left") return "start";
+    if (text === "center") return "center";
+    if (text === "right") return "end";
+  } else {
+    if (text === "top") return "start";
+    if (text === "center") return "center";
+    if (text === "bottom") return "end";
+  }
+  return void 0;
+}
+function vmlMsoAnchors(shapeStyle) {
+  var _a, _b;
+  const out = {};
+  const h = ((_a = shapeStyle["mso-position-horizontal"]) != null ? _a : "").trim().toLowerCase();
+  if (h === "left") out.horizontalAlign = "start";
+  else if (h === "center") out.horizontalAlign = "center";
+  else if (h === "right") out.horizontalAlign = "end";
+  const v = ((_b = shapeStyle["mso-position-vertical"]) != null ? _b : "").trim().toLowerCase();
+  if (v === "top") out.verticalAlign = "start";
+  else if (v === "center") out.verticalAlign = "center";
+  else if (v === "bottom") out.verticalAlign = "end";
+  return out;
+}
+function parseInlineStyle(raw) {
+  const out = {};
+  for (const decl of raw.split(";")) {
+    const i = decl.indexOf(":");
+    if (i < 0) continue;
+    const key = decl.slice(0, i).trim().toLowerCase();
+    const value = decl.slice(i + 1).trim();
+    if (key) out[key] = value;
+  }
+  return out;
+}
+function parsePtNumber(raw) {
+  if (!raw) return null;
+  const m = /^(-?\d+(?:\.\d+)?)\s*pt$/i.exec(raw.trim());
+  return m ? Number.parseFloat(m[1]) : null;
+}
+function vmlFillColorToCss(raw) {
+  if (!raw) return null;
+  const t = raw.trim();
+  return t || null;
+}
+function parseFillOpacity(shape) {
+  const fill = findChildDeep(shape, "v:fill");
+  if (!fill) return null;
+  const attrs = nodeAttrs(fill);
+  const raw = attrs["@_opacity"];
+  if (!raw) return null;
+  return parseVmlOpacity(raw);
+}
+function parseImagedataOpacity(imagedata) {
+  var _a;
+  const raw = nodeAttrs(imagedata)["@_chromakey"] ? null : (_a = nodeAttrs(imagedata)["@_opacity"]) != null ? _a : null;
+  if (!raw) return null;
+  return parseVmlOpacity(raw);
+}
+function parseVmlOpacity(raw) {
+  const t = raw.trim();
+  if (t.endsWith("f")) {
+    const n2 = Number.parseFloat(t.slice(0, -1));
+    return Number.isFinite(n2) ? n2 / 65536 : null;
+  }
+  const n = Number.parseFloat(t);
+  return Number.isFinite(n) ? n : null;
+}
+function parseRotation(raw) {
+  if (!raw) return null;
+  const m = /^(-?\d+(?:\.\d+)?)\s*(?:deg)?$/i.exec(raw.trim());
+  return m ? Number.parseFloat(m[1]) : null;
+}
+function parseFontFamily(raw) {
+  if (!raw) return null;
+  const first = raw.split(",")[0].trim();
+  const unquoted = first.replace(/^["']|["']$/g, "").trim();
+  return unquoted || null;
+}
+function resolveMediaPath2(target) {
+  let t = target.replace(/^\/+/, "");
+  while (t.startsWith("../")) t = t.slice(3);
+  if (t.startsWith("word/")) return t;
+  return `word/${t}`;
+}
+
 // ../packages/docs-exchange/src/docx-to-univer.ts
+var DOC_WATERMARK_PLUGIN = "DOC_WATERMARK_PLUGIN";
+var WATERMARK_TYPE_TEXT = "text";
+var WATERMARK_TYPE_IMAGE = "image";
 async function docxToUniverData(input) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t;
   const bundle = await readOoxmlBundle(input);
   const numbering = parseNumbering(bundle.numberingXml);
   const rels = parseRelationships(bundle.relsXml);
@@ -8706,6 +9057,48 @@ async function docxToUniverData(input) {
   }
   if (Object.keys(extraTableSource).length > 0) {
     docData.tableSource = { ...(_n = docData.tableSource) != null ? _n : {}, ...extraTableSource };
+  }
+  const headerRelsByStem = /* @__PURE__ */ new Map();
+  for (const [stem, relsXml] of (_o = bundle.headerRels) != null ? _o : /* @__PURE__ */ new Map()) {
+    headerRelsByStem.set(stem, parseHeaderFooterRels(relsXml));
+  }
+  const footerRelsByStem = /* @__PURE__ */ new Map();
+  for (const [stem, relsXml] of (_p = bundle.footerRels) != null ? _p : /* @__PURE__ */ new Map()) {
+    footerRelsByStem.set(stem, parseHeaderFooterRels(relsXml));
+  }
+  const media = (_q = bundle.media) != null ? _q : /* @__PURE__ */ new Map();
+  const watermarksByHeader = parseWatermarksBySource(
+    (_r = bundle.headers) != null ? _r : /* @__PURE__ */ new Map(),
+    "w:hdr",
+    headerRelsByStem,
+    media
+  );
+  const watermarksByFooter = parseWatermarksBySource(
+    (_s = bundle.footers) != null ? _s : /* @__PURE__ */ new Map(),
+    "w:ftr",
+    footerRelsByStem,
+    media
+  );
+  if (watermarksByHeader.size > 0 || watermarksByFooter.size > 0) {
+    const toConfigList = (items) => items.map((wm) => {
+      if (wm.type === "text") {
+        return { type: WATERMARK_TYPE_TEXT, config: { text: wm } };
+      }
+      const { dataUrl, ...rest } = wm;
+      return {
+        type: WATERMARK_TYPE_IMAGE,
+        config: { image: { ...rest, url: dataUrl } }
+      };
+    });
+    const byHeader = {};
+    for (const [stem, items] of watermarksByHeader) byHeader[stem] = toConfigList(items);
+    const byFooter = {};
+    for (const [stem, items] of watermarksByFooter) byFooter[stem] = toConfigList(items);
+    docData.resources = (_t = docData.resources) != null ? _t : [];
+    docData.resources.push({
+      name: DOC_WATERMARK_PLUGIN,
+      data: JSON.stringify({ byHeader, byFooter })
+    });
   }
   return docData;
 }
@@ -12015,6 +12408,428 @@ UniverDocsThreadCommentUIPlugin = __decorateClass([
   __decorateParam(3, IConfigService)
 ], UniverDocsThreadCommentUIPlugin);
 
+// ../packages/docs-watermark/src/common/const.ts
+var DOCS_WATERMARK_PLUGIN_NAME = "UNIVER_DOCS_WATERMARK_PLUGIN";
+var DOC_WATERMARK_PLUGIN2 = "DOC_WATERMARK_PLUGIN";
+
+// ../packages/docs-watermark/package.json
+var package_default6 = {
+  name: "@univerjs/docs-watermark",
+  version: "0.21.1",
+  private: false,
+  description: "Per-document watermark plugin for Univer docs (renders Word-style page watermarks).",
+  author: "DreamNum <developer@univer.ai>",
+  license: "Apache-2.0",
+  funding: {
+    type: "opencollective",
+    url: "https://opencollective.com/univer"
+  },
+  homepage: "https://univer.ai",
+  repository: {
+    type: "git",
+    url: "https://github.com/dream-num/univer"
+  },
+  bugs: {
+    url: "https://github.com/dream-num/univer/issues"
+  },
+  keywords: [],
+  exports: {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  main: "./src/index.ts",
+  types: "./lib/types/index.d.ts",
+  publishConfig: {
+    access: "public",
+    main: "./lib/es/index.js",
+    module: "./lib/es/index.js",
+    exports: {
+      ".": {
+        import: "./lib/es/index.js",
+        require: "./lib/cjs/index.js",
+        types: "./lib/types/index.d.ts"
+      },
+      "./*": {
+        import: "./lib/es/*",
+        require: "./lib/cjs/*",
+        types: "./lib/types/index.d.ts"
+      },
+      "./lib/*": "./lib/*"
+    }
+  },
+  directories: {
+    lib: "lib"
+  },
+  files: [
+    "lib"
+  ],
+  scripts: {
+    test: "vitest run",
+    "test:watch": "vitest",
+    coverage: "vitest run --coverage",
+    typecheck: "tsc --noEmit",
+    "build:bundle": "univer-cli build",
+    "build:types": "tsc -p tsconfig.node.json",
+    build: "pnpm run build:bundle && pnpm run build:types"
+  },
+  peerDependencies: {
+    rxjs: ">=7.0.0"
+  },
+  dependencies: {
+    "@univerjs/core": "workspace:*",
+    "@univerjs/docs": "workspace:*",
+    "@univerjs/docs-ui": "workspace:*",
+    "@univerjs/engine-render": "workspace:*"
+  },
+  devDependencies: {
+    "@univerjs-infra/shared": "workspace:*",
+    rxjs: "^7.8.2",
+    typescript: "^6.0.2",
+    vitest: "^4.1.4"
+  }
+};
+
+// ../packages/docs-watermark/src/services/docs-watermark.service.ts
+var DocsWatermarkService = class extends Disposable {
+  constructor() {
+    super(...arguments);
+    __publicField(this, "_resource$", new BehaviorSubject(null));
+    __publicField(this, "resource$", this._resource$.asObservable());
+  }
+  get resource() {
+    return this._resource$.getValue();
+  }
+  setResource(value) {
+    this._resource$.next(value);
+  }
+  getForHeader(headerId) {
+    var _a, _b, _c;
+    if (!headerId) return [];
+    return (_c = (_b = (_a = this._resource$.getValue()) == null ? void 0 : _a.byHeader) == null ? void 0 : _b[headerId]) != null ? _c : [];
+  }
+  getForFooter(footerId) {
+    var _a, _b, _c;
+    if (!footerId) return [];
+    return (_c = (_b = (_a = this._resource$.getValue()) == null ? void 0 : _a.byFooter) == null ? void 0 : _b[footerId]) != null ? _c : [];
+  }
+  dispose() {
+    super.dispose();
+    this._resource$.complete();
+  }
+};
+
+// ../packages/docs-watermark/src/controllers/docs-watermark-resource.controller.ts
+var DocsWatermarkResourceController = class extends Disposable {
+  constructor(_resourceManagerService, _renderManagerService) {
+    super();
+    __publicField(this, "_resourceManagerService", _resourceManagerService);
+    __publicField(this, "_renderManagerService", _renderManagerService);
+    __publicField(this, "_pendingByUnit", /* @__PURE__ */ new Map());
+    this._register();
+    this._initFlushOnRenderCreated();
+  }
+  _getService(unitId) {
+    const render = this._renderManagerService.getRenderById(unitId);
+    if (!render) return null;
+    try {
+      return render.with(DocsWatermarkService);
+    } catch {
+      return null;
+    }
+  }
+  _push(unitId, value) {
+    const svc = this._getService(unitId);
+    if (svc) {
+      svc.setResource(value != null ? value : null);
+    } else {
+      this._pendingByUnit.set(unitId, value);
+    }
+  }
+  _initFlushOnRenderCreated() {
+    this.disposeWithMe(
+      this._renderManagerService.created$.subscribe((render) => {
+        var _a;
+        const unitId = render.unitId;
+        if (!this._pendingByUnit.has(unitId)) return;
+        const value = (_a = this._pendingByUnit.get(unitId)) != null ? _a : null;
+        this._pendingByUnit.delete(unitId);
+        const svc = this._getService(unitId);
+        svc == null ? void 0 : svc.setResource(value != null ? value : null);
+      })
+    );
+    this.disposeWithMe(toDisposable(() => this._pendingByUnit.clear()));
+  }
+  _register() {
+    this.disposeWithMe(
+      this._resourceManagerService.registerPluginResource({
+        pluginName: DOC_WATERMARK_PLUGIN2,
+        businesses: [1 /* UNIVER_DOC */],
+        toJson: (_unitId, model) => JSON.stringify(model),
+        parseJson: (json) => JSON.parse(json),
+        onLoad: (unitId, value) => {
+          this._push(unitId, value);
+        },
+        onUnLoad: (unitId) => {
+          var _a;
+          this._pendingByUnit.delete(unitId);
+          (_a = this._getService(unitId)) == null ? void 0 : _a.setResource(null);
+        }
+      })
+    );
+  }
+};
+DocsWatermarkResourceController = __decorateClass([
+  __decorateParam(0, IResourceManagerService),
+  __decorateParam(1, IRenderManagerService)
+], DocsWatermarkResourceController);
+
+// ../packages/docs-watermark/src/views/render/render-watermark.ts
+function renderWatermarkOnPage(ctx, config, bounds, image, user) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, bounds.width, bounds.height);
+  ctx.clip();
+  const { type, config: cfg } = config;
+  if (type === "userInfo" /* UserInfo */ && cfg.userInfo) {
+    drawUserInfo(ctx, cfg.userInfo, bounds, user);
+  } else if (type === "image" /* Image */ && cfg.image) {
+    drawImage(ctx, cfg.image, bounds, image);
+  } else if (type === "text" /* Text */ && cfg.text) {
+    drawText(ctx, cfg.text, bounds);
+  }
+  ctx.restore();
+}
+function applyTextStyle(ctx, fontSize, color, bold, italic, direction, fontFamily) {
+  ctx.direction = direction;
+  let style = "";
+  if (italic) style += "italic ";
+  if (bold) style += "bold ";
+  style += `${fontSize}px ${fontFamily || "Arial"}`;
+  ctx.font = style;
+  ctx.fillStyle = color;
+}
+function tile(bounds, startX, startY, stepX, stepY, drawOne) {
+  for (let y = startY; y < bounds.height; y += stepY) {
+    for (let x = startX; x < bounds.width; x += stepX) {
+      drawOne(x, y);
+    }
+  }
+}
+function drawText(ctx, cfg, bounds) {
+  const { x, y, repeat, spacingX, spacingY, rotate, opacity, content, fontSize, color, bold, italic, direction, fontFamily, horizontalAlign, verticalAlign, boxWidth, boxHeight } = cfg;
+  if (!content) return;
+  ctx.globalAlpha = opacity;
+  const renderFontSize = boxHeight != null ? boxHeight : fontSize;
+  applyTextStyle(ctx, renderFontSize, color, bold, italic, direction, fontFamily);
+  const naturalWidth = ctx.measureText(content).width;
+  const scaleX = boxWidth != null && naturalWidth > 0 ? boxWidth / naturalWidth : 1;
+  const drawnW = boxWidth != null ? boxWidth : naturalWidth;
+  const drawnH = renderFontSize;
+  if (!repeat) {
+    const legacyCentered = x === 0 && y === 0 && !horizontalAlign && !verticalAlign;
+    const hAlign = horizontalAlign != null ? horizontalAlign : legacyCentered ? "center" : void 0;
+    const vAlign = verticalAlign != null ? verticalAlign : legacyCentered ? "center" : void 0;
+    const cx = anchorCoord(hAlign, x, drawnW, bounds.width);
+    const cy = anchorCoord(vAlign, y, drawnH, bounds.height);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(Math.PI / 180 * rotate);
+    if (scaleX !== 1) ctx.scale(scaleX, 1);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(content, 0, 0);
+    ctx.restore();
+    return;
+  }
+  const draw = (px, py) => {
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(Math.PI / 180 * rotate);
+    if (scaleX !== 1) ctx.scale(scaleX, 1);
+    ctx.fillText(content, 0, 0);
+    ctx.restore();
+  };
+  const stepX = drawnW + spacingX;
+  const stepY = drawnH + spacingY;
+  tile(bounds, x, y, stepX, stepY, draw);
+}
+function drawUserInfo(ctx, cfg, bounds, user) {
+  const { x, y, repeat, spacingX, spacingY, rotate, opacity, name, fontSize, color, bold, italic, direction } = cfg;
+  if (!user) return;
+  let content = "";
+  if (name) content += `${user.name} `;
+  if (!content) return;
+  ctx.globalAlpha = opacity;
+  applyTextStyle(ctx, fontSize, color, bold, italic, direction);
+  const draw = (px, py) => {
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(Math.PI / 180 * rotate);
+    ctx.fillText(content, 0, 0);
+    ctx.restore();
+  };
+  if (repeat) {
+    const stepX = ctx.measureText(content).width + spacingX;
+    const stepY = fontSize + spacingY;
+    tile(bounds, x, y, stepX, stepY, draw);
+  } else {
+    draw(x, y);
+  }
+}
+function drawImage(ctx, cfg, bounds, image) {
+  const { x, y, repeat, spacingX, spacingY, rotate, opacity, width, height, maintainAspectRatio, originRatio, horizontalAlign, verticalAlign } = cfg;
+  if (!(image == null ? void 0 : image.complete)) return;
+  ctx.globalAlpha = opacity;
+  const w = width;
+  const h = maintainAspectRatio ? width / originRatio : height;
+  if (!repeat) {
+    const legacyCentered = x === 0 && y === 0 && !horizontalAlign && !verticalAlign;
+    const hAlign = horizontalAlign != null ? horizontalAlign : legacyCentered ? "center" : void 0;
+    const vAlign = verticalAlign != null ? verticalAlign : legacyCentered ? "center" : void 0;
+    const cx = anchorCoord(hAlign, x, w, bounds.width);
+    const cy = anchorCoord(vAlign, y, h, bounds.height);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(Math.PI / 180 * rotate);
+    ctx.drawImage(image, -w / 2, -h / 2, w, h);
+    ctx.restore();
+    return;
+  }
+  const draw = (px, py) => {
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(Math.PI / 180 * rotate);
+    ctx.drawImage(image, 0, 0, w, h);
+    ctx.restore();
+  };
+  tile(bounds, x, y, w + spacingX, h + spacingY, draw);
+}
+function anchorCoord(align, coord, boxSize, pageSize) {
+  if (align === "start") return boxSize / 2;
+  if (align === "end") return pageSize - boxSize / 2;
+  if (align === "center") return pageSize / 2;
+  return coord + boxSize / 2;
+}
+
+// ../packages/docs-watermark/src/controllers/render-controllers/docs-watermark.render-controller.ts
+var DocsWatermarkRenderController = class extends Disposable {
+  constructor(_context, _watermarkService, _userManagerService) {
+    super();
+    __publicField(this, "_context", _context);
+    __publicField(this, "_watermarkService", _watermarkService);
+    __publicField(this, "_userManagerService", _userManagerService);
+    // dataUrl → preloaded HTMLImageElement. Image watermarks render via
+    // <img>.complete check; multiple distinct images coexist in one doc
+    // (e.g. one logo per section), so we cache by url.
+    __publicField(this, "_images", /* @__PURE__ */ new Map());
+    this._initSubscription();
+  }
+  _initSubscription() {
+    const documents = this._context.mainComponent;
+    if (!documents) return;
+    this.disposeWithMe(
+      documents.pageBackgroundRender$.subscribe((cfg) => {
+        const items = [
+          ...this._watermarkService.getForHeader(cfg.page.headerId),
+          ...this._watermarkService.getForFooter(cfg.page.footerId)
+        ];
+        if (items.length === 0) return;
+        this._draw(cfg, items);
+      })
+    );
+    this.disposeWithMe(
+      this._watermarkService.resource$.subscribe((resource) => {
+        var _a, _b;
+        this._images.clear();
+        if (!resource) {
+          (_a = this._context.mainComponent) == null ? void 0 : _a.makeDirty();
+          return;
+        }
+        const visit = (lists) => {
+          var _a2;
+          if (!lists) return;
+          for (const list of Object.values(lists)) {
+            for (const item of list) {
+              if (item.type === "image" /* Image */ && ((_a2 = item.config.image) == null ? void 0 : _a2.url)) {
+                const url = item.config.image.url;
+                if (this._images.has(url)) continue;
+                const img = new Image();
+                img.src = url;
+                img.onload = () => {
+                  var _a3;
+                  return (_a3 = this._context.mainComponent) == null ? void 0 : _a3.makeDirty();
+                };
+                this._images.set(url, img);
+              }
+            }
+          }
+        };
+        visit(resource.byHeader);
+        visit(resource.byFooter);
+        (_b = this._context.mainComponent) == null ? void 0 : _b.makeDirty();
+      })
+    );
+  }
+  _draw(cfg, items) {
+    var _a, _b;
+    const { page, pageLeft, pageTop, ctx } = cfg;
+    ctx.save();
+    ctx.translate(pageLeft, pageTop);
+    for (const item of items) {
+      const user = item.type === "userInfo" /* UserInfo */ ? this._userManagerService.getCurrentUser() : null;
+      const image = item.type === "image" /* Image */ && ((_a = item.config.image) == null ? void 0 : _a.url) ? (_b = this._images.get(item.config.image.url)) != null ? _b : null : null;
+      renderWatermarkOnPage(
+        ctx,
+        item,
+        { width: page.pageWidth, height: page.pageHeight },
+        image,
+        user
+      );
+    }
+    ctx.restore();
+  }
+};
+DocsWatermarkRenderController = __decorateClass([
+  __decorateParam(1, Inject(DocsWatermarkService)),
+  __decorateParam(2, Inject(UserManagerService))
+], DocsWatermarkRenderController);
+
+// ../packages/docs-watermark/src/plugin.ts
+var UniverDocsWatermarkPlugin = class extends Plugin {
+  constructor(_config, _injector, _renderManagerSrv) {
+    super();
+    __publicField(this, "_injector", _injector);
+    __publicField(this, "_renderManagerSrv", _renderManagerSrv);
+  }
+  onStarting() {
+    [
+      [DocsWatermarkResourceController]
+    ].forEach((dep) => {
+      this._injector.add(dep);
+    });
+  }
+  onRendered() {
+    this._initRenderModule();
+    this._injector.get(DocsWatermarkResourceController);
+  }
+  _initRenderModule() {
+    [
+      [DocsWatermarkService],
+      [DocsWatermarkRenderController]
+    ].forEach((dep) => {
+      this._renderManagerSrv.registerRenderModule(1 /* UNIVER_DOC */, dep);
+    });
+  }
+};
+__publicField(UniverDocsWatermarkPlugin, "pluginName", DOCS_WATERMARK_PLUGIN_NAME);
+__publicField(UniverDocsWatermarkPlugin, "packageName", package_default6.name);
+__publicField(UniverDocsWatermarkPlugin, "version", package_default6.version);
+__publicField(UniverDocsWatermarkPlugin, "type", 1 /* UNIVER_DOC */);
+UniverDocsWatermarkPlugin = __decorateClass([
+  __decorateParam(1, Inject(Injector)),
+  __decorateParam(2, IRenderManagerService)
+], UniverDocsWatermarkPlugin);
+
 // src/docs/main.ts
 var IS_E2E = false;
 var univer = new Univer({
@@ -12040,6 +12855,7 @@ univer.registerPlugin(UniverDocsThreadCommentUIPlugin);
 univer.registerPlugin(UniverDocsHyperLinkUIPlugin);
 univer.registerPlugin(UniverDocsMentionUIPlugin);
 univer.registerPlugin(UniverDocsQuickInsertUIPlugin);
+univer.registerPlugin(UniverDocsWatermarkPlugin);
 if (!IS_E2E) {
   univer.createUnit(1 /* UNIVER_DOC */, DEFAULT_DOCUMENT_DATA_SIMPLE);
   univer.registerPlugin(UniverDebuggerPlugin, {
