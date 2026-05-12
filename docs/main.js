@@ -10,7 +10,7 @@ import {
 import "../chunk-O42KXLND.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-L6PI6VZS.js";
+} from "../chunk-M55ZIDNU.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
@@ -8724,7 +8724,7 @@ function parseShapeAsWatermark(shape, opts) {
   return null;
 }
 function parseTextShape(shape, textpath) {
-  var _a, _b, _c, _d, _e;
+  var _a, _b, _c, _d, _e, _f;
   const tpAttrs = nodeAttrs(textpath);
   const content = tpAttrs["@_string"];
   if (!content) return null;
@@ -8740,7 +8740,10 @@ function parseTextShape(shape, textpath) {
   const textpathFontPt = parsePtNumber(tpStyle["font-size"]);
   const shapeWidthPt = parsePtNumber(shapeStyle.width);
   const shapeHeightPt = parsePtNumber(shapeStyle.height);
-  const fitshape = String((_e = tpAttrs["@_fitshape"]) != null ? _e : "").toLowerCase() === "t";
+  const shapeType = String((_e = shapeAttrs["@_type"]) != null ? _e : "");
+  const isT136 = shapeType === "#_x0000_t136";
+  const fitshapeAttr = String((_f = tpAttrs["@_fitshape"]) != null ? _f : "").toLowerCase();
+  const fitshape = fitshapeAttr === "t" || isT136 && fitshapeAttr !== "f" && fitshapeAttr !== "false";
   const ptSize = textpathFontPt != null ? textpathFontPt : shapeHeightPt;
   const fontSize = ptSize != null ? Math.round(ptSize * (96 / 72)) : DEFAULT_TEXT_WATERMARK.fontSize;
   const boxWidth = fitshape && shapeWidthPt != null ? Math.round(shapeWidthPt * (96 / 72)) : void 0;
@@ -12654,9 +12657,6 @@ DocsWatermarkResourceController = __decorateClass([
 // ../packages/docs-watermark/src/views/render/render-watermark.ts
 function renderWatermarkOnPage(ctx, config, bounds, image, user) {
   ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, bounds.width, bounds.height);
-  ctx.clip();
   const { type, config: cfg } = config;
   if (type === "userInfo" /* UserInfo */ && cfg.userInfo) {
     drawUserInfo(ctx, cfg.userInfo, bounds, user);
@@ -12839,17 +12839,27 @@ var DocsWatermarkRenderController = class extends Disposable {
     );
   }
   _draw(cfg, items) {
-    var _a, _b;
+    var _a, _b, _c, _d, _e, _f;
     const { page, pageLeft, pageTop, ctx } = cfg;
+    const marginLeft = (_a = page.marginLeft) != null ? _a : 0;
+    const marginTop = (_b = page.marginTop) != null ? _b : 0;
+    const marginRight = (_c = page.marginRight) != null ? _c : 0;
+    const marginBottom = (_d = page.marginBottom) != null ? _d : 0;
+    const boundsWidth = Math.max(0, page.pageWidth - marginLeft - marginRight);
+    const boundsHeight = Math.max(0, page.pageHeight - marginTop - marginBottom);
     ctx.save();
     ctx.translate(pageLeft, pageTop);
+    ctx.beginPath();
+    ctx.rect(0, 0, page.pageWidth, page.pageHeight);
+    ctx.clip();
+    ctx.translate(marginLeft, marginTop);
     for (const item of items) {
       const user = item.type === "userInfo" /* UserInfo */ ? this._userManagerService.getCurrentUser() : null;
-      const image = item.type === "image" /* Image */ && ((_a = item.config.image) == null ? void 0 : _a.url) ? (_b = this._images.get(item.config.image.url)) != null ? _b : null : null;
+      const image = item.type === "image" /* Image */ && ((_e = item.config.image) == null ? void 0 : _e.url) ? (_f = this._images.get(item.config.image.url)) != null ? _f : null : null;
       renderWatermarkOnPage(
         ctx,
         item,
-        { width: page.pageWidth, height: page.pageHeight },
+        { width: boundsWidth, height: boundsHeight },
         image,
         user
       );
