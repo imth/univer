@@ -435,6 +435,11 @@ function emitTable(t: ParsedTable, acc: Accumulator, ctx: AssembleContext) {
                 };
                 if (c.rowSpan !== undefined) cellEntry.rowSpan = c.rowSpan;
                 if (c.columnSpan !== undefined) cellEntry.columnSpan = c.columnSpan;
+                // OOXML <w:vMerge/> (without val="restart") marks a cell as
+                // the continuation of a vertical merge. The layout pass
+                // skips painting these and folds their grid slot into the
+                // restart cell above. BooleanNumber.TRUE = 1.
+                if (c.vMerge === 'continue') cellEntry.vMergeContinue = 1;
 
         // Background: cell shading wins, falls back to table-level default.
                 const fill = c.shadingFill ?? t.shadingFill;

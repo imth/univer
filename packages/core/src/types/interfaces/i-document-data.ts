@@ -949,6 +949,15 @@ export interface ITableCell {
     margin?: ITableCellMargin; // margin
     rowSpan?: number; // rowSpan
     columnSpan?: number; // columnSpan
+    /**
+     * Marks this cell as the continuation of a vertical merge (OOXML
+     * `<w:vMerge/>` without `val="restart"`). The merge's "owner" cell
+     * is the most recent `vMerge="restart"` cell directly above in the
+     * same grid column. Continuation cells contribute nothing to render
+     * — no border, no background, no content — but still occupy a slot
+     * in the underlying grid for column alignment.
+     */
+    vMergeContinue?: BooleanNumber;
     backgroundColor?: IColorStyle; // backgroundColor
     borderLeft?: ITableCellBorder; // borderLeft
     borderRight?: ITableCellBorder; // borderRight
