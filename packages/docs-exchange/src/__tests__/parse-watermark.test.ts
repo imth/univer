@@ -75,6 +75,13 @@ describe('parseWatermarksBySource', () => {
         expect(wm.color).toBe('#C0C0C0');
         expect(wm.opacity).toBeCloseTo(0.5);
         expect(wm.rotate).toBe(-45);
+        // Word's t136 shapetype defines fitshape="t" at the SHAPETYPE level,
+        // so the instance shape doesn't repeat it. Default fitshape on for
+        // t136 → emit boxWidth/boxHeight (shape style 527.85pt × 131.95pt
+        // → px round). Without this, glyphs render at the textpath font-size
+        // and look much smaller than Word.
+        expect(wm.boxWidth).toBe(Math.round(527.85 * (96 / 72)));
+        expect(wm.boxHeight).toBe(Math.round(131.95 * (96 / 72)));
     });
 
     it('omits sources with no VML pict', () => {
