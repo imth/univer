@@ -24,7 +24,7 @@ import type { Scene } from '../../scene';
 import type { ComponentExtension, IDrawInfo, IExtensionConfig } from '../extension';
 import type { IDocumentsConfig, IPageMarginLayout } from './doc-component';
 import type { DocumentSkeleton } from './layout/doc-skeleton';
-import { CellValueType, DashStyleType, HorizontalAlign, VerticalAlign, WrapStrategy } from '@univerjs/core';
+import { BooleanNumber, CellValueType, DashStyleType, HorizontalAlign, VerticalAlign, WrapStrategy } from '@univerjs/core';
 import { Subject } from 'rxjs';
 import { BORDER_TYPE as BORDER_LTRB, drawLineByBorderType } from '../../basics';
 import { calculateRectRotate, getRotateOffsetAndFarthestHypotenuse } from '../../basics/draw';
@@ -833,6 +833,14 @@ export class Documents extends DocComponent {
         // skeletons that don't carry the field yet.
         const index = cell.cellSourceIndex ?? rowSke.cells.indexOf(cell);
         const cellSource = rowSke.rowSource.tableCells[index];
+
+        // vMerge continuation cell — its visual region is owned by the
+        // restart cell above, which already paints the full merged
+        // rectangle's border and background. Drawing here would lay a
+        // spurious internal border across the merge.
+        if (cellSource?.vMergeContinue === BooleanNumber.TRUE) {
+            return;
+        }
 
         const {
             borderTop = DEFAULT_BORDER_COLOR,
