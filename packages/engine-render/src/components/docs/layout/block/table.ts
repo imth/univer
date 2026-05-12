@@ -340,8 +340,16 @@ function dealWithTableRow(
 
     const rowHeights = [0];
 
-    for (const cellNode of cellNodes) {
-        const col = cellNodes.indexOf(cellNode);
+    // Track the grid column the next real cell occupies. With gridSpan>=2
+    // or vMerge continuation slots, the cell's array index in cellNodes
+    // no longer matches its grid column — createSkeletonCellPages reads
+    // tableColumns[col..col+span-1] to size the cell, so the grid column
+    // has to be the real one.
+    let colCursor = 0;
+
+    for (let cellIdx = 0; cellIdx < cellNodes.length; cellIdx++) {
+        const cellNode = cellNodes[cellIdx];
+        const col = colCursor;
         const cellPageSkeletons = createSkeletonCellPages(
             ctx,
             viewModel,
@@ -387,9 +395,12 @@ function dealWithTableRow(
             const rowSke = rowSkeletons[pageIndex];
 
             cellPageSkeleton.parent = rowSke;
-            rowSke.cells[col] = cellPageSkeleton;
+            cellPageSkeleton.cellSourceIndex = cellIdx;
+            rowSke.cells[cellIdx] = cellPageSkeleton;
             rowHeights[pageIndex] = Math.max(rowHeights[pageIndex], cellPageHeight);
         }
+
+        colCursor += Math.max(1, rowSource.tableCells[cellIdx]?.columnSpan ?? 1);
     }
 
     for (const rowSke of rowSkeletons) {
