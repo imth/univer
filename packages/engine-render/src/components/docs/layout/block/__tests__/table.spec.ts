@@ -171,6 +171,81 @@ describe('docs table layout', () => {
         }
     });
 
+    it('skips vMerge continuation slots and absorbs height deficit into the last spanned row', () => {
+        // 2-row × 2-col table: row 0 col 0 is rowSpan=2 (content height
+        // 60); row 0 col 1 is normal (height 20); row 1 col 0 is the
+        // vMerge continuation; row 1 col 1 normal (height 20).
+        // Margins = 1+1 → natural per-row height = 22.
+        // Spanned cell needs 62, spanned rows available 22+22=44 → 18 px
+        // deficit → row 1 height becomes 40, spanned pageHeight = 62.
+        createSkeletonCellPagesMock.mockReset();
+        createSkeletonCellPagesMock.mockImplementation(
+            (_ctx: unknown, _vm: unknown, _cell: unknown, _sec: unknown, _t: unknown, row: number, col: number) => {
+                if (row === 0 && col === 0) return [makeCellPage(60, 60)];
+                return [makeCellPage(60, 20)];
+            }
+        );
+
+        const tableSource = {
+            tableId: 'table-vm',
+            align: TableAlignmentType.START,
+            indent: { v: 0 },
+            tableRows: [
+                {
+                    repeatHeaderRow: BooleanNumber.FALSE,
+                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
+                    cantSplit: BooleanNumber.FALSE,
+                    tableCells: [
+                        { rowSpan: 2 },
+                        {},
+                    ],
+                },
+                {
+                    repeatHeaderRow: BooleanNumber.FALSE,
+                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
+                    cantSplit: BooleanNumber.FALSE,
+                    tableCells: [
+                        { vMergeContinue: BooleanNumber.TRUE },
+                        {},
+                    ],
+                },
+            ],
+        } as any;
+        const viewModel = { getTableByStartIndex: vi.fn(() => ({ tableSource })) } as any;
+        const tableNode = {
+            startIndex: 0,
+            endIndex: 80,
+            children: [
+                createRowNode(1, 20, 2),
+                createRowNode(21, 40, 2),
+            ],
+        } as any;
+        const curPage = {
+            pageWidth: 400,
+            pageHeight: 300,
+            marginTop: 20,
+            marginBottom: 20,
+            marginLeft: 10,
+            marginRight: 10,
+        } as any;
+
+        const skeleton = createTableSkeleton({} as any, curPage, viewModel, tableNode, {} as any);
+        expect(skeleton).toBeTruthy();
+        // Row 0 has BOTH cells (the rowSpan owner + the normal col 1 cell).
+        expect(skeleton!.rows[0].cells.length).toBe(2);
+        // Row 1 has ONE cell — the continuation slot is skipped.
+        expect(skeleton!.rows[1].cells.length).toBe(1);
+
+        const spanned = skeleton!.rows[0].cells[0];
+        // Spanned cell's pageHeight = row 0 (22) + row 1 (22 + 18 deficit) = 62.
+        expect(spanned.pageHeight).toBe(62);
+        // Row 1's height absorbed the 18 px deficit.
+        expect(skeleton!.rows[1].height).toBe(40);
+        // cellSourceIndex round-trips to the underlying ITableCell index.
+        expect(spanned.cellSourceIndex).toBe(0);
+        expect(skeleton!.rows[1].cells[0].cellSourceIndex).toBe(1);
+    });
+
     it('handles rollback/slice id helpers and missing table branches', () => {
         const listCache = new Map<string, any[][]>([
             ['a', [[{ paragraph: { startIndex: 1 } }, { paragraph: { startIndex: 20 } }]]],
