@@ -97,8 +97,26 @@ export class DocsWatermarkRenderController extends Disposable implements IRender
 
     private _draw(cfg: IPageRenderConfig, items: IWatermarkConfigWithType[]): void {
         const { page, pageLeft, pageTop, ctx } = cfg;
+        // Word draws watermarks anchored to the page's text area (margin
+        // box) — every Word/WPS watermark XML uses
+        // mso-position-*-relative:margin. So we translate to the margin's
+        // top-left and pass text-area dimensions as the positioning bounds.
+        // Clipping, however, is to the FULL page: a rotated watermark
+        // (e.g. -45°) needs its corners to overhang the margin, otherwise
+        // they get sliced off. The page clip stops it from bleeding past
+        // the paper edge.
+        const marginLeft = page.marginLeft ?? 0;
+        const marginTop = page.marginTop ?? 0;
+        const marginRight = page.marginRight ?? 0;
+        const marginBottom = page.marginBottom ?? 0;
+        const boundsWidth = Math.max(0, page.pageWidth - marginLeft - marginRight);
+        const boundsHeight = Math.max(0, page.pageHeight - marginTop - marginBottom);
         ctx.save();
         ctx.translate(pageLeft, pageTop);
+        ctx.beginPath();
+        ctx.rect(0, 0, page.pageWidth, page.pageHeight);
+        ctx.clip();
+        ctx.translate(marginLeft, marginTop);
         for (const item of items) {
             const user: Nullable<IUser> = item.type === IWatermarkTypeEnum.UserInfo
                 ? this._userManagerService.getCurrentUser()
@@ -109,7 +127,7 @@ export class DocsWatermarkRenderController extends Disposable implements IRender
             renderWatermarkOnPage(
                 ctx,
                 item,
-                { width: page.pageWidth, height: page.pageHeight },
+                { width: boundsWidth, height: boundsHeight },
                 image,
                 user
             );

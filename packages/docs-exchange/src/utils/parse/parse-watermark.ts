@@ -240,7 +240,17 @@ function parseTextShape(shape: XmlNode, textpath: XmlNode): IParsedTextWatermark
     const textpathFontPt = parsePtNumber(tpStyle['font-size']);
     const shapeWidthPt = parsePtNumber(shapeStyle.width);
     const shapeHeightPt = parsePtNumber(shapeStyle.height);
-    const fitshape = String(tpAttrs['@_fitshape'] ?? '').toLowerCase() === 't';
+    // Word's WordArt watermark shapetype `_x0000_t136` defines
+    // `<v:textpath on="t" fitshape="t"/>` at the SHAPETYPE level, so the
+    // instance shape doesn't repeat the attribute. Default fitshape to
+    // true for t136 unless the instance explicitly opts out with
+    // `fitshape="f"`. Other shapetypes only get fitshape when the
+    // instance textpath sets it.
+    const shapeType = String(shapeAttrs['@_type'] ?? '');
+    const isT136 = shapeType === '#_x0000_t136';
+    const fitshapeAttr = String(tpAttrs['@_fitshape'] ?? '').toLowerCase();
+    const fitshape = fitshapeAttr === 't'
+        || (isT136 && fitshapeAttr !== 'f' && fitshapeAttr !== 'false');
     const ptSize = textpathFontPt ?? shapeHeightPt;
     const fontSize = ptSize != null
         ? Math.round(ptSize * (96 / 72))

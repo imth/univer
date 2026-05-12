@@ -44,9 +44,11 @@ export function renderWatermarkOnPage(
     user: Nullable<IUser>
 ): void {
     ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 0, bounds.width, bounds.height);
-    ctx.clip();
+    // No clip here. The caller is responsible for clipping to the page
+    // (or any other region). Bounds is the *positioning* box — anchors
+    // like horizontal:center / vertical:bottom resolve relative to it,
+    // but a rotated watermark is allowed to overhang into the margin
+    // (Word/WPS render this way too).
 
     const { type, config: cfg } = config;
     if (type === IWatermarkTypeEnum.UserInfo && cfg.userInfo) {
