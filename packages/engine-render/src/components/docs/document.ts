@@ -826,7 +826,12 @@ export class Documents extends DocComponent {
         const { marginLeft, marginTop } = page;
         const { pageWidth, pageHeight } = cell;
         const rowSke = cell.parent as IDocumentSkeletonRow;
-        const index = rowSke.cells.indexOf(cell);
+        // Prefer the explicit `cellSourceIndex` stashed during layout —
+        // `rowSke.cells.indexOf(cell)` no longer matches the index into
+        // `rowSource.tableCells` once vMerge continuation cells are
+        // dropped from the skeleton. Fall back to indexOf for legacy
+        // skeletons that don't carry the field yet.
+        const index = cell.cellSourceIndex ?? rowSke.cells.indexOf(cell);
         const cellSource = rowSke.rowSource.tableCells[index];
 
         const {

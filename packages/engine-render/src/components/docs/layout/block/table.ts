@@ -19,8 +19,10 @@ import type { IDocumentSkeletonPage, IDocumentSkeletonRow, IDocumentSkeletonTabl
 import type { DataStreamTreeNode } from '../../view-model/data-stream-tree-node';
 import type { DocumentViewModel } from '../../view-model/document-view-model';
 import type { ILayoutContext } from '../tools';
+import type { GridSlot } from './table-grid';
 import { BooleanNumber, TableAlignmentType, TableRowHeightRule, VerticalAlignmentType } from '@univerjs/core';
 import { createNullCellPage, createSkeletonCellPages } from '../model/page';
+import { buildTableGrid } from './table-grid';
 
 export function createTableSkeleton(
     ctx: ILayoutContext,
@@ -37,23 +39,40 @@ export function createTableSkeleton(
     }
 
     const tableSkeleton = getNullTableSkeleton(startIndex, endIndex, table);
+    const grid = buildTableGrid(table);
+
+    // Pass 1 — Create skeletons for every "real" slot (non-continuation),
+    // accumulate single-row cells into each row's height, and stash any
+    // rowSpan ≥ 2 cells for Pass 2. Width-only sizing happens here too
+    // (createSkeletonCellPages already sums tableColumns[col..col+span-1]
+    // via the columnSpan field on ITableCell).
+    interface SpannedRecord {
+        slot: GridSlot;
+        skeleton: IDocumentSkeletonPage;
+        contentHeight: number; // skeleton.height + margins
+    }
+    const spanned: SpannedRecord[] = [];
+    const rowSkeletons: IDocumentSkeletonRow[] = [];
     let rowTop = 0;
     let tableWidth = 0;
 
-    for (const rowNode of rowNodes) {
-        const { children: cellNodes, startIndex, endIndex } = rowNode;
-        const row = rowNodes.indexOf(rowNode);
+    for (let row = 0; row < rowNodes.length; row++) {
+        const rowNode = rowNodes[row];
+        const { children: cellNodes, startIndex: rowStartIndex, endIndex: rowEndIndex } = rowNode;
         const rowSource = table.tableRows[row];
         const { trHeight } = rowSource;
-        const rowSkeleton = _getNullTableRowSkeleton(startIndex, endIndex, row, rowSource, false, tableSkeleton);
+        const rowSkeleton = _getNullTableRowSkeleton(rowStartIndex, rowEndIndex, row, rowSource, false, tableSkeleton);
         const { hRule, val } = trHeight;
 
         tableSkeleton.rows.push(rowSkeleton);
+        rowSkeletons.push(rowSkeleton);
+
         let left = 0;
         let rowHeight = 0;
 
-        for (const cellNode of cellNodes) {
-            const col = cellNodes.indexOf(cellNode);
+        for (const slot of grid.rows[row]) {
+            if (slot.isContinue) continue;
+            const cellNode = cellNodes[slot.cellIdx];
             const cellPageSkeleton = createSkeletonCellPages(
                 ctx,
                 viewModel,
@@ -61,16 +80,22 @@ export function createTableSkeleton(
                 sectionBreakConfig,
                 table,
                 row,
-                col
+                slot.colIdx
             )[0];
 
             const { marginTop = 0, marginBottom = 0 } = cellPageSkeleton;
-            const pageHeight = cellPageSkeleton.height + marginTop + marginBottom;
+            const contentHeight = cellPageSkeleton.height + marginTop + marginBottom;
             cellPageSkeleton.left = left;
             left += cellPageSkeleton.pageWidth;
             cellPageSkeleton.parent = rowSkeleton;
+            cellPageSkeleton.cellSourceIndex = slot.cellIdx;
             rowSkeleton.cells.push(cellPageSkeleton);
-            rowHeight = Math.max(rowHeight, pageHeight);
+
+            if (slot.rowSpan === 1) {
+                rowHeight = Math.max(rowHeight, contentHeight);
+            } else {
+                spanned.push({ slot, skeleton: cellPageSkeleton, contentHeight });
+            }
         }
 
         if (hRule === TableRowHeightRule.AT_LEAST) {
@@ -79,48 +104,73 @@ export function createTableSkeleton(
             rowHeight = val.v;
         }
 
-        // Set row height to cell page height.
-        for (const cellPageSkeleton of rowSkeleton.cells) {
-            cellPageSkeleton.pageHeight = rowHeight;
-        }
-
-        // Handle vertical alignment in cell.
-        const rowConfig = table.tableRows[row];
-        for (let i = 0; i < rowConfig.tableCells.length; i++) {
-            const cellConfig = rowConfig.tableCells[i];
-            const cellPageSkeleton = rowSkeleton.cells[i];
-            const { vAlign = VerticalAlignmentType.CONTENT_ALIGNMENT_UNSPECIFIED } = cellConfig;
-            const { pageHeight, height, originMarginTop, originMarginBottom } = cellPageSkeleton;
-
-            let marginTop = originMarginTop;
-
-            switch (vAlign) {
-                case VerticalAlignmentType.TOP: {
-                    marginTop = originMarginTop;
-                    break;
-                }
-                case VerticalAlignmentType.CENTER: {
-                    marginTop = (pageHeight - height) / 2;
-                    break;
-                }
-                case VerticalAlignmentType.BOTTOM: {
-                    marginTop = pageHeight - height - originMarginBottom;
-                    break;
-                }
-                default:
-                    break;
-            }
-
-            marginTop = Math.max(originMarginTop, marginTop);
-
-            cellPageSkeleton.marginTop = marginTop;
-        }
-
         rowSkeleton.height = rowHeight;
         rowSkeleton.top = rowTop;
         rowTop += rowHeight;
 
         tableWidth = Math.max(tableWidth, left);
+    }
+
+    // Pass 2 — Resolve rowSpan cells. A spanned cell's required height
+    // may exceed the natural total of its spanned rows; per Word/WPS,
+    // the deficit is absorbed by the LAST row in the span. Walk every
+    // row after the affected one down by the deficit to keep `top`s
+    // consistent.
+    for (const rec of spanned) {
+        const { slot, contentHeight, skeleton } = rec;
+        const firstRow = slot.rowIdx;
+        const lastRow = slot.rowIdx + slot.rowSpan - 1;
+        let available = 0;
+        for (let r = firstRow; r <= lastRow; r++) {
+            available += rowSkeletons[r].height;
+        }
+        const deficit = contentHeight - available;
+        if (deficit > 0) {
+            rowSkeletons[lastRow].height += deficit;
+            available += deficit;
+            for (let r = lastRow + 1; r < rowSkeletons.length; r++) {
+                rowSkeletons[r].top += deficit;
+            }
+            rowTop += deficit;
+        }
+        skeleton.pageHeight = available;
+    }
+
+    // Pass 3 — Single-row cells get the final row height; apply vAlign.
+    // Iterate by grid slot so continuation cells (not in rowSkeleton.cells)
+    // are skipped cleanly. Spanned cells already have their pageHeight set.
+    for (let row = 0; row < rowSkeletons.length; row++) {
+        const rowSkeleton = rowSkeletons[row];
+        const rowHeight = rowSkeleton.height;
+        let cellArrayIdx = 0;
+        for (const slot of grid.rows[row]) {
+            if (slot.isContinue) continue;
+            const cellPageSkeleton = rowSkeleton.cells[cellArrayIdx++];
+            if (slot.rowSpan === 1) {
+                cellPageSkeleton.pageHeight = rowHeight;
+            }
+
+            const cellConfig = table.tableRows[slot.ownerRow].tableCells[slot.ownerCellIdx];
+            const { vAlign = VerticalAlignmentType.CONTENT_ALIGNMENT_UNSPECIFIED } = cellConfig;
+            const { pageHeight, height, originMarginTop, originMarginBottom } = cellPageSkeleton;
+
+            let marginTop = originMarginTop;
+            switch (vAlign) {
+                case VerticalAlignmentType.TOP:
+                    marginTop = originMarginTop;
+                    break;
+                case VerticalAlignmentType.CENTER:
+                    marginTop = (pageHeight - height) / 2;
+                    break;
+                case VerticalAlignmentType.BOTTOM:
+                    marginTop = pageHeight - height - originMarginBottom;
+                    break;
+                default:
+                    break;
+            }
+            marginTop = Math.max(originMarginTop, marginTop);
+            cellPageSkeleton.marginTop = marginTop;
+        }
     }
 
     tableSkeleton.width = tableWidth;
