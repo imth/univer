@@ -56,6 +56,21 @@ export function createTableSkeleton(
     let rowTop = 0;
     let tableWidth = 0;
 
+    // Track running left offset per grid column. Built lazily from the
+    // pageWidth of real cells as we go — correct under gridSpan / vMerge,
+    // and works for tests that don't populate `tableColumns`.
+    const colLefts: number[] = [0];
+    const ensureCol = (col: number) => {
+        while (colLefts.length <= col) colLefts.push(colLefts[colLefts.length - 1]);
+    };
+    const recordColRight = (col: number, right: number) => {
+        ensureCol(col + 1);
+        if (right > colLefts[col + 1]) {
+            const delta = right - colLefts[col + 1];
+            for (let i = col + 1; i < colLefts.length; i++) colLefts[i] += delta;
+        }
+    };
+
     for (let row = 0; row < rowNodes.length; row++) {
         const rowNode = rowNodes[row];
         const { children: cellNodes, startIndex: rowStartIndex, endIndex: rowEndIndex } = rowNode;
@@ -67,7 +82,7 @@ export function createTableSkeleton(
         tableSkeleton.rows.push(rowSkeleton);
         rowSkeletons.push(rowSkeleton);
 
-        let left = 0;
+        let rowRight = 0;
         let rowHeight = 0;
 
         for (const slot of grid.rows[row]) {
@@ -85,11 +100,13 @@ export function createTableSkeleton(
 
             const { marginTop = 0, marginBottom = 0 } = cellPageSkeleton;
             const contentHeight = cellPageSkeleton.height + marginTop + marginBottom;
-            cellPageSkeleton.left = left;
-            left += cellPageSkeleton.pageWidth;
+            ensureCol(slot.colIdx);
+            cellPageSkeleton.left = colLefts[slot.colIdx];
+            recordColRight(slot.colIdx + slot.colSpan - 1, colLefts[slot.colIdx] + cellPageSkeleton.pageWidth);
             cellPageSkeleton.parent = rowSkeleton;
             cellPageSkeleton.cellSourceIndex = slot.cellIdx;
             rowSkeleton.cells.push(cellPageSkeleton);
+            rowRight = Math.max(rowRight, colLefts[slot.colIdx] + cellPageSkeleton.pageWidth);
 
             if (slot.rowSpan === 1) {
                 rowHeight = Math.max(rowHeight, contentHeight);
@@ -108,7 +125,7 @@ export function createTableSkeleton(
         rowSkeleton.top = rowTop;
         rowTop += rowHeight;
 
-        tableWidth = Math.max(tableWidth, left);
+        tableWidth = Math.max(tableWidth, rowRight);
     }
 
     // Pass 2 — Resolve rowSpan cells. A spanned cell's required height
@@ -415,14 +432,16 @@ function dealWithTableRow(
 
         rowHeights[rowIndex] = Math.min(rowHeights[rowIndex], pageContentHeight);
 
+        // Cells go in at array index = cellIdx (source order), but their
+        // grid column is sum(columnSpan[0..cellIdx-1]). Re-derive the x
+        // offset from each cell's pageWidth so gridSpan still places the
+        // next cell after the merged region.
         let left = 0;
-        // Set row height to cell page height.
-        for (const cellPageSkeleton of rowSke.cells) {
+        for (let cellIdx = 0; cellIdx < rowSke.cells.length; cellIdx++) {
+            const cellPageSkeleton = rowSke.cells[cellIdx];
             cellPageSkeleton.left = left;
             cellPageSkeleton.pageHeight = rowHeights[rowIndex];
-
             left += cellPageSkeleton.pageWidth;
-
             cache.tableWidth = Math.max(cache.tableWidth, left);
         }
 

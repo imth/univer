@@ -244,6 +244,12 @@ describe('docs table layout', () => {
         // cellSourceIndex round-trips to the underlying ITableCell index.
         expect(spanned.cellSourceIndex).toBe(0);
         expect(skeleton!.rows[1].cells[0].cellSourceIndex).toBe(1);
+        // The row-1 real cell is the right-hand col-1 cell — its `left`
+        // must reserve room for the continuation column on the left, not
+        // collapse to 0 (regression: cells after a continuation slot used
+        // to render at left=0).
+        expect(skeleton!.rows[1].cells[0].left).toBeGreaterThan(0);
+        expect(skeleton!.rows[1].cells[0].left).toBe(spanned.pageWidth);
     });
 
     it('handles rollback/slice id helpers and missing table branches', () => {
