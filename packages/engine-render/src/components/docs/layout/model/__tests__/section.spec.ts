@@ -107,23 +107,49 @@ describe('balanceSectionColumns', () => {
         expect(sec.columns[0].lines.length).toBe(beforeLen);
     });
 
-    it('is a no-op when any column is already isFull (natural overflow already balanced)', () => {
+    it('still balances even when natural flow marked a column isFull (regression: page-bottom multi-col)', () => {
+        // Layout-ruler sets isFull whenever it tried to add a line and ran out of room
+        // in that column — even when the section as a whole has plenty of capacity.
+        // The classic case: a continuous multi-col section starts near the page bottom,
+        // natural flow stuffs col 0, marks it full, spills 1 line to col 1, then the
+        // section gets re-positioned with full remaining height. We still want to balance.
         const sec = createSkeletonSection(
             [{ width: 100, paddingEnd: 10 }, { width: 100, paddingEnd: 0 }],
             0,
             0,
             0,
             210,
-            100
+            500
         );
-        sec.columns[0].lines.push(makeLine(20), makeLine(20));
+        sec.columns[0].lines.push(makeLine(20), makeLine(20), makeLine(20), makeLine(20));
         sec.columns[1].lines.push(makeLine(20));
         sec.columns[0].isFull = true;
 
         balanceSectionColumns(sec);
 
+        expect(sec.columns[0].lines.length).toBe(3); // 5 lines × 20 = 100, target 50, greedy 0→20→40, 60≥50 ⇒ next col
+        expect(sec.columns[1].lines.length).toBe(2);
+        expect(sec.columns[0].isFull).toBe(false);
+    });
+
+    it('is a no-op when even a perfectly-balanced split would overflow section height', () => {
+        // 6 lines × 20 = 120; section height = 40; per-col target = 60 > 40, so
+        // natural flow has already had to spill past this section — leave it alone.
+        const sec = createSkeletonSection(
+            [{ width: 100, paddingEnd: 10 }, { width: 100, paddingEnd: 0 }],
+            0,
+            0,
+            0,
+            210,
+            40
+        );
+        sec.columns[0].lines.push(makeLine(20), makeLine(20));
+        sec.columns[1].lines.push(makeLine(20), makeLine(20), makeLine(20), makeLine(20));
+
+        balanceSectionColumns(sec);
+
         expect(sec.columns[0].lines.length).toBe(2);
-        expect(sec.columns[1].lines.length).toBe(1);
+        expect(sec.columns[1].lines.length).toBe(4);
     });
 
     it('is a no-op when section has no lines', () => {

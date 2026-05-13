@@ -81,14 +81,19 @@ export function setColumnFullState(column: IDocumentSkeletonColumn, state: boole
  * No-op when:
  * - section has < 2 columns
  * - section has 0 lines
- * - any column is already `isFull` (means content overflowed naturally —
- *   in that case Word doesn't balance, the columns are already filled
- *   to capacity by the natural flow)
+ * - total content would not fit in a single column at the section's
+ *   declared height (i.e. content actually overflows — natural flow
+ *   already did the right thing and we shouldn't disturb it)
+ *
+ * Note: a column's `isFull` flag is NOT a reason to skip. Layout-ruler
+ * sets `isFull` whenever it tried to add one more line and ran out of
+ * room — even when the section as a whole has plenty of capacity. The
+ * isFull flag means "natural flow stopped here", not "balanced output
+ * would also stop here".
  */
 export function balanceSectionColumns(section: IDocumentSkeletonSection): void {
     const cols = section.columns;
     if (cols.length < 2) return;
-    if (cols.some((c) => c.isFull)) return;
 
     const lines: IDocumentSkeletonLine[] = [];
     for (const c of cols) {
@@ -100,9 +105,17 @@ export function balanceSectionColumns(section: IDocumentSkeletonSection): void {
     for (const ln of lines) totalHeight += ln.lineHeight;
     if (totalHeight === 0) return;
 
+    // If even an evenly-balanced split would overflow the section's
+    // declared height, natural flow already had to spill content past
+    // this section (e.g. onto a continuation page). Leave it alone.
+    if (section.height > 0 && totalHeight / cols.length > section.height) return;
+
     const target = totalHeight / cols.length;
 
-    for (const c of cols) c.lines = [];
+    for (const c of cols) {
+        c.lines = [];
+        c.isFull = false;
+    }
 
     let colIdx = 0;
     let acc = 0;
