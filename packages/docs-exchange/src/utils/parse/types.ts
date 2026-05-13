@@ -72,7 +72,7 @@ export interface ParsedParagraphStyle {
    * Univer's TabStopAlignment enum (1=START, 2=CENTER, 3=END). Sorted by offset
    * ascending. Already merged with inheritance (w:val="clear" entries removed).
    */
-    tabStops?: Array<{ offset: number; alignment: number }>;
+    tabStops?: Array<{ offset: number; alignment: number; leader?: number }>;
   /**
    * Positions (CSS px) that the inline <w:tabs> wants to clear from inherited
    * pStyle tab stops. Used only as an intermediate during the pStyle → inline

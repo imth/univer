@@ -50,6 +50,18 @@ const TAB_ALIGN_MAP: Record<string, number> = {
     num: 1,
 };
 
+/**
+ * Tab leader: OOXML §17.18.103 `w:leader` → Univer TabLeader. `none` and
+ * `heavy` resolve to NONE (no leader drawn); Word treats `heavy` as a hint
+ * that downstream consumers ignore.
+ */
+const TAB_LEADER_MAP: Record<string, number> = {
+    dot: 1,
+    hyphen: 2,
+    underscore: 3,
+    middleDot: 4,
+};
+
 const HEADING_MAP: Record<string, number> = {
     Title: 2,
     Subtitle: 3,
@@ -236,7 +248,9 @@ function parseTabsInto(tabs: XmlNode, out: ParsedParagraphStyle): void {
             continue;
         }
         const alignment = (val && TAB_ALIGN_MAP[val]) || 1;
-        stops.push({ offset, alignment });
+        const leaderVal = a['@_w:leader'] as string | undefined;
+        const leader = leaderVal ? TAB_LEADER_MAP[leaderVal] : undefined;
+        stops.push(leader !== undefined ? { offset, alignment, leader } : { offset, alignment });
     }
     if (stops.length > 0) out.tabStops = stops;
     if (cleared.length > 0) out.tabStopsClear = cleared;
