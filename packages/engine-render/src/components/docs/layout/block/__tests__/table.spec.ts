@@ -317,6 +317,106 @@ describe('docs table layout', () => {
         expect(skeleton!.rows[0].cells[1].pageHeight).toBe(62);
     });
 
+    it('uses tableColumns as the authoritative grid-column origin (Basic Table layout)', () => {
+        // Mirrors `全格式.docx` → "Basic Table": 3 rows × 4 grid columns.
+        // Row 0: [gridSpan=2] [normal] [rowSpan=2]   (3 real cells over 4 cols)
+        // Row 1: [normal] [normal] [vMerge cont]    (3 real cells)
+        // Row 2: [normal] [normal] [gridSpan=2]     (3 real cells over 4 cols)
+        // Regression: a row-0 col-2 with width 144 used to push a delta into
+        // col-3's left, so later cells in col-3 rendered too far right.
+        createSkeletonCellPagesMock.mockReset();
+        createSkeletonCellPagesMock.mockImplementation(
+            (_c: unknown, _v: unknown, _cell: unknown, _s: unknown, t: any, row: number, col: number, _ah?: number, _mh?: number, cellIdx?: number) => {
+                const cell = t.tableRows[row].tableCells[cellIdx ?? col];
+                const span = Math.max(1, cell.columnSpan ?? 1);
+                let w = 0;
+                for (let i = 0; i < span; i++) w += t.tableColumns[col + i].size.width.v;
+                return [makeCellPage(w, 18)];
+            }
+        );
+
+        const tableSource = {
+            tableId: 'table-basic',
+            align: TableAlignmentType.START,
+            indent: { v: 0 },
+            tableColumns: [
+                { size: { width: { v: 144 } } },
+                { size: { width: { v: 144 } } },
+                { size: { width: { v: 144 } } },
+                { size: { width: { v: 143 } } },
+            ],
+            tableRows: [
+                {
+                    repeatHeaderRow: BooleanNumber.FALSE,
+                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
+                    cantSplit: BooleanNumber.FALSE,
+                    tableCells: [
+                        { columnSpan: 2 },
+                        {},
+                        { rowSpan: 2 },
+                    ],
+                },
+                {
+                    repeatHeaderRow: BooleanNumber.FALSE,
+                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
+                    cantSplit: BooleanNumber.FALSE,
+                    tableCells: [
+                        {},
+                        {},
+                        { vMergeContinue: BooleanNumber.TRUE },
+                    ],
+                },
+                {
+                    repeatHeaderRow: BooleanNumber.FALSE,
+                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
+                    cantSplit: BooleanNumber.FALSE,
+                    tableCells: [
+                        {},
+                        {},
+                        { columnSpan: 2 },
+                    ],
+                },
+            ],
+        } as any;
+        const viewModel = { getTableByStartIndex: vi.fn(() => ({ tableSource })) } as any;
+        const tableNode = {
+            startIndex: 0,
+            endIndex: 80,
+            children: [createRowNode(1, 20, 3), createRowNode(21, 40, 3), createRowNode(41, 60, 3)],
+        } as any;
+        const curPage = {
+            pageWidth: 800,
+            pageHeight: 600,
+            marginTop: 20,
+            marginBottom: 20,
+            marginLeft: 10,
+            marginRight: 10,
+        } as any;
+
+        const skeleton = createTableSkeleton({} as any, curPage, viewModel, tableNode, {} as any);
+        expect(skeleton).toBeTruthy();
+
+        // Row 0: gridSpan=2 cell at col 0 (left=0), normal at col 2 (left=288),
+        // rowSpan=2 cell at col 3 (left=432).
+        expect(skeleton!.rows[0].cells[0].left).toBe(0);
+        expect(skeleton!.rows[0].cells[0].pageWidth).toBe(288);
+        expect(skeleton!.rows[0].cells[1].left).toBe(288);
+        expect(skeleton!.rows[0].cells[2].left).toBe(432);
+
+        // Row 1: skips the col-3 continuation slot; cells at cols 0, 1.
+        expect(skeleton!.rows[1].cells.length).toBe(2);
+        expect(skeleton!.rows[1].cells[0].left).toBe(0);
+        expect(skeleton!.rows[1].cells[1].left).toBe(144);
+
+        // Row 2: cells at cols 0, 1, and gridSpan=2 at col 2.
+        // Regression: col-2 used to land at 575 (288+144+143) because the
+        // delta from the previous row's col-2 width cascaded into col-3.
+        expect(skeleton!.rows[2].cells[0].left).toBe(0);
+        expect(skeleton!.rows[2].cells[1].left).toBe(144);
+        expect(skeleton!.rows[2].cells[2].left).toBe(288);
+        expect(skeleton!.rows[2].cells[2].pageWidth).toBe(287);
+    });
+
     it('handles rollback/slice id helpers and missing table branches', () => {
         const listCache = new Map<string, any[][]>([
             ['a', [[{ paragraph: { startIndex: 1 } }, { paragraph: { startIndex: 20 } }]]],

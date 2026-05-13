@@ -56,14 +56,27 @@ export function createTableSkeleton(
     let rowTop = 0;
     let tableWidth = 0;
 
-    // Track running left offset per grid column. Built lazily from the
-    // pageWidth of real cells as we go — correct under gridSpan / vMerge,
-    // and works for tests that don't populate `tableColumns`.
+    // Per-grid-column left offsets. tableColumns is the authoritative
+    // source of column widths (OOXML w:tblGrid), so we compute from
+    // there. Without it (some test fixtures), fall back to a lazy
+    // accumulator that fills in widths as we see real cells — but the
+    // lazy path can't handle a row where a column has no real cell
+    // (it stays at zero width), which is what tableColumns prevents.
+    const tableColumns = table.tableColumns ?? [];
     const colLefts: number[] = [0];
+    for (let i = 0; i < tableColumns.length; i++) {
+        colLefts.push(colLefts[i] + tableColumns[i].size.width.v);
+    }
+    // Lazy fallback: widen the kept array when an unseen column shows up.
     const ensureCol = (col: number) => {
         while (colLefts.length <= col) colLefts.push(colLefts[colLefts.length - 1]);
     };
-    const recordColRight = (col: number, right: number) => {
+    const ensureColRight = (col: number, right: number) => {
+        // Only used when tableColumns is empty (test fixtures). Pushes
+        // the right edge of `col` to at least `right`, cascading the
+        // delta forward. With tableColumns present, column edges are
+        // pre-computed and don't shift.
+        if (tableColumns.length > 0) return;
         ensureCol(col + 1);
         if (right > colLefts[col + 1]) {
             const delta = right - colLefts[col + 1];
@@ -105,7 +118,7 @@ export function createTableSkeleton(
             const contentHeight = cellPageSkeleton.height + marginTop + marginBottom;
             ensureCol(slot.colIdx);
             cellPageSkeleton.left = colLefts[slot.colIdx];
-            recordColRight(slot.colIdx + slot.colSpan - 1, colLefts[slot.colIdx] + cellPageSkeleton.pageWidth);
+            ensureColRight(slot.colIdx + slot.colSpan - 1, colLefts[slot.colIdx] + cellPageSkeleton.pageWidth);
             cellPageSkeleton.parent = rowSkeleton;
             cellPageSkeleton.cellSourceIndex = slot.cellIdx;
             rowSkeleton.cells.push(cellPageSkeleton);
