@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import type { IDrawingSearch, Workbook } from '@univerjs/core';
+import type { IDocShapeProperties, IDrawingSearch, ITextBoxContent, Workbook } from '@univerjs/core';
 import type { IDocFloatDomData, IImageData } from '@univerjs/drawing';
 import type { IImageProps, IRectProps, Scene } from '@univerjs/engine-render';
 import { DrawingTypeEnum, Inject, IUniverInstanceService, IURLImageService, UniverInstanceType } from '@univerjs/core';
@@ -23,6 +23,35 @@ import { DRAWING_OBJECT_LAYER_INDEX, Image, Rect } from '@univerjs/engine-render
 import { IGalleryService } from '@univerjs/ui';
 import { insertGroupObject } from '../controllers/utils';
 import { DrawingImageClipService } from './drawing-image-clip.service';
+
+interface IShapeRenderTransform {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    angle?: number;
+}
+
+interface IShapeRenderParam {
+    unitId: string;
+    subUnitId: string;
+    drawingId: string;
+    drawingType: DrawingTypeEnum;
+    transform?: IShapeRenderTransform;
+    shapeProperties?: IDocShapeProperties;
+    textBoxContent?: ITextBoxContent;
+}
+
+function resolveShapeFill(props: IDocShapeProperties | undefined): string | undefined {
+    if (!props?.fill) return undefined;
+    if ('rgb' in props.fill) return props.fill.rgb;
+    return undefined; // { type: 'none' }
+}
+
+function resolveShapeStroke(props: IDocShapeProperties | undefined): { color: string; width: number } | undefined {
+    if (!props?.stroke) return undefined;
+    return { color: props.stroke.rgb, width: Math.max(0.5, props.stroke.width) };
+}
 
 // const IMAGE_VIEWER_DROPDOWN_PADDING = 50;
 
@@ -235,8 +264,48 @@ export class DrawingRenderService {
         switch (drawingParam.drawingType) {
             case DrawingTypeEnum.DRAWING_IMAGE:
                 return this.renderImages(drawingParam as IImageData, scene);
+            case DrawingTypeEnum.DRAWING_SHAPE:
+                return this.renderShapes(drawingParam as IShapeRenderParam, scene);
             default:
         }
+    }
+
+    /**
+     * Render a DRAWING_SHAPE — currently scoped to OOXML text boxes
+     * (preset rect / roundRect with fill / stroke + optional embedded
+     * text body). Painted as a Rect on the DRAWING_OBJECT_LAYER, with the
+     * embedded paragraphs overlaid via a child Documents component when
+     * `textBoxContent` is present.
+     */
+    renderShapes(param: IShapeRenderParam, scene: Scene) {
+        const { transform, unitId, subUnitId, drawingId, drawingType, shapeProperties } = param;
+        if (drawingType !== DrawingTypeEnum.DRAWING_SHAPE) return;
+        if (!this._drawingManagerService.getDrawingVisible()) return;
+        if (transform == null) return;
+
+        const shapeKey = getDrawingShapeKeyByDrawingSearch({ unitId, subUnitId, drawingId });
+        const existing = scene.getObject(shapeKey);
+        if (existing) {
+            existing.transformByState({ ...transform });
+            return;
+        }
+
+        const orders = this._drawingManagerService.getDrawingOrder(unitId, subUnitId);
+        const zIndex = orders.indexOf(drawingId);
+
+        const fill = resolveShapeFill(shapeProperties);
+        const stroke = resolveShapeStroke(shapeProperties);
+        const rectConfig: IRectProps = {
+            ...transform,
+            zIndex: zIndex === -1 ? orders.length - 1 : zIndex,
+            fill,
+            stroke: stroke?.color,
+            strokeWidth: stroke?.width,
+            printable: true,
+        };
+
+        const rect = new Rect(shapeKey, rectConfig);
+        scene.addObject(rect, DRAWING_OBJECT_LAYER_INDEX);
     }
 
     previewImage(key: string, src: string, width: number, height: number) {
