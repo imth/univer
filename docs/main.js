@@ -1,38 +1,38 @@
 import {
   UniverDocsMentionUIPlugin
-} from "../chunk-QMAWFV3X.js";
+} from "../chunk-3COAZ3S6.js";
 import {
   SetActiveCommentOperation,
   ThreadCommentPanel,
   ThreadCommentPanelService,
   UniverThreadCommentUIPlugin
-} from "../chunk-ZK4YA7J5.js";
-import "../chunk-O42KXLND.js";
+} from "../chunk-3LZY7QQP.js";
+import "../chunk-ZNK66HMQ.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-M55ZIDNU.js";
+} from "../chunk-SQS34MNG.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-O57ZKDID.js";
+} from "../chunk-HSOCFSU5.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
   ThreadCommentModel,
   getDT
 } from "../chunk-CB7V3IIA.js";
-import "../chunk-CQOIX53H.js";
+import "../chunk-CXA5KQ3D.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-XROPR5BN.js";
+} from "../chunk-Q33T22F3.js";
 import {
   FUniver
 } from "../chunk-GLLJOGIP.js";
-import "../chunk-OTTVWBEA.js";
+import "../chunk-XDZ5CUIG.js";
 import {
   DEFAULT_DOCUMENT_DATA_SIMPLE
-} from "../chunk-BJBNBCOY.js";
+} from "../chunk-KSHKBW3R.js";
 import {
   BulletListCommand,
   CutContentCommand,
@@ -66,7 +66,7 @@ import {
   getAnchorBounding,
   replaceSelectionFactory,
   whenDocAndEditorFocused
-} from "../chunk-SRBSH6F4.js";
+} from "../chunk-WROESJ3X.js";
 import "../chunk-LI6UXASZ.js";
 import {
   Button,
@@ -99,20 +99,20 @@ import {
   useDependency,
   useEvent,
   useObservable
-} from "../chunk-LTAJG2GS.js";
+} from "../chunk-O757RHHG.js";
 import {
   zh_CN_default
 } from "../chunk-CDZYV7BA.js";
-import "../chunk-55QJK6MU.js";
+import "../chunk-HSOKXHAZ.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-ZZJA2GVV.js";
+} from "../chunk-MJAXIOMM.js";
 import {
   IRenderManagerService,
   UniverRenderEnginePlugin,
   ptToPixel,
   withCurrentTypeOfRenderer
-} from "../chunk-73QXLKSZ.js";
+} from "../chunk-SFWFNTNZ.js";
 import {
   BehaviorSubject,
   BuildTextUtils,
@@ -6806,7 +6806,7 @@ function resolveCellBorder(side, cellBorders, tableBorders, isPerimeter) {
   return tableBorders.insideV;
 }
 function emitTable(t, acc, ctx) {
-  var _a;
+  var _a, _b, _c;
   const tableId = `tbl_${uuidv4()}`;
   const start = acc.data.length;
   acc.data += TABLE_START;
@@ -6841,39 +6841,55 @@ function emitTable(t, acc, ctx) {
   const totalWidth = colSizes.reduce((a, b) => a + b, 0);
   const tableSize = t.preferredWidthPx !== void 0 ? { type: 1, width: { v: t.preferredWidthPx } } : { type: 0, width: { v: totalWidth } };
   const rowCount = t.rows.length;
+  const cellMeta = [];
+  let gridColCount = 0;
+  for (let ri = 0; ri < t.rows.length; ri++) {
+    const row = t.rows[ri];
+    const metaRow = [];
+    let cursor = 0;
+    for (const c of row) {
+      const colSpan = (_a = c.columnSpan) != null ? _a : 1;
+      metaRow.push({
+        colStart: cursor,
+        colSpan,
+        rowSpan: (_b = c.rowSpan) != null ? _b : 1,
+        isContinue: c.vMerge === "continue"
+      });
+      cursor += colSpan;
+    }
+    gridColCount = Math.max(gridColCount, cursor);
+    cellMeta.push(metaRow);
+  }
   acc.tableSource[tableId] = {
     tableId,
     tableRows: t.rows.map((row, ri) => {
-      var _a2, _b, _c;
-      const colCountInRow = row.reduce((n, c) => {
-        var _a3;
-        return n + ((_a3 = c.columnSpan) != null ? _a3 : 1);
-      }, 0);
-      let colCursor = 0;
-      const tableCells = row.map((c) => {
-        var _a3, _b2, _c2, _d, _e, _f, _g, _h, _i, _j, _k, _l;
-        const colStart = colCursor;
-        const colEnd = colCursor + ((_a3 = c.columnSpan) != null ? _a3 : 1) - 1;
-        colCursor += (_b2 = c.columnSpan) != null ? _b2 : 1;
+      var _a2, _b2, _c2;
+      const tableCells = row.map((c, ci) => {
+        var _a3, _b3, _c3, _d, _e, _f, _g, _h, _i;
         const cellEntry = {
           // Cell margin: cell-level overrides table-level, table-level overrides global default.
           margin: marginToUniver(c.margin, {
-            start: (_d = (_c2 = t.cellMargin) == null ? void 0 : _c2.start) != null ? _d : defaultMargin.start,
-            end: (_f = (_e = t.cellMargin) == null ? void 0 : _e.end) != null ? _f : defaultMargin.end,
-            top: (_h = (_g = t.cellMargin) == null ? void 0 : _g.top) != null ? _h : defaultMargin.top,
-            bottom: (_j = (_i = t.cellMargin) == null ? void 0 : _i.bottom) != null ? _j : defaultMargin.bottom
+            start: (_b3 = (_a3 = t.cellMargin) == null ? void 0 : _a3.start) != null ? _b3 : defaultMargin.start,
+            end: (_d = (_c3 = t.cellMargin) == null ? void 0 : _c3.end) != null ? _d : defaultMargin.end,
+            top: (_f = (_e = t.cellMargin) == null ? void 0 : _e.top) != null ? _f : defaultMargin.top,
+            bottom: (_h = (_g = t.cellMargin) == null ? void 0 : _g.bottom) != null ? _h : defaultMargin.bottom
           })
         };
         if (c.rowSpan !== void 0) cellEntry.rowSpan = c.rowSpan;
         if (c.columnSpan !== void 0) cellEntry.columnSpan = c.columnSpan;
-        const fill = (_k = c.shadingFill) != null ? _k : t.shadingFill;
+        if (c.vMerge === "continue") cellEntry.vMergeContinue = 1;
+        const fill = (_i = c.shadingFill) != null ? _i : t.shadingFill;
         if (fill && fill !== "auto") cellEntry.backgroundColor = { rgb: `#${fill.toUpperCase()}` };
+        const meta = cellMeta[ri][ci];
+        if (meta.isContinue) {
+          return cellEntry;
+        }
         const sides = ["top", "bottom", "left", "right"];
         const isPerimeter = {
           top: ri === 0,
-          bottom: ri + ((_l = c.rowSpan) != null ? _l : 1) - 1 === rowCount - 1,
-          left: colStart === 0,
-          right: colEnd === colCountInRow - 1
+          bottom: ri + meta.rowSpan - 1 === rowCount - 1,
+          left: meta.colStart === 0,
+          right: meta.colStart + meta.colSpan === gridColCount
         };
         for (const side of sides) {
           const resolved = resolveCellBorder(side, c.borders, t.borders, isPerimeter[side]);
@@ -6891,8 +6907,8 @@ function emitTable(t, acc, ctx) {
       });
       const trHeight = ((_a2 = t.rowHeights) == null ? void 0 : _a2[ri]) !== void 0 ? { val: { v: t.rowHeights[ri].v }, hRule: ROW_HEIGHT_RULE_TO_UNIVER[t.rowHeights[ri].rule] } : { val: { v: 0 }, hRule: 0 };
       const rowEntry = { tableCells, trHeight };
-      if ((_b = t.rowCantSplit) == null ? void 0 : _b[ri]) rowEntry.cantSplit = 1;
-      if ((_c = t.rowIsHeader) == null ? void 0 : _c[ri]) rowEntry.repeatHeaderRow = 1;
+      if ((_b2 = t.rowCantSplit) == null ? void 0 : _b2[ri]) rowEntry.cantSplit = 1;
+      if ((_c2 = t.rowIsHeader) == null ? void 0 : _c2[ri]) rowEntry.repeatHeaderRow = 1;
       return rowEntry;
     }),
     tableColumns: colSizes.map((w) => ({
@@ -6900,7 +6916,7 @@ function emitTable(t, acc, ctx) {
       // TableSizeType.SPECIFIED
     })),
     align: t.align ? ALIGN_TO_UNIVER[t.align] : 0,
-    indent: { v: (_a = t.indentPx) != null ? _a : 0 },
+    indent: { v: (_c = t.indentPx) != null ? _c : 0 },
     textWrap: 0,
     // TableTextWrapType.NONE — TODO(unsupported): <w:tblpPr> floating tables map to WRAP
     position: {
