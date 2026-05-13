@@ -28,6 +28,7 @@ import type {
     ITableRow,
     ITextStyle,
     PageOrientType,
+    TabLeader,
 } from '@univerjs/core';
 import type { BreakPointType } from '../components/docs/layout/line-breaker/break';
 
@@ -247,6 +248,12 @@ export interface IDocumentSkeletonGlyph {
     featureId?: string; // support interaction for feature ,eg. hyperLine person
     drawingId?: string; // drawing.drawingId
     fieldSubtype?: 'PAGE' | 'NUMPAGES'; // OOXML field code; renderer substitutes content at paint time
+    /**
+     * Tab glyphs only. Set by `applyParagraphTabStops` during line-adjustment
+     * when the active paragraph tab stop has a `w:leader`. Renderer fills the
+     * tab's reserved x-range with the leader character.
+     */
+    tabLeader?: TabLeader;
 }
 
 export interface IDocumentSkeletonBullet {

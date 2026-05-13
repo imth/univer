@@ -16,10 +16,11 @@
 
 import type { IParagraphStyle } from '@univerjs/core';
 import type { ISectionBreakConfig } from '../../../../../basics';
-import type { IDocumentSkeletonDivide, IDocumentSkeletonLine, IDocumentSkeletonPage } from '../../../../../basics/i-document-skeleton-cached';
+import type { IDocumentSkeletonDivide, IDocumentSkeletonGlyph, IDocumentSkeletonLine, IDocumentSkeletonPage } from '../../../../../basics/i-document-skeleton-cached';
 import type { DataStreamTreeNode } from '../../../view-model/data-stream-tree-node';
 import type { DocumentViewModel } from '../../../view-model/document-view-model';
-import { HorizontalAlign } from '@univerjs/core';
+import { HorizontalAlign, TabStopAlignment } from '@univerjs/core';
+import { GlyphType } from '../../../../../basics/i-document-skeleton-cached';
 import { hasCJK, hasCJKText, isCjkLeftAlignedPunctuation, isCjkRightAlignedPunctuation } from '../../../../../basics/tools';
 import { BreakPointType } from '../../line-breaker/break';
 import { isLetter } from '../../line-breaker/enhancers/utils';
@@ -295,7 +296,74 @@ export function lineAdjustment(
         restoreLastCJKGlyphWidth(line);
         // Add dash to the end of divide when divide is break by Hyphen.
         addHyphenDash(line, viewModel, paragraphNode, sectionBreakConfig, paragraphStyle);
+        // Resize TAB glyphs against paragraph-level w:tabs before alignment so
+        // that horizontalAlignHandler sees the post-tab divide width.
+        applyParagraphTabStops(line, paragraphStyle);
         // Handle horizontal align: left\center\right\justified.
         horizontalAlignHandler(line, horizontalAlign);
     });
+}
+
+/**
+ * Two-pass tab sizing: shaping gives each TAB a conservative default width;
+ * once a line is fully formed we know the widths of every glyph that follows,
+ * so we can resize each TAB to land its trailing run at the active tab stop.
+ *
+ * cursorX is divide-local (resets at each divide), matching Word's behavior
+ * where wrapped lines start a fresh tab cursor.
+ */
+function applyParagraphTabStops(line: IDocumentSkeletonLine, paragraphStyle: IParagraphStyle): void {
+    const stops = paragraphStyle.tabStops;
+    if (!stops || stops.length === 0) return;
+
+    for (const divide of line.divides) {
+        const glyphs = divide.glyphGroup;
+        let touched = false;
+        let cursorX = 0;
+        for (let i = 0; i < glyphs.length; i++) {
+            const g = glyphs[i];
+            if (g.glyphType !== GlyphType.TAB) {
+                cursorX += g.width;
+                continue;
+            }
+            const stop = stops.find((s) => s.offset > cursorX);
+            if (!stop) {
+                cursorX += g.width;
+                continue;
+            }
+            const followingWidth = sumWidthUntilNextTab(glyphs, i + 1);
+            let tabWidth: number;
+            switch (stop.alignment) {
+                case TabStopAlignment.CENTER:
+                    tabWidth = stop.offset - cursorX - followingWidth / 2;
+                    break;
+                case TabStopAlignment.END:
+                    tabWidth = stop.offset - cursorX - followingWidth;
+                    break;
+                default:
+                    tabWidth = stop.offset - cursorX;
+            }
+            if (tabWidth > 0) {
+                g.width = tabWidth;
+                if (stop.leader) g.tabLeader = stop.leader;
+                touched = true;
+            }
+            cursorX += g.width;
+        }
+        if (touched) {
+            // Reflow `glyph.left` after width changes — shaping computed left
+            // from the default-tab widths and won't auto-propagate.
+            setGlyphGroupLeft(glyphs);
+            divide.glyphGroupWidth = getGlyphGroupWidth(divide);
+        }
+    }
+}
+
+function sumWidthUntilNextTab(glyphs: IDocumentSkeletonGlyph[], from: number): number {
+    let sum = 0;
+    for (let i = from; i < glyphs.length; i++) {
+        if (glyphs[i].glyphType === GlyphType.TAB) break;
+        sum += glyphs[i].width;
+    }
+    return sum;
 }

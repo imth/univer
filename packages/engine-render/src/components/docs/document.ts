@@ -16,7 +16,7 @@
 
 import type { IDocumentRenderConfig, IParagraphBorder, IScale, ITableCellBorder, Nullable } from '@univerjs/core';
 
-import type { IDocumentSkeletonGlyph, IDocumentSkeletonLine, IDocumentSkeletonPage, IDocumentSkeletonRow, IDocumentSkeletonTable } from '../../basics/i-document-skeleton-cached';
+import type { IDocumentSkeletonDivide, IDocumentSkeletonGlyph, IDocumentSkeletonLine, IDocumentSkeletonPage, IDocumentSkeletonRow, IDocumentSkeletonTable } from '../../basics/i-document-skeleton-cached';
 import type { Transform } from '../../basics/transform';
 import type { IBoundRectNoAngle, IViewportInfo } from '../../basics/vector2';
 import type { UniverRenderingContext } from '../../context';
@@ -28,7 +28,7 @@ import { BooleanNumber, CellValueType, DashStyleType, HorizontalAlign, VerticalA
 import { Subject } from 'rxjs';
 import { BORDER_TYPE as BORDER_LTRB, drawLineByBorderType } from '../../basics';
 import { calculateRectRotate, getRotateOffsetAndFarthestHypotenuse } from '../../basics/draw';
-import { LineType } from '../../basics/i-document-skeleton-cached';
+import { GlyphType, LineType } from '../../basics/i-document-skeleton-cached';
 import { VERTICAL_ROTATE_ANGLE } from '../../basics/text-rotation';
 import { degToRad } from '../../basics/tools';
 import { Vector2 } from '../../basics/vector2';
@@ -487,6 +487,8 @@ export class Documents extends DocComponent {
                                     }
                                 }
 
+                                this._drawTabLeaders(ctx, divide, maxLineAscCos, alignOffset);
+
                                 this._drawLiquid.translateRestore();
                             }
 
@@ -692,6 +694,49 @@ export class Documents extends DocComponent {
         }
     }
 
+    /**
+     * Paint w:leader characters across the x-range each TAB glyph reserves.
+     * Called inside the per-divide loop after text painting, with _drawLiquid
+     * already translated to the divide's top-left corner.
+     */
+    private _drawTabLeaders(
+        ctx: UniverRenderingContext,
+        divide: IDocumentSkeletonDivide,
+        baselineY: number,
+        alignOffset: Vector2
+    ) {
+        if (this._drawLiquid == null) return;
+        const { glyphGroup } = divide;
+        if (glyphGroup.length === 0) return;
+
+        let painted = false;
+        const { x, y } = this._drawLiquid;
+        for (const glyph of glyphGroup) {
+            if (glyph.glyphType !== GlyphType.TAB || glyph.tabLeader == null) continue;
+            const ch = leaderChar(glyph.tabLeader);
+            if (!ch) continue;
+
+            if (!painted) {
+                ctx.save();
+                painted = true;
+            }
+            const fontString = glyph.fontStyle?.fontString;
+            if (fontString && ctx.font !== fontString) ctx.font = fontString;
+            ctx.fillStyle = glyph.ts?.cl?.rgb ?? '#000';
+
+            const startX = x + glyph.left + alignOffset.x;
+            const endX = startX + glyph.width;
+            const drawY = y + baselineY + alignOffset.y;
+            const charWidth = ctx.measureText(ch).width || 1;
+            // Stop one charWidth before endX so the leader never overruns into
+            // trailing content; the small gap is visually invisible.
+            for (let drawX = startX; drawX + charWidth <= endX; drawX += charWidth) {
+                ctx.fillText(ch, drawX, drawY);
+            }
+        }
+        if (painted) ctx.restore();
+    }
+
     // TODO: @JOCS, DRY!!!
     private _drawTableCell(
         ctx: UniverRenderingContext,
@@ -852,6 +897,8 @@ export class Documents extends DocComponent {
                                     extension.draw(ctx, parentScale, glyph);
                                 }
                             }
+
+                            this._drawTabLeaders(ctx, divide, maxLineAscCos, alignOffset);
 
                             this._drawLiquid.translateRestore();
                         }
@@ -1138,6 +1185,8 @@ export class Documents extends DocComponent {
                                 }
                             }
 
+                            this._drawTabLeaders(ctx, divide, maxLineAscCos, alignOffset);
+
                             this._drawLiquid.translateRestore();
                         }
 
@@ -1236,5 +1285,16 @@ export class Documents extends DocComponent {
         DocumentsSpanAndLineExtensionRegistry.getData().forEach((extension) => {
             this.register(extension);
         });
+    }
+}
+
+function leaderChar(leader: number): string | undefined {
+    // Mirrors TabLeader: 1=DOT 2=HYPHEN 3=UNDERSCORE 4=MIDDLE_DOT.
+    switch (leader) {
+        case 1: return '.';
+        case 2: return '-';
+        case 3: return '_';
+        case 4: return '·';
+        default: return undefined;
     }
 }

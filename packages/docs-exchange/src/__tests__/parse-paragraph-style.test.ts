@@ -233,4 +233,31 @@ describe('parseParagraphStyle', () => {
         const s = parseParagraphStyle(node);
         expect(s?.spaceAbove).toEqual({ v: 16 }); // 240 dxa = 16px; not 80px from beforeLines
     });
+
+    // ── w:tabs ──────────────────────────────────────────────────────────────
+
+    it('w:tabs reads w:leader on each tab (dot/hyphen/underscore/middleDot; none/heavy → undefined)', () => {
+        const node = pNode(
+            '<w:p xmlns:w="x"><w:pPr><w:tabs>'
+            + '<w:tab w:val="left" w:pos="720"/>'
+            + '<w:tab w:val="center" w:pos="2880" w:leader="dot"/>'
+            + '<w:tab w:val="right" w:pos="7200" w:leader="underscore"/>'
+            + '<w:tab w:val="left" w:pos="9000" w:leader="middleDot"/>'
+            + '<w:tab w:val="left" w:pos="10800" w:leader="hyphen"/>'
+            + '<w:tab w:val="left" w:pos="12600" w:leader="none"/>'
+            + '<w:tab w:val="left" w:pos="14400" w:leader="heavy"/>'
+            + '</w:tabs></w:pPr></w:p>'
+        );
+        const s = parseParagraphStyle(node);
+        expect(s?.tabStops).toEqual([
+            { offset: 48, alignment: 1 },
+            { offset: 192, alignment: 2, leader: 1 },
+            { offset: 480, alignment: 3, leader: 3 },
+            { offset: 600, alignment: 1, leader: 4 },
+            { offset: 720, alignment: 1, leader: 2 },
+            // "none" and "heavy" don't emit a leader field.
+            { offset: 840, alignment: 1 },
+            { offset: 960, alignment: 1 },
+        ]);
+    });
 });

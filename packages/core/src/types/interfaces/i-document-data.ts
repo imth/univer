@@ -821,6 +821,25 @@ export enum DashStyleType {
 export interface ITabStop {
     offset: number; // offset
     alignment: TabStopAlignment; // alignment
+    /**
+     * Optional leader character drawn in the tab's reserved x-range. Maps
+     * to OOXML §17.18.103 `w:leader`. `undefined` (or `NONE`) means a
+     * plain tab — no leader drawn.
+     */
+    leader?: TabLeader;
+}
+
+/**
+ * Leader characters for a tab stop. Mirrors OOXML §17.18.103 `w:leader`.
+ * `heavy` is intentionally not modeled — Word resolves it to the same
+ * glyph as `none`, i.e. no leader; emit `NONE`.
+ */
+export enum TabLeader {
+    NONE,
+    DOT,
+    HYPHEN,
+    UNDERSCORE,
+    MIDDLE_DOT,
 }
 
 /**
