@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import type { IDocumentRenderConfig, IScale, ITableCellBorder, Nullable } from '@univerjs/core';
+import type { IDocumentRenderConfig, IParagraphBorder, IScale, ITableCellBorder, Nullable } from '@univerjs/core';
 
 import type { IDocumentSkeletonGlyph, IDocumentSkeletonLine, IDocumentSkeletonPage, IDocumentSkeletonRow, IDocumentSkeletonTable } from '../../basics/i-document-skeleton-cached';
 import type { Transform } from '../../basics/transform';
@@ -490,8 +490,8 @@ export class Documents extends DocComponent {
                                 this._drawLiquid.translateRestore();
                             }
 
-                            if (line.borderBottom) {
-                                this._drawBorderBottom(ctx, page, line);
+                            if (line.borderBottom || line.borderTop || line.borderLeft || line.borderRight || line.borderBetween) {
+                                this._drawParagraphBorders(ctx, page, line);
                             }
                             this._drawLiquid.translateRestore();
                         }
@@ -600,41 +600,96 @@ export class Documents extends DocComponent {
         }
     }
 
-    private _drawBorderBottom(
+    /**
+     * Paints all 5 paragraph border sides on a single line, honoring per-
+     * side padding (each padding pushes the border AWAY from the text:
+     * top up, bottom down, left out, right out).
+     *
+     * Coordinates: x/y come from `_drawLiquid` (the page-relative cursor
+     * the line iterator left us at). Layout has already partitioned the
+     * group's lines into per-column buckets, so this method just paints
+     * whatever sides happen to be set on `line`.
+     *
+     * Cross-page / cross-column boxes work because every page-bucket gets
+     * its own top + bottom assigned by layout, while left/right ride on
+     * every line — strokes naturally stitch together at column edges.
+     *
+     * `left` and `top` are renderer offsets used by the table-cell and
+     * header/footer codepaths; they're added to the page-relative
+     * coordinates.
+     */
+    private _drawParagraphBorders(
         ctx: UniverRenderingContext,
         page: IDocumentSkeletonPage,
         line: IDocumentSkeletonLine,
         left = 0,
         top = 0
     ) {
-        if (this._drawLiquid == null) {
+        if (this._drawLiquid == null) return;
+        if (!line.borderTop && !line.borderBottom && !line.borderLeft && !line.borderRight && !line.borderBetween) {
             return;
         }
-        let { x, y } = this._drawLiquid;
-        const { pageWidth, marginLeft, marginRight, marginTop } = page;
 
-        x += marginLeft + (left ?? 0);
+        let { x, y } = this._drawLiquid;
+        const { marginLeft, marginTop } = page;
+
+        // Normalize to the line's text-area top-left.
+        x += marginLeft + left;
         y -= line.marginTop;
         y -= line.paddingTop;
-        // `line.lineHeight` includes any spaceBelow that was folded into the
-        // last line by __getParagraphSpace (see layout-ruler.ts §17.3.1.33),
-        // recorded as `line.marginBottom`. Word draws the bottom border
-        // BETWEEN the text and the spaceBelow, so subtract marginBottom to
-        // anchor at the text baseline-of-line, then add the OOXML w:space
-        // padding (which is the gap from the text to the border).
+        const yTop = y + marginTop + top;
         const lineMarginBottom = line.marginBottom ?? 0;
-        y += marginTop + top + line.lineHeight - lineMarginBottom + (line.borderBottom?.padding ?? 0);
+        const yBottom = yTop + line.lineHeight - lineMarginBottom;
 
-        ctx.save();
-        ctx.setLineWidthByPrecision(1);
-        ctx.strokeStyle = line.borderBottom?.color.rgb ?? '#CDD0D8';
-        drawLineByBorderType(ctx, BORDER_LTRB.BOTTOM, 0, {
-            startX: x,
-            startY: y,
-            endX: x + pageWidth - marginLeft - marginRight,
-            endY: y,
-        });
-        ctx.restore();
+        // Column-relative x range so multi-column sections paint each box
+        // inside its own column, not across the page.
+        const column = line.parent;
+        const xLeft = x + (column?.left ?? 0);
+        const xRight = xLeft + (column?.width ?? 0);
+
+        const stroke = (border: IParagraphBorder, side: BORDER_LTRB, rect: { sx: number; sy: number; ex: number; ey: number }) => {
+            ctx.save();
+            ctx.setLineWidthByPrecision(1);
+            ctx.strokeStyle = border.color.rgb ?? '#CDD0D8';
+            applyDocBorderDash(ctx, border.dashStyle);
+            drawLineByBorderType(ctx, side, 0, { startX: rect.sx, startY: rect.sy, endX: rect.ex, endY: rect.ey });
+            ctx.restore();
+        };
+
+        if (line.borderTop) {
+            const pad = line.borderTop.padding ?? 0;
+            const topY = yTop - pad;
+            stroke(line.borderTop, BORDER_LTRB.TOP, { sx: xLeft, sy: topY, ex: xRight, ey: topY });
+        }
+        if (line.borderBottom) {
+            const pad = line.borderBottom.padding ?? 0;
+            const bottomY = yBottom + pad;
+            stroke(line.borderBottom, BORDER_LTRB.BOTTOM, { sx: xLeft, sy: bottomY, ex: xRight, ey: bottomY });
+        }
+        if (line.borderLeft) {
+            const pad = line.borderLeft.padding ?? 0;
+            const padTop = line.borderTop?.padding ?? 0;
+            const padBottom = line.borderBottom?.padding ?? 0;
+            const leftX = xLeft - pad;
+            stroke(line.borderLeft, BORDER_LTRB.LEFT, { sx: leftX, sy: yTop - padTop, ex: leftX, ey: yBottom + padBottom });
+        }
+        if (line.borderRight) {
+            const pad = line.borderRight.padding ?? 0;
+            const padTop = line.borderTop?.padding ?? 0;
+            const padBottom = line.borderBottom?.padding ?? 0;
+            const rightX = xRight + pad;
+            stroke(line.borderRight, BORDER_LTRB.RIGHT, { sx: rightX, sy: yTop - padTop, ex: rightX, ey: yBottom + padBottom });
+        }
+        if (line.borderBetween) {
+            // Between is the seam between two paragraphs of a merged group.
+            // Layout attaches it to the FIRST line of each non-first paragraph
+            // in the group, so we anchor it ABOVE the line — that way cross-
+            // column / cross-page seams correctly land at the new column's
+            // top, never dangling at the previous column's bottom.
+            const pad = line.borderBetween.padding ?? 0;
+            const seamY = yTop - pad;
+            stroke(line.borderBetween, BORDER_LTRB.BOTTOM, { sx: xLeft, sy: seamY, ex: xRight, ey: seamY });
+        }
     }
 
     // TODO: @JOCS, DRY!!!
@@ -801,8 +856,8 @@ export class Documents extends DocComponent {
                             this._drawLiquid.translateRestore();
                         }
 
-                        if (line.borderBottom) {
-                            this._drawBorderBottom(ctx, cell, line, page.marginLeft, page.marginTop);
+                        if (line.borderBottom || line.borderTop || line.borderLeft || line.borderRight || line.borderBetween) {
+                            this._drawParagraphBorders(ctx, cell, line, page.marginLeft, page.marginTop);
                         }
 
                         this._drawLiquid.translateRestore();
@@ -1086,8 +1141,8 @@ export class Documents extends DocComponent {
                             this._drawLiquid.translateRestore();
                         }
 
-                        if (line.borderBottom) {
-                            this._drawBorderBottom(ctx, page, line, parentPage.marginLeft);
+                        if (line.borderBottom || line.borderTop || line.borderLeft || line.borderRight || line.borderBetween) {
+                            this._drawParagraphBorders(ctx, page, line, parentPage.marginLeft);
                         }
 
                         this._drawLiquid.translateRestore();
