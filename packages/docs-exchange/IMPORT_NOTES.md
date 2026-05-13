@@ -182,28 +182,40 @@ Update this file when you add a TODO that crosses the importer/renderer boundary
 
 ## Paragraph borders
 
-### Sides other than `bottom` (top / left / right / between)
+### Status: 5 sides supported (top / bottom / left / right / between)
 
-- **Importer status:** partial. `parsePPr` only consumes `<w:bottom>` and
-  `<w:top>` from `<w:pBdr>`; `<w:left>`, `<w:right>`, `<w:between>`, `<w:bar>`
-  are dropped. `<w:top>` is parsed into `borderTop` but never makes it past
-  the renderer (see below).
-- **Renderer status:** bottom-only. `IDocumentSkeletonLine` carries a single
-  `borderBottom` slot, and `_drawBorderBottom` paints only that side. The
-  4-sided `_drawBorderTop / Left / Right` functions in `document.ts` exist
-  but are wired to **table cells**, not paragraphs.
-- **Symptom:** a Word paragraph with all four borders ("box") imports as a
-  single underline — the bottom side renders, the other three are silently
-  dropped.
-- **Why this isn't a parser tweak:** even if the importer emitted all four
-  sides, there's no skeleton slot to hand them to and no per-paragraph
-  painter to draw them. Wiring it up needs:
-  1. Importer: parse `w:left` / `w:right` (and surface the already-parsed
-     `borderTop`).
-  2. Skeleton: add `borderTop / Left / Right` slots on
-     `IDocumentSkeletonLine`.
-  3. Layout: decide which line carries the side borders (first / last /
-     every) and how consecutive same-styled paragraphs merge so vertical
-     rules don't double-up at the seam.
-  4. Renderer: per-paragraph `_drawBorderTop / Left / Right` honoring line
-     padding and the merge rules above.
+`parsePPr` consumes all 5 `<w:pBdr>` children. The skeleton's
+`IDocumentSkeletonLine` has a slot per side and the renderer's
+`_drawParagraphBorders` paints each one with its own padding pushed
+away from the text (top up, bottom down, sides outward).
+
+**Word-faithful merging.** Adjacent paragraphs whose 5 border styles
+all deep-equal are merged into one continuous box: `top` paints once
+on the group's first line, `bottom` once on the last, `left/right` on
+every line. This is the assignment done by `assignParagraphBorders`
+in `engine-render/src/components/docs/layout/tools.ts`.
+
+**Cross-page / cross-column.** A merged group split across pages or
+columns is bucketed per-column; each bucket paints its own top + bottom
+so every page that contains group content stays framed. Left/right
+ride on every line and stitch naturally at column edges.
+
+**`<w:between>`.** Painted at the seam between adjacent paragraphs of
+a merged group. Layout attaches it to the *first line of each non-first
+paragraph in the group* and the renderer anchors it above the line, so
+cross-column / cross-page seams correctly land at the new column's top
+rather than dangling at the previous column's bottom.
+
+**Padding unit.** OOXML `<w:space>` is in points; `parseBorder`
+converts to px (`* 4 / 3`) before handing to the renderer.
+
+### Out of scope follow-ups
+
+- `<w:bar>` (the 5th line type, a left-side gutter rule used for legal
+  documents) is not parsed.
+- Paragraph-level `<w:shd>` (background fill) is not parsed for
+  paragraphs (only for table cells today). A merged box still shows
+  the page background between its sides.
+- Theme color resolution (`themeColor` / `themeTint` / `themeShade`)
+  on borders falls back to the explicit `w:color` or black; theme
+  tokens are not yet honored.
