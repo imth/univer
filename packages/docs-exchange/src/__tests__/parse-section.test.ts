@@ -161,4 +161,53 @@ describe('parseSectionPropertiesFromNode', () => {
         expect(parsed.titlePage).toBe(false);
         expect(parsed.sectionTypeRaw).toBeUndefined();
     });
+
+    describe('w:cols (multi-column layout)', () => {
+        it('splits content width evenly when num>1 with no explicit <w:col>', async () => {
+            // pageSize - margins = 11906 - 1440*2 = 9026 dxa = ~601.7 px
+            // 2 cols, space=720 dxa (~48 px) → each col = (601.7 - 48) / 2 = ~276.8 px
+            const xml = buildDocumentXml(
+                '<w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="0" w:right="1440" w:bottom="0" w:left="1440"/><w:cols w:num="2" w:space="720"/>'
+            );
+            const result = await docxToUniverData(await buildDocxBuffer(xml));
+            const sb = result.body!.sectionBreaks![0]!;
+            expect(sb.columnProperties).toBeDefined();
+            expect(sb.columnProperties!.length).toBe(2);
+            expect(sb.columnProperties![0].width).toBeCloseTo(276.87, 1);
+            expect(sb.columnProperties![0].paddingEnd).toBeCloseTo(48, 1);
+            expect(sb.columnProperties![1].paddingEnd).toBe(0);
+            expect(sb.columnSeparatorType).toBe(1); // NONE (no w:sep)
+        });
+
+        it('uses explicit <w:col> widths when equalWidth=false', async () => {
+            const xml = buildDocumentXml(
+                '<w:cols w:num="2" w:equalWidth="false">'
+                + '<w:col w:w="3960" w:space="360"/>'
+                + '<w:col w:w="2880"/>'
+                + '</w:cols>'
+            );
+            const result = await docxToUniverData(await buildDocxBuffer(xml));
+            const sb = result.body!.sectionBreaks![0]!;
+            expect(sb.columnProperties!.length).toBe(2);
+            expect(sb.columnProperties![0].width).toBeCloseTo(264, 1); // 3960/15
+            expect(sb.columnProperties![0].paddingEnd).toBeCloseTo(24, 1); // 360/15
+            expect(sb.columnProperties![1].width).toBeCloseTo(192, 1); // 2880/15
+            expect(sb.columnProperties![1].paddingEnd).toBe(0);
+        });
+
+        it('honors w:sep="true" → BETWEEN_EACH_COLUMN separator', async () => {
+            const xml = buildDocumentXml('<w:cols w:num="2" w:space="720" w:sep="true"/>');
+            const result = await docxToUniverData(await buildDocxBuffer(xml));
+            const sb = result.body!.sectionBreaks![0]!;
+            expect(sb.columnSeparatorType).toBe(2); // BETWEEN_EACH_COLUMN
+        });
+
+        it('emits no columnProperties when num=1', async () => {
+            const xml = buildDocumentXml('<w:cols w:num="1" w:space="720"/>');
+            const result = await docxToUniverData(await buildDocxBuffer(xml));
+            const sb = result.body!.sectionBreaks![0]!;
+            expect(sb.columnProperties).toBeUndefined();
+            expect(sb.columnSeparatorType).toBeUndefined();
+        });
+    });
 });

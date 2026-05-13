@@ -34,7 +34,7 @@ import { dealWithSection } from './block/section';
 import { Hyphen } from './hyphenation/hyphen';
 import { LanguageDetector } from './hyphenation/language-detector';
 import { createSkeletonPage } from './model/page';
-import { createSkeletonSection } from './model/section';
+import { balanceSectionColumns, createSkeletonSection } from './model/section';
 import { getLastPage, getNullSkeleton, getPageFromPath, prepareSectionBreakConfig, resetContext, setPageParent, updateBlockIndex, updateInlineDrawingCoordsAndBorder } from './tools';
 
 export enum DocumentSkeletonState {
@@ -1150,6 +1150,21 @@ export class DocumentSkeleton extends Skeleton {
                 sectionBreakConfig,
                 layoutAnchor
             );
+
+            // Word balances multi-column section content vertically across columns
+            // when the section closes — without this, two short paragraphs in a
+            // 2-col section both sit in column 0 because Univer's natural flow
+            // only spills to the next column on overflow.
+            // We balance when this section is continuous (it adds a new section
+            // to the current page) and has multiple columns. The balanced
+            // section is the last section of the page that owned this section
+            // (curSkeletonPage if no page break, otherwise the last page in
+            // `pages`).
+            if (isContinuous && columnProperties && columnProperties.length > 1) {
+                const targetPage = pages.length > 0 ? pages[pages.length - 1] : curSkeletonPage;
+                const lastSection = targetPage?.sections[targetPage.sections.length - 1];
+                if (lastSection) balanceSectionColumns(lastSection);
+            }
 
             // todo: 当本节有多个列，且下一节为连续节类型的时候，需要按照列数分割，重新计算 lines
             if (sectionTypeNext === SectionType.CONTINUOUS && columnProperties!.length > 0) {
