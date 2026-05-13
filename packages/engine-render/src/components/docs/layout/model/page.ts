@@ -319,7 +319,14 @@ export function createNullCellPage(
         top = { v: 5 },
         bottom = { v: 5 },
     } = cellConfig.margin ?? cellMargin ?? {};
-    const pageWidth = tableColumns[col].size.width.v;
+    // OOXML w:gridSpan ≥ 2 makes a cell span multiple grid columns; its
+    // width is the sum of the spanned column widths. With span=1 (default)
+    // this collapses to the original `tableColumns[col].size.width.v`.
+    const columnSpan = Math.max(1, cellConfig.columnSpan ?? 1);
+    let pageWidth = 0;
+    for (let i = 0; i < columnSpan && col + i < tableColumns.length; i++) {
+        pageWidth += tableColumns[col + i].size.width.v;
+    }
     const pageHeight = maxCellPageHeight;
 
     const cellSectionBreakConfig: ISectionBreakConfig = {
