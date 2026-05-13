@@ -16,6 +16,7 @@
 
 import type { IDocumentStyle, ISectionBreak } from '@univerjs/core';
 import type { XmlNode } from './xml';
+import { ColumnSeparatorType } from '@univerjs/core';
 import { dxaToPx as dxaToPxRaw } from '../units';
 import { findChild, findChildren, nodeAttrs } from './xml';
 
@@ -170,6 +171,59 @@ export function parseSectionPropertiesFromNode(sectPr: XmlNode): ParsedSection {
         const typeName = attrs['@_w:type'] as string | undefined;
         if (typeName !== undefined && typeName in GRID_TYPE_BY_NAME) {
             sectionBreakDefaults.gridType = GRID_TYPE_BY_NAME[typeName];
+        }
+    }
+
+  // <w:cols w:num="2" w:space="720" w:sep="true" w:equalWidth="false">
+  //   <w:col w:w="3960" w:space="720"/>
+  //   <w:col w:w="3960"/>
+  // </w:cols>
+  // OOXML 17.6.4. Width / space units are dxa.
+  // - When `equalWidth` is true (or omitted with no <w:col> children), split the
+  //   page content width evenly: colWidth = (contentWidth - totalGutter) / num.
+  // - When false, use explicit `<w:col>` widths; gutter comes from each col's
+  //   `w:space` (last col has no gutter).
+  // - `w:sep="true"|"1"` draws a vertical line between columns; default = no separator.
+    const cols = findChild(sectPr, 'w:cols');
+    if (cols) {
+        const a = nodeAttrs(cols);
+        const numAttr = Number(a['@_w:num']);
+        const num = Number.isFinite(numAttr) && numAttr > 0 ? Math.floor(numAttr) : 1;
+        const defaultSpace = dxaAttrToPx(a['@_w:space']) ?? 0;
+        const sepRaw = a['@_w:sep'];
+        const sep = sepRaw === 'true' || sepRaw === '1';
+        const equalWidthRaw = a['@_w:equalWidth'];
+        const equalWidth = equalWidthRaw === undefined ? true : !(equalWidthRaw === 'false' || equalWidthRaw === '0');
+
+        const colNodes = findChildren(cols, 'w:col');
+
+        const properties: { width: number; paddingEnd: number }[] = [];
+        if (!equalWidth && colNodes.length > 0) {
+            for (let i = 0; i < colNodes.length; i++) {
+                const ca = nodeAttrs(colNodes[i]);
+                const width = dxaAttrToPx(ca['@_w:w']) ?? 0;
+                // Last column has no trailing gutter in Word — w:space on the last
+                // <w:col> is ignored.
+                const padding = i === colNodes.length - 1 ? 0 : (dxaAttrToPx(ca['@_w:space']) ?? defaultSpace);
+                properties.push({ width, paddingEnd: padding });
+            }
+        } else if (num > 1) {
+            const pageW = style.pageSize?.width ?? DEFAULT_A4.width;
+            const marginL = style.marginLeft ?? 0;
+            const marginR = style.marginRight ?? 0;
+            const contentWidth = Math.max(0, pageW - marginL - marginR);
+            const totalGutter = defaultSpace * (num - 1);
+            const each = (contentWidth - totalGutter) / num;
+            for (let i = 0; i < num; i++) {
+                properties.push({ width: each, paddingEnd: i === num - 1 ? 0 : defaultSpace });
+            }
+        }
+
+        if (properties.length > 1) {
+            sectionBreakDefaults.columnProperties = properties;
+            sectionBreakDefaults.columnSeparatorType = sep
+                ? ColumnSeparatorType.BETWEEN_EACH_COLUMN
+                : ColumnSeparatorType.NONE;
         }
     }
 

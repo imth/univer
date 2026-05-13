@@ -233,6 +233,8 @@ function sectionToBreakFields(parsed: ParsedSection): Partial<ISectionBreak> {
 
     if (parsed.sectionBreakDefaults.linePitch !== undefined) out.linePitch = parsed.sectionBreakDefaults.linePitch;
     if (parsed.sectionBreakDefaults.gridType !== undefined) out.gridType = parsed.sectionBreakDefaults.gridType;
+    if (parsed.sectionBreakDefaults.columnProperties !== undefined) out.columnProperties = parsed.sectionBreakDefaults.columnProperties;
+    if (parsed.sectionBreakDefaults.columnSeparatorType !== undefined) out.columnSeparatorType = parsed.sectionBreakDefaults.columnSeparatorType;
 
     const ds = parsed.documentStyle;
     if (ds.pageSize) out.pageSize = ds.pageSize;
@@ -737,6 +739,12 @@ export function assembleDocument(children: DocumentChild[], ctx: AssembleContext
             }
             if (sb.gridType === undefined && ctx.sectionBreakDefaults.gridType !== undefined) {
                 sb.gridType = ctx.sectionBreakDefaults.gridType;
+            }
+            if (sb.columnProperties === undefined && ctx.sectionBreakDefaults.columnProperties !== undefined) {
+                sb.columnProperties = ctx.sectionBreakDefaults.columnProperties;
+            }
+            if (sb.columnSeparatorType === undefined && ctx.sectionBreakDefaults.columnSeparatorType !== undefined) {
+                sb.columnSeparatorType = ctx.sectionBreakDefaults.columnSeparatorType;
             }
         }
     }
