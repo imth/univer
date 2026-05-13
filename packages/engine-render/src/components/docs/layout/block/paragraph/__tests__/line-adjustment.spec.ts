@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-import { HorizontalAlign } from '@univerjs/core';
+import { HorizontalAlign, TabStopAlignment } from '@univerjs/core';
 import { describe, expect, it, vi } from 'vitest';
+import { GlyphType } from '../../../../../../basics/i-document-skeleton-cached';
 import { BreakPointType } from '../../../line-breaker/break';
 
 import { lineAdjustment } from '../line-adjustment';
@@ -191,5 +192,154 @@ describe('line adjustment', () => {
         } as any;
         lineAdjustment(pages as any, viewModelRight, paragraphNode, {} as any);
         expect(pages[0].sections[0].columns[0].lines[0].divides[0].paddingLeft).toBeGreaterThan(0);
+    });
+});
+
+function tabGlyph(width: number) {
+    return {
+        glyphType: GlyphType.TAB,
+        content: '\t',
+        width,
+        xOffset: 0,
+        count: 1,
+        isJustifiable: false,
+        bBox: { width, ba: 7, bd: 3, aba: 7, abd: 3, sp: 0, sbr: 0.5, sbo: 0, spr: 0.5, spo: 0 },
+        adjustability: { shrinkability: [0, 0], stretchability: [0, 0] },
+    } as any;
+}
+
+function letterGlyph(content: string, width: number) {
+    return {
+        glyphType: GlyphType.LETTER,
+        content,
+        width,
+        xOffset: 0,
+        count: 1,
+        isJustifiable: true,
+        bBox: { width, ba: 7, bd: 3, aba: 7, abd: 3, sp: 0, sbr: 0.5, sbo: 0, spr: 0.5, spo: 0 },
+        adjustability: { shrinkability: [0, 0], stretchability: [0, 0] },
+    } as any;
+}
+
+function pagesWithGlyphs(glyphs: any[]) {
+    const divide: any = {
+        width: glyphs.reduce((s, g) => s + g.width, 0),
+        isFull: false,
+        breakType: BreakPointType.Normal,
+        paddingLeft: 0,
+        glyphGroup: glyphs,
+    };
+    glyphs.forEach((g, idx) => {
+        g.left = glyphs.slice(0, idx).reduce((s: number, x: any) => s + x.width, 0);
+        g.parent = divide;
+    });
+    const line: any = { paragraphIndex: 0, divides: [divide] };
+    return [{ sections: [{ columns: [{ lines: [line] }] }] }] as any[];
+}
+
+function runWithTabStops(glyphs: any[], tabStops: any[]) {
+    const pages = pagesWithGlyphs(glyphs);
+    const viewModel = {
+        getParagraph: () => ({
+            startIndex: 0,
+            paragraphStyle: { horizontalAlign: HorizontalAlign.LEFT, tabStops },
+        }),
+    } as any;
+    lineAdjustment(pages as any, viewModel, { endIndex: 1 } as any, {} as any);
+    return pages[0].sections[0].columns[0].lines[0].divides[0];
+}
+
+describe('applyParagraphTabStops', () => {
+    it('START tab fills to its stop offset (width = offset - cursor)', () => {
+        const tab = tabGlyph(20);
+        const divide = runWithTabStops(
+            [letterGlyph('A', 10), tab, letterGlyph('B', 5)],
+            [{ offset: 100, alignment: TabStopAlignment.START }]
+        );
+        expect(divide.glyphGroup[1].width).toBe(90); // 100 - 10
+    });
+
+    it('END tab leaves room for following content to land at the stop', () => {
+        const tab = tabGlyph(20);
+        const divide = runWithTabStops(
+            [letterGlyph('A', 10), tab, letterGlyph('B', 30)],
+            [{ offset: 100, alignment: TabStopAlignment.END }]
+        );
+        expect(divide.glyphGroup[1].width).toBe(60); // 100 - 10 - 30
+    });
+
+    it('CENTER tab leaves half of following width before the stop', () => {
+        const tab = tabGlyph(20);
+        const divide = runWithTabStops(
+            [letterGlyph('A', 10), tab, letterGlyph('B', 30)],
+            [{ offset: 100, alignment: TabStopAlignment.CENTER }]
+        );
+        expect(divide.glyphGroup[1].width).toBe(75); // 100 - 10 - 30/2
+    });
+
+    it('walks two tabs and picks the next stop past cursorX for each', () => {
+        const t1 = tabGlyph(20);
+        const t2 = tabGlyph(20);
+        runWithTabStops(
+            [letterGlyph('A', 10), t1, letterGlyph('B', 10), t2, letterGlyph('C', 30)],
+            [
+                { offset: 100, alignment: TabStopAlignment.CENTER },
+                { offset: 200, alignment: TabStopAlignment.END },
+            ]
+        );
+        // First tab: CENTER at 100; following = "B" (10). width = 100 - 10 - 5 = 85.
+        // After tab1 cursor = 10 + 85 + 10 = 105.
+        // Second tab: END at 200; following = "C" (30). width = 200 - 105 - 30 = 65.
+        expect(t1.width).toBe(85);
+        expect(t2.width).toBe(65);
+    });
+
+    it('falls through to next stop when cursorX is already past an earlier one', () => {
+        const tab = tabGlyph(20);
+        const divide = runWithTabStops(
+            [letterGlyph('A', 60), tab, letterGlyph('B', 5)],
+            [
+                { offset: 40, alignment: TabStopAlignment.START },
+                { offset: 120, alignment: TabStopAlignment.START },
+            ]
+        );
+        expect(divide.glyphGroup[1].width).toBe(60); // 120 - 60
+    });
+
+    it('keeps the default width when no remaining stop is past cursorX', () => {
+        const tab = tabGlyph(24);
+        const divide = runWithTabStops(
+            [letterGlyph('A', 150), tab, letterGlyph('B', 5)],
+            [{ offset: 100, alignment: TabStopAlignment.START }]
+        );
+        expect(divide.glyphGroup[1].width).toBe(24);
+    });
+
+    it('keeps the default width when computed width would be negative (overlap)', () => {
+        const tab = tabGlyph(18);
+        const divide = runWithTabStops(
+            [letterGlyph('A', 10), tab, letterGlyph('B', 200)],
+            [{ offset: 100, alignment: TabStopAlignment.END }]
+        );
+        // 100 - 10 - 200 = -110 → keep 18.
+        expect(divide.glyphGroup[1].width).toBe(18);
+    });
+
+    it('propagates leader to the TAB glyph when the stop carries one', () => {
+        const tab = tabGlyph(20);
+        runWithTabStops(
+            [letterGlyph('A', 10), tab, letterGlyph('B', 5)],
+            [{ offset: 100, alignment: TabStopAlignment.END, leader: 1 }]
+        );
+        expect(tab.tabLeader).toBe(1);
+    });
+
+    it('does not overwrite tabLeader when computed width is negative', () => {
+        const tab = tabGlyph(18);
+        runWithTabStops(
+            [letterGlyph('A', 10), tab, letterGlyph('B', 200)],
+            [{ offset: 100, alignment: TabStopAlignment.END, leader: 1 }]
+        );
+        expect(tab.tabLeader).toBeUndefined();
     });
 });
