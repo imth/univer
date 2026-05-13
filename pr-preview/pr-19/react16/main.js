@@ -5,8 +5,8 @@ import {
   render,
   require_jsx_runtime,
   require_react
-} from "./chunk-Y7KEDE7P.js";
-import "./chunk-U7RR6SAI.js";
+} from "./chunk-Y3QSWE6O.js";
+import "./chunk-YO7JIRAQ.js";
 import {
   default_default
 } from "./chunk-RXFCYNLY.js";
@@ -225,11 +225,11 @@ if (true) {
     // eslint-disable-next-line node/prefer-global/process
     NODE_ENV: "production",
     // eslint-disable-next-line node/prefer-global/process
-    GIT_COMMIT_HASH: "b3c167a",
+    GIT_COMMIT_HASH: "8650753",
     // eslint-disable-next-line node/prefer-global/process
     GIT_REF_NAME: "feat/docx-multi-column-layout",
     // eslint-disable-next-line node/prefer-global/process
-    BUILD_TIME: "2026-05-13T06:54:59.618Z"
+    BUILD_TIME: "2026-05-13T07:21:07.337Z"
   });
 }
 function DemoList({ items }) {
