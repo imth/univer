@@ -21,7 +21,7 @@ import type { DocumentViewModel } from '../../view-model/document-view-model';
 import type { ILayoutContext } from '../tools';
 import type { GridSlot } from './table-grid';
 import { BooleanNumber, TableAlignmentType, TableRowHeightRule, VerticalAlignmentType } from '@univerjs/core';
-import { createNullCellPage, createSkeletonCellPages } from '../model/page';
+import { createSkeletonCellPages } from '../model/page';
 import { buildTableGrid } from './table-grid';
 
 export function createTableSkeleton(
@@ -244,12 +244,32 @@ export interface ISlicedTableSkeletonParams {
     fromCurrentPage: boolean;
 }
 
+interface ISpannedPending {
+    skeleton: IDocumentSkeletonPage;
+    contentHeight: number;
+    firstRow: number;
+    lastRow: number;
+}
+
 interface ICreateTableCache {
     rowTop: number;
     tableWidth: number;
     remainHeight: number;
     repeatRow: Nullable<DataStreamTreeNode>;
     repeatRowHeight: number;
+    grid: ReturnType<typeof buildTableGrid>;
+    // Per-grid-column left offsets. Authoritative when tableColumns is
+    // populated; otherwise filled lazily from cell widths as we go.
+    colLefts: number[];
+    lazyColLefts: boolean;
+    // rowSpan owner cells whose height we still need to seal once their
+    // last spanned row's height is known. Keyed only by lastRow so we
+    // can drain them when that row is processed.
+    spannedByLastRow: Map<number, ISpannedPending[]>;
+    // Per-row final heights (filled as rows are processed). Used to
+    // back-compute pageHeight for spanned cells when their last row
+    // arrives.
+    rowHeightHistory: number[];
 }
 
 // Create skeletons of a table, which may be divided into different pages according to the available height of the page.
@@ -276,12 +296,23 @@ export function createTableSkeletons(
     const needRepeatHeader = table.tableRows[0].repeatHeaderRow === BooleanNumber.TRUE;
     const curTableSkeleton = getNullTableSkeleton(startIndex, endIndex, table);
 
+    const tableColumns = table.tableColumns ?? [];
+    const colLefts: number[] = [0];
+    for (let i = 0; i < tableColumns.length; i++) {
+        colLefts.push(colLefts[i] + tableColumns[i].size.width.v);
+    }
+
     const createCache: ICreateTableCache = {
         rowTop: 0,
         tableWidth: 0,
         remainHeight: availableHeight,
         repeatRow: needRepeatHeader ? rowNodes[0] : null,
         repeatRowHeight: 0,
+        grid: buildTableGrid(table),
+        colLefts,
+        lazyColLefts: tableColumns.length === 0,
+        spannedByLastRow: new Map(),
+        rowHeightHistory: [],
     };
 
     skeTables.push(curTableSkeleton);
@@ -382,16 +413,25 @@ function dealWithTableRow(
 
     const rowHeights = [0];
 
-    // Track the grid column the next real cell occupies. With gridSpan>=2
-    // or vMerge continuation slots, the cell's array index in cellNodes
-    // no longer matches its grid column — createSkeletonCellPages reads
-    // tableColumns[col..col+span-1] to size the cell, so the grid column
-    // has to be the real one.
-    let colCursor = 0;
+    // Walk the row by GRID slot (not by cellNode array index). This
+    // mirrors the single-page createTableSkeleton: continuation cells
+    // are skipped, and the grid column drives width sizing in
+    // createSkeletonCellPages → createNullCellPage. cellNodes is 1:1
+    // with rowSource.tableCells (parser keeps continuation entries),
+    // so index by slot.cellIdx.
+    const slots = cache.grid.rows[row] ?? [];
 
-    for (let cellIdx = 0; cellIdx < cellNodes.length; cellIdx++) {
-        const cellNode = cellNodes[cellIdx];
-        const col = colCursor;
+    // rowSpan owners encountered in this row. Their owner-cell skeleton
+    // needs its pageHeight retroactively set once we know the heights
+    // of every spanned row — done at this row's end if the span ends
+    // here, otherwise carried in cache.spannedByLastRow.
+    const localSpanned: { skeleton: IDocumentSkeletonPage; contentHeight: number; lastRow: number }[] = [];
+
+    for (const slot of slots) {
+        if (slot.isContinue) continue;
+        const cellNode = cellNodes[slot.cellIdx];
+        if (cellNode == null) continue;
+
         const cellPageSkeletons = createSkeletonCellPages(
             ctx,
             viewModel,
@@ -399,31 +439,14 @@ function dealWithTableRow(
             sectionBreakConfig,
             table,
             row,
-            col,
+            slot.colIdx,
             canRowSplit && !needOpenNewTable ? cache.remainHeight : availableHeight,
             pageContentHeight,
-            cellIdx
+            slot.cellIdx
         );
 
         while (rowSkeletons.length < cellPageSkeletons.length) {
             const rowSkeleton = _getNullTableRowSkeleton(startIndex, endIndex, row, rowSource, isRepeatRow);
-            const colCount = cellNodes.length;
-
-            // Fill the row with null cell pages.
-            rowSkeleton.cells = [...new Array(colCount)].map((_, i) => {
-                const cellSkeleton = createNullCellPage(
-                    ctx,
-                    sectionBreakConfig,
-                    table,
-                    row,
-                    i
-                ).page;
-
-                cellSkeleton.parent = rowSkeleton;
-
-                return cellSkeleton;
-            });
-
             rowSkeletons.push(rowSkeleton);
         }
 
@@ -431,23 +454,32 @@ function dealWithTableRow(
             rowHeights.push(0);
         }
 
-        for (const cellPageSkeleton of cellPageSkeletons) {
+        for (let pageIndex = 0; pageIndex < cellPageSkeletons.length; pageIndex++) {
+            const cellPageSkeleton = cellPageSkeletons[pageIndex];
             const { marginTop: cellMarginTop = 0, marginBottom: cellMarginBottom = 0 } = cellPageSkeleton;
             const cellPageHeight = cellPageSkeleton.height + cellMarginTop + cellMarginBottom;
-            const pageIndex = cellPageSkeletons.indexOf(cellPageSkeleton);
             const rowSke = rowSkeletons[pageIndex];
 
             cellPageSkeleton.parent = rowSke;
-            cellPageSkeleton.cellSourceIndex = cellIdx;
-            rowSke.cells[cellIdx] = cellPageSkeleton;
-            rowHeights[pageIndex] = Math.max(rowHeights[pageIndex], cellPageHeight);
-        }
+            cellPageSkeleton.cellSourceIndex = slot.cellIdx;
+            rowSke.cells.push(cellPageSkeleton);
 
-        colCursor += Math.max(1, rowSource.tableCells[cellIdx]?.columnSpan ?? 1);
+            if (slot.rowSpan > 1) {
+                // Owner of a multi-row span: don't let it dominate this
+                // row's height computation — its content can be absorbed
+                // by later spanned rows. Defer height resolution.
+                localSpanned.push({
+                    skeleton: cellPageSkeleton,
+                    contentHeight: cellPageHeight,
+                    lastRow: slot.rowIdx + slot.rowSpan - 1,
+                });
+            } else {
+                rowHeights[pageIndex] = Math.max(rowHeights[pageIndex], cellPageHeight);
+            }
+        }
     }
 
     for (const rowSke of rowSkeletons) {
-        // Update row height.
         const rowIndex = rowSkeletons.indexOf(rowSke);
 
         if (hRule === TableRowHeightRule.AT_LEAST) {
@@ -458,21 +490,86 @@ function dealWithTableRow(
 
         rowHeights[rowIndex] = Math.min(rowHeights[rowIndex], pageContentHeight);
 
-        // Cells go in at array index = cellIdx (source order), but their
-        // grid column is sum(columnSpan[0..cellIdx-1]). Re-derive the x
-        // offset from each cell's pageWidth so gridSpan still places the
-        // next cell after the merged region.
-        let left = 0;
-        for (let cellIdx = 0; cellIdx < rowSke.cells.length; cellIdx++) {
-            const cellPageSkeleton = rowSke.cells[cellIdx];
-            cellPageSkeleton.left = left;
-            cellPageSkeleton.pageHeight = rowHeights[rowIndex];
-            left += cellPageSkeleton.pageWidth;
-            cache.tableWidth = Math.max(cache.tableWidth, left);
+        // Resolve rowSpan deficit for any owner cells whose last spanned
+        // row is THIS row (whether the owner sits in this row or earlier).
+        // Deficit goes onto this row's height — matches Word's behavior
+        // and the single-page implementation.
+        if (rowIndex === 0) {
+            const carried = cache.spannedByLastRow.get(row) ?? [];
+            for (const pending of carried) {
+                let available = 0;
+                for (let r = pending.firstRow; r < row; r++) available += cache.rowHeightHistory[r] ?? 0;
+                available += rowHeights[rowIndex];
+                const deficit = pending.contentHeight - available;
+                if (deficit > 0) rowHeights[rowIndex] += deficit;
+            }
+            for (const pending of localSpanned) {
+                if (pending.lastRow === row) {
+                    // owner sits in this row AND span ends here: single-row span case.
+                    const deficit = pending.contentHeight - rowHeights[rowIndex];
+                    if (deficit > 0) rowHeights[rowIndex] += deficit;
+                }
+            }
         }
 
-        // Set row Skeleton height.
+        // Place cells along the row in grid order. cells[] now contains
+        // ONLY real cells (continuation slots are skipped during creation).
+        // Each cell's `left` comes from tableColumns (authoritative grid
+        // origin), with a lazy fallback for fixtures that don't populate
+        // it. cache.colLefts is computed once per table.
+        const slotsForRow = cache.grid.rows[row] ?? [];
+        let cellArrIdx = 0;
+        for (const slot of slotsForRow) {
+            if (slot.isContinue) continue;
+            const cellPageSkeleton = rowSke.cells[cellArrIdx++];
+            if (cellPageSkeleton == null) continue;
+
+            const left = cache.colLefts[slot.colIdx] ?? 0;
+            cellPageSkeleton.left = left;
+            if (slot.rowSpan === 1) {
+                cellPageSkeleton.pageHeight = rowHeights[rowIndex];
+            }
+            const right = left + cellPageSkeleton.pageWidth;
+            // Lazy fallback only — when tableColumns is empty (test mocks),
+            // record the right edge so subsequent rows can place cells.
+            if (cache.lazyColLefts) {
+                while (cache.colLefts.length <= slot.colIdx + slot.colSpan) {
+                    cache.colLefts.push(cache.colLefts[cache.colLefts.length - 1] ?? 0);
+                }
+                const targetIdx = slot.colIdx + slot.colSpan;
+                if (right > (cache.colLefts[targetIdx] ?? 0)) {
+                    const delta = right - cache.colLefts[targetIdx];
+                    for (let i = targetIdx; i < cache.colLefts.length; i++) cache.colLefts[i] += delta;
+                }
+            }
+            cache.tableWidth = Math.max(cache.tableWidth, right);
+        }
+
         rowSke.height = rowHeights[rowIndex];
+
+        // Record this row's final height; back-fill pageHeight on any
+        // spanned owner whose lastRow == row.
+        if (rowIndex === 0) {
+            cache.rowHeightHistory[row] = rowHeights[rowIndex];
+
+            const sealOwner = (pending: { skeleton: IDocumentSkeletonPage; firstRow: number; lastRow: number }) => {
+                let h = 0;
+                for (let r = pending.firstRow; r <= pending.lastRow; r++) h += cache.rowHeightHistory[r] ?? 0;
+                pending.skeleton.pageHeight = h;
+            };
+            for (const pending of cache.spannedByLastRow.get(row) ?? []) sealOwner(pending);
+            cache.spannedByLastRow.delete(row);
+            for (const pending of localSpanned) {
+                const firstRow = row;
+                if (pending.lastRow === row) {
+                    sealOwner({ skeleton: pending.skeleton, firstRow, lastRow: row });
+                } else {
+                    const arr = cache.spannedByLastRow.get(pending.lastRow) ?? [];
+                    arr.push({ skeleton: pending.skeleton, contentHeight: pending.contentHeight, firstRow, lastRow: pending.lastRow });
+                    cache.spannedByLastRow.set(pending.lastRow, arr);
+                }
+            }
+        }
     }
 
     if (row === 0 && cache.repeatRow) {
@@ -481,7 +578,7 @@ function dealWithTableRow(
 
     // Handle vertical alignment in cell.
     for (const rowSkeleton of rowSkeletons) {
-        _verticalAlignInCell(rowSkeleton, rowSource);
+        _verticalAlignInCell(rowSkeleton, rowSource, cache.grid.rows[row] ?? []);
     }
 
     while (rowSkeletons.length > 0) {
@@ -532,16 +629,16 @@ function dealWithTableRow(
 
 function _verticalAlignInCell(
     rowSkeleton: IDocumentSkeletonRow,
-    rowSource: ITableRow
+    rowSource: ITableRow,
+    rowSlots: GridSlot[]
 ) {
-    for (let i = 0; i < rowSource.tableCells.length; i++) {
-        const cellConfig = rowSource.tableCells[i];
-
-        const cellPageSkeleton = rowSkeleton.cells[i];
-
-        if (cellPageSkeleton == null) {
-            continue;
-        }
+    let cellArrIdx = 0;
+    for (const slot of rowSlots) {
+        if (slot.isContinue) continue;
+        const cellPageSkeleton = rowSkeleton.cells[cellArrIdx++];
+        if (cellPageSkeleton == null) continue;
+        const cellConfig = rowSource.tableCells[slot.cellIdx];
+        if (cellConfig == null) continue;
 
         const { vAlign = VerticalAlignmentType.CONTENT_ALIGNMENT_UNSPECIFIED } = cellConfig;
         const { pageHeight, height, originMarginTop, originMarginBottom } = cellPageSkeleton;

@@ -171,6 +171,74 @@ describe('docs table layout', () => {
         }
     });
 
+    it('createTableSkeletons (cross-page variant) handles vMerge identically to single-page', () => {
+        // Same fixture as the "skips vMerge continuation slots" test, run
+        // through the cross-page entry point with ample height so it
+        // doesn't actually paginate. Regression: cross-page used to walk
+        // by cellNode index, so it never skipped continuation slots and
+        // never absorbed rowSpan height deficits.
+        createSkeletonCellPagesMock.mockReset();
+        createSkeletonCellPagesMock.mockImplementation(
+            (_ctx: unknown, _vm: unknown, _cell: unknown, _sec: unknown, _t: unknown, row: number, col: number) => {
+                if (row === 0 && col === 0) return [makeCellPage(60, 60)];
+                return [makeCellPage(60, 20)];
+            }
+        );
+
+        const tableSource = {
+            tableId: 'table-vm-cross',
+            align: TableAlignmentType.START,
+            indent: { v: 0 },
+            tableRows: [
+                {
+                    repeatHeaderRow: BooleanNumber.FALSE,
+                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
+                    cantSplit: BooleanNumber.FALSE,
+                    tableCells: [{ rowSpan: 2 }, {}],
+                },
+                {
+                    repeatHeaderRow: BooleanNumber.FALSE,
+                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
+                    cantSplit: BooleanNumber.FALSE,
+                    tableCells: [{ vMergeContinue: BooleanNumber.TRUE }, {}],
+                },
+            ],
+        } as any;
+        const viewModel = { getTableByStartIndex: vi.fn(() => ({ tableSource })) } as any;
+        // cellNodes are 1:1 with rowSource.tableCells (parser keeps
+        // continuation entries), so row 1 has 2 child nodes too.
+        const tableNode = {
+            startIndex: 0,
+            endIndex: 80,
+            children: [createRowNode(1, 20, 2), createRowNode(21, 40, 2)],
+        } as any;
+        const curPage = {
+            pageWidth: 400,
+            pageHeight: 600,
+            marginTop: 20,
+            marginBottom: 20,
+            marginLeft: 10,
+            marginRight: 10,
+        } as any;
+
+        const result = createTableSkeletons({} as any, curPage, viewModel, tableNode, {} as any, 600);
+        expect(result.skeTables.length).toBe(1);
+        const skeleton = result.skeTables[0];
+        // Row 0 has both real cells; row 1 has only the right-side cell
+        // (continuation slot is skipped).
+        expect(skeleton.rows[0].cells.length).toBe(2);
+        expect(skeleton.rows[1].cells.length).toBe(1);
+        // Row 1's real cell sits at left = 60 (after the continuation column).
+        expect(skeleton.rows[1].cells[0].left).toBe(60);
+        // Spanned cell's pageHeight = sum of row 0 + row 1 heights (62).
+        expect(skeleton.rows[0].cells[0].pageHeight).toBe(62);
+        // Row 1 absorbed the 18 px deficit.
+        expect(skeleton.rows[1].height).toBe(40);
+        // cellSourceIndex round-trips.
+        expect(skeleton.rows[0].cells[0].cellSourceIndex).toBe(0);
+        expect(skeleton.rows[1].cells[0].cellSourceIndex).toBe(1);
+    });
+
     it('skips vMerge continuation slots and absorbs height deficit into the last spanned row', () => {
         // 2-row × 2-col table: row 0 col 0 is rowSpan=2 (content height
         // 60); row 0 col 1 is normal (height 20); row 1 col 0 is the
