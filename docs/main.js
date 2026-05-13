@@ -1,38 +1,38 @@
 import {
   UniverDocsMentionUIPlugin
-} from "../chunk-CQEDTAB3.js";
+} from "../chunk-XSYLA4MU.js";
 import {
   SetActiveCommentOperation,
   ThreadCommentPanel,
   ThreadCommentPanelService,
   UniverThreadCommentUIPlugin
-} from "../chunk-5G5BKEPR.js";
-import "../chunk-4PNELG5W.js";
+} from "../chunk-GQG566ZE.js";
+import "../chunk-IQUVNM4H.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-XYK3OB3F.js";
+} from "../chunk-43757VGS.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-XPJ3GPLX.js";
+} from "../chunk-HJXP54CP.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
   ThreadCommentModel,
   getDT
-} from "../chunk-CB7V3IIA.js";
-import "../chunk-GYVAKLVU.js";
+} from "../chunk-TM5QNBBA.js";
+import "../chunk-YJYPSLQA.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-SHEHTVFD.js";
+} from "../chunk-XSI67AV7.js";
 import {
   FUniver
-} from "../chunk-GLLJOGIP.js";
-import "../chunk-GAFEZZY4.js";
+} from "../chunk-32E5INCS.js";
+import "../chunk-LKVXGXDI.js";
 import {
   DEFAULT_DOCUMENT_DATA_SIMPLE
-} from "../chunk-HK3XLRJT.js";
+} from "../chunk-AT4KGPUX.js";
 import {
   BulletListCommand,
   CutContentCommand,
@@ -66,7 +66,7 @@ import {
   getAnchorBounding,
   replaceSelectionFactory,
   whenDocAndEditorFocused
-} from "../chunk-LCMYWWGY.js";
+} from "../chunk-XHQE667S.js";
 import "../chunk-LI6UXASZ.js";
 import {
   Button,
@@ -99,20 +99,20 @@ import {
   useDependency,
   useEvent,
   useObservable
-} from "../chunk-ZITBAF2W.js";
+} from "../chunk-6NLCZNFG.js";
 import {
   zh_CN_default
-} from "../chunk-CDZYV7BA.js";
-import "../chunk-LEEVSF3X.js";
+} from "../chunk-YRBPDJQT.js";
+import "../chunk-LJNGJSAA.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-JZ2VBUIL.js";
+} from "../chunk-OZJJTPRS.js";
 import {
   IRenderManagerService,
   UniverRenderEnginePlugin,
   ptToPixel,
   withCurrentTypeOfRenderer
-} from "../chunk-U74YHLPY.js";
+} from "../chunk-53LCI556.js";
 import {
   BehaviorSubject,
   BuildTextUtils,
@@ -150,7 +150,7 @@ import {
   sequenceExecute,
   tap,
   toDisposable
-} from "../chunk-RXFCYNLY.js";
+} from "../chunk-MR7DLPM2.js";
 import "../chunk-EQ2B2W73.js";
 import {
   __commonJS,
@@ -7259,6 +7259,12 @@ var TAB_ALIGN_MAP = {
   bar: 1,
   num: 1
 };
+var TAB_LEADER_MAP = {
+  dot: 1,
+  hyphen: 2,
+  underscore: 3,
+  middleDot: 4
+};
 var HEADING_MAP = {
   Title: 2,
   Subtitle: 3,
@@ -7369,7 +7375,9 @@ function parseTabsInto(tabs, out) {
       continue;
     }
     const alignment = val && TAB_ALIGN_MAP[val] || 1;
-    stops.push({ offset, alignment });
+    const leaderVal = a["@_w:leader"];
+    const leader = leaderVal ? TAB_LEADER_MAP[leaderVal] : void 0;
+    stops.push(leader !== void 0 ? { offset, alignment, leader } : { offset, alignment });
   }
   if (stops.length > 0) out.tabStops = stops;
   if (cleared.length > 0) out.tabStopsClear = cleared;
