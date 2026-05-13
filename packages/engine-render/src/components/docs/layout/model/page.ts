@@ -306,12 +306,17 @@ export function createNullCellPage(
     row: number,
     col: number,
     availableHeight: number = Number.POSITIVE_INFINITY,
-    maxCellPageHeight: number = Number.POSITIVE_INFINITY
+    maxCellPageHeight: number = Number.POSITIVE_INFINITY,
+    // Optional cell-array index. With vMerge / gridSpan, `col` is the
+    // grid column (which drives width sizing) but the source cellConfig
+    // lives in `tableCells[cellIdx]`. When omitted, fall back to `col`
+    // for legacy callers that didn't distinguish the two.
+    cellIdx?: number
 ) {
     const { lists, footerTreeMap, headerTreeMap, localeService, drawings } = sectionBreakConfig;
     const { skeletonResourceReference } = ctx;
     const { cellMargin, tableRows, tableColumns, tableId } = tableConfig;
-    const cellConfig = tableRows[row].tableCells[col];
+    const cellConfig = tableRows[row].tableCells[cellIdx ?? col];
 
     const {
         start = { v: 10 },
@@ -374,7 +379,8 @@ export function createSkeletonCellPages(
     row: number,
     col: number,
     availableHeight: number = Number.POSITIVE_INFINITY,
-    maxCellPageHeight: number = Number.POSITIVE_INFINITY
+    maxCellPageHeight: number = Number.POSITIVE_INFINITY,
+    cellIdx?: number
 ) {
     // Table cell only has one section.
     const sectionNode = cellNode.children[0];
@@ -386,7 +392,8 @@ export function createSkeletonCellPages(
         row,
         col,
         availableHeight,
-        maxCellPageHeight
+        maxCellPageHeight,
+        cellIdx
     );
 
     const { pages } = dealWithSection(

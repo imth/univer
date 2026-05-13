@@ -95,7 +95,10 @@ export function createTableSkeleton(
                 sectionBreakConfig,
                 table,
                 row,
-                slot.colIdx
+                slot.colIdx,
+                undefined,
+                undefined,
+                slot.cellIdx
             )[0];
 
             const { marginTop = 0, marginBottom = 0 } = cellPageSkeleton;
@@ -385,7 +388,8 @@ function dealWithTableRow(
             row,
             col,
             canRowSplit && !needOpenNewTable ? cache.remainHeight : availableHeight,
-            pageContentHeight
+            pageContentHeight,
+            cellIdx
         );
 
         while (rowSkeletons.length < cellPageSkeletons.length) {
