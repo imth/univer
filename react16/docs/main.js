@@ -1,38 +1,38 @@
 import {
   UniverDocsMentionUIPlugin
-} from "../chunk-H5RJ6FP2.js";
+} from "../chunk-CQEDTAB3.js";
 import {
   SetActiveCommentOperation,
   ThreadCommentPanel,
   ThreadCommentPanelService,
   UniverThreadCommentUIPlugin
-} from "../chunk-2GTWJNDP.js";
-import "../chunk-ONRZRDGF.js";
+} from "../chunk-5G5BKEPR.js";
+import "../chunk-4PNELG5W.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-QUP76F7P.js";
+} from "../chunk-IASMXW6O.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-HFLTRR5X.js";
+} from "../chunk-XPJ3GPLX.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
   ThreadCommentModel,
   getDT
 } from "../chunk-CB7V3IIA.js";
-import "../chunk-QQILDGRH.js";
+import "../chunk-GYVAKLVU.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-LKRAL3A2.js";
+} from "../chunk-SHEHTVFD.js";
 import {
   FUniver
 } from "../chunk-GLLJOGIP.js";
-import "../chunk-TQL525AY.js";
+import "../chunk-GAFEZZY4.js";
 import {
   DEFAULT_DOCUMENT_DATA_SIMPLE
-} from "../chunk-MQ7SILF6.js";
+} from "../chunk-HK3XLRJT.js";
 import {
   BulletListCommand,
   CutContentCommand,
@@ -66,7 +66,7 @@ import {
   getAnchorBounding,
   replaceSelectionFactory,
   whenDocAndEditorFocused
-} from "../chunk-SK4TRILR.js";
+} from "../chunk-LCMYWWGY.js";
 import "../chunk-LI6UXASZ.js";
 import {
   Button,
@@ -99,20 +99,20 @@ import {
   useDependency,
   useEvent,
   useObservable
-} from "../chunk-Y3QSWE6O.js";
+} from "../chunk-ZITBAF2W.js";
 import {
   zh_CN_default
 } from "../chunk-CDZYV7BA.js";
-import "../chunk-CYJUNQ7N.js";
+import "../chunk-LEEVSF3X.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-3QIG335W.js";
+} from "../chunk-JZ2VBUIL.js";
 import {
   IRenderManagerService,
   UniverRenderEnginePlugin,
   ptToPixel,
   withCurrentTypeOfRenderer
-} from "../chunk-YO7JIRAQ.js";
+} from "../chunk-U74YHLPY.js";
 import {
   BehaviorSubject,
   BuildTextUtils,
@@ -7280,7 +7280,7 @@ function parseBorder(b) {
   const valAttr = a["@_w:val"];
   out.dashStyle = valAttr && DOCX_BORDER_TO_UNIVER_DASH[valAttr] || 1;
   const space = Number(a["@_w:space"]);
-  if (!Number.isNaN(space)) out.padding = space;
+  if (!Number.isNaN(space)) out.padding = space * 4 / 3;
   return out;
 }
 function parseSpacingInto(spacing, out) {
@@ -7394,6 +7394,9 @@ function parsePPr(pPr) {
         const bn = nodeName(b);
         if (bn === "w:bottom") out.borderBottom = parseBorder(b);
         else if (bn === "w:top") out.borderTop = parseBorder(b);
+        else if (bn === "w:left") out.borderLeft = parseBorder(b);
+        else if (bn === "w:right") out.borderRight = parseBorder(b);
+        else if (bn === "w:between") out.borderBetween = parseBorder(b);
       }
     } else if (name === "w:tabs") {
       parseTabsInto(child, out);
