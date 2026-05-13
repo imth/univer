@@ -66,6 +66,31 @@ describe('parseParagraphStyle', () => {
         expect(parseParagraphStyle(node)?.borderBottom?.dashStyle).toBe(5);
     });
 
+    it('maps all 5 pBdr sides (top/bottom/left/right/between)', () => {
+        const node = pNode(
+            '<w:p xmlns:w="x"><w:pPr><w:pBdr>'
+            + '<w:top w:val="single" w:sz="4" w:space="3" w:color="111111"/>'
+            + '<w:bottom w:val="single" w:sz="4" w:space="3" w:color="222222"/>'
+            + '<w:left w:val="single" w:sz="4" w:space="3" w:color="333333"/>'
+            + '<w:right w:val="single" w:sz="4" w:space="3" w:color="444444"/>'
+            + '<w:between w:val="single" w:sz="4" w:space="3" w:color="555555"/>'
+            + '</w:pBdr></w:pPr></w:p>'
+        );
+        const s = parseParagraphStyle(node);
+        expect(s?.borderTop?.color?.rgb).toBe('#111111');
+        expect(s?.borderBottom?.color?.rgb).toBe('#222222');
+        expect(s?.borderLeft?.color?.rgb).toBe('#333333');
+        expect(s?.borderRight?.color?.rgb).toBe('#444444');
+        expect(s?.borderBetween?.color?.rgb).toBe('#555555');
+    });
+
+    it('converts w:space (pt) to px on border padding (3pt → 4px)', () => {
+        const node = pNode(
+            '<w:p xmlns:w="x"><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="4" w:space="3" w:color="000000"/></w:pBdr></w:pPr></w:p>'
+        );
+        expect(parseParagraphStyle(node)?.borderBottom?.padding).toBe(4);
+    });
+
     it('does not throw when w:jc has no val attribute (I2 guard)', () => {
     // <w:jc/> with no w:val — previously would do `undefined in ALIGN_MAP` → TypeError
         const node = pNode('<w:p xmlns:w="x"><w:pPr><w:jc/></w:pPr></w:p>');

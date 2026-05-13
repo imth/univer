@@ -82,7 +82,8 @@ function parseBorder(b: Record<string, unknown>): NonNullable<ParsedParagraphSty
     const valAttr = a['@_w:val'] as string | undefined;
     out.dashStyle = (valAttr && DOCX_BORDER_TO_UNIVER_DASH[valAttr]) || 1;
     const space = Number(a['@_w:space']);
-    if (!Number.isNaN(space)) out.padding = space;
+    // ECMA-376 §17.3.1.7: w:space is in points (NOT dxa). Renderer wants px.
+    if (!Number.isNaN(space)) out.padding = (space * 4) / 3;
     return out;
 }
 
@@ -262,6 +263,9 @@ export function parsePPr(pPr: XmlNode | undefined): ParsedParagraphStyle | undef
                 const bn = nodeName(b);
                 if (bn === 'w:bottom') out.borderBottom = parseBorder(b);
                 else if (bn === 'w:top') out.borderTop = parseBorder(b);
+                else if (bn === 'w:left') out.borderLeft = parseBorder(b);
+                else if (bn === 'w:right') out.borderRight = parseBorder(b);
+                else if (bn === 'w:between') out.borderBetween = parseBorder(b);
             }
         } else if (name === 'w:tabs') {
             parseTabsInto(child, out);
