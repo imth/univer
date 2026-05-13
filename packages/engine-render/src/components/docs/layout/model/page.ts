@@ -306,12 +306,17 @@ export function createNullCellPage(
     row: number,
     col: number,
     availableHeight: number = Number.POSITIVE_INFINITY,
-    maxCellPageHeight: number = Number.POSITIVE_INFINITY
+    maxCellPageHeight: number = Number.POSITIVE_INFINITY,
+    // Optional cell-array index. With vMerge / gridSpan, `col` is the
+    // grid column (which drives width sizing) but the source cellConfig
+    // lives in `tableCells[cellIdx]`. When omitted, fall back to `col`
+    // for legacy callers that didn't distinguish the two.
+    cellIdx?: number
 ) {
     const { lists, footerTreeMap, headerTreeMap, localeService, drawings } = sectionBreakConfig;
     const { skeletonResourceReference } = ctx;
     const { cellMargin, tableRows, tableColumns, tableId } = tableConfig;
-    const cellConfig = tableRows[row].tableCells[col];
+    const cellConfig = tableRows[row].tableCells[cellIdx ?? col];
 
     const {
         start = { v: 10 },
@@ -319,7 +324,14 @@ export function createNullCellPage(
         top = { v: 5 },
         bottom = { v: 5 },
     } = cellConfig.margin ?? cellMargin ?? {};
-    const pageWidth = tableColumns[col].size.width.v;
+    // OOXML w:gridSpan ≥ 2 makes a cell span multiple grid columns; its
+    // width is the sum of the spanned column widths. With span=1 (default)
+    // this collapses to the original `tableColumns[col].size.width.v`.
+    const columnSpan = Math.max(1, cellConfig.columnSpan ?? 1);
+    let pageWidth = 0;
+    for (let i = 0; i < columnSpan && col + i < tableColumns.length; i++) {
+        pageWidth += tableColumns[col + i].size.width.v;
+    }
     const pageHeight = maxCellPageHeight;
 
     const cellSectionBreakConfig: ISectionBreakConfig = {
@@ -367,7 +379,8 @@ export function createSkeletonCellPages(
     row: number,
     col: number,
     availableHeight: number = Number.POSITIVE_INFINITY,
-    maxCellPageHeight: number = Number.POSITIVE_INFINITY
+    maxCellPageHeight: number = Number.POSITIVE_INFINITY,
+    cellIdx?: number
 ) {
     // Table cell only has one section.
     const sectionNode = cellNode.children[0];
@@ -379,7 +392,8 @@ export function createSkeletonCellPages(
         row,
         col,
         availableHeight,
-        maxCellPageHeight
+        maxCellPageHeight,
+        cellIdx
     );
 
     const { pages } = dealWithSection(

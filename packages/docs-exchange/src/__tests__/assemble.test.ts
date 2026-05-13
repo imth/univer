@@ -280,6 +280,47 @@ describe('assembleDocument', () => {
         expect(cell.margin).toMatchObject({ start: { v: 10 }, end: { v: 10 }, top: { v: 5 }, bottom: { v: 5 } });
     });
 
+    it('vMerge=continue cell carries vMergeContinue and no border data', () => {
+        const children: DocumentChild[] = [
+            {
+                kind: 'table',
+                table: {
+                    rows: [
+                        [
+                            { paragraphs: [{ runs: [{ text: 'A' }] }], vMerge: 'restart', rowSpan: 2 },
+                            { paragraphs: [{ runs: [{ text: 'B' }] }] },
+                        ],
+                        [
+                            { paragraphs: [{ runs: [{ text: '' }] }], vMerge: 'continue' },
+                            { paragraphs: [{ runs: [{ text: 'C' }] }] },
+                        ],
+                    ],
+                },
+            },
+        ];
+        const doc = assembleDocument(children, { numbering: new Map(), rels: new Map(), media: new Map() });
+        const tableId = (doc.body as { tables: Array<{ tableId: string }> }).tables[0].tableId;
+        const src = (
+            doc as unknown as {
+                tableSource: Record<string, { tableRows: Array<{ tableCells: Array<Record<string, unknown>> }> }>;
+            }
+        ).tableSource[tableId];
+        const restartCell = src.tableRows[0].tableCells[0];
+        const continueCell = src.tableRows[1].tableCells[0];
+        expect(restartCell.rowSpan).toBe(2);
+        expect(restartCell.vMergeContinue).toBeUndefined();
+        // Restart cell spans to row 1 (the last row), so its bottom border
+        // should resolve as the table's perimeter — we don't directly
+        // assert "isPerimeter" here, but borderBottom should be populated
+        // from t.borders when present. The narrower invariant:
+        // continuation cell emits NO border keys at all.
+        expect(continueCell.vMergeContinue).toBe(1);
+        expect(continueCell.borderTop).toBeUndefined();
+        expect(continueCell.borderBottom).toBeUndefined();
+        expect(continueCell.borderLeft).toBeUndefined();
+        expect(continueCell.borderRight).toBeUndefined();
+    });
+
     it('tableColumns is populated even when columnWidths is missing (split equally across cells of first row)', () => {
         const children: DocumentChild[] = [
             {

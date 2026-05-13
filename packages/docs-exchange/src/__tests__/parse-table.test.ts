@@ -342,4 +342,25 @@ describe('parseTable: table-level properties', () => {
         expect(t.indentPx).toBeCloseTo(13.333, 2);
         expect(t.layout).toBe('fixed');
     });
+
+    it('marks vMerge=restart with rowSpan and continuation cells with vMerge="continue"', () => {
+        const xml = `<w:tbl xmlns:w="x">
+      <w:tr>
+        <w:tc><w:tcPr><w:vMerge w:val="restart"/></w:tcPr><w:p><w:r><w:t>Merged down</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>R1C2</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:tcPr><w:vMerge/></w:tcPr><w:p/></w:tc>
+        <w:tc><w:p><w:r><w:t>R2C2</w:t></w:r></w:p></w:tc>
+      </w:tr>
+    </w:tbl>`;
+        const t = parseTable(tblNode(xml));
+        // Row 0 col 0: restart, rowSpan inferred as 2 in pass 2 of parser.
+        expect(t.rows[0][0].vMerge).toBe('restart');
+        expect(t.rows[0][0].rowSpan).toBe(2);
+        // Row 1 col 0: continuation; itself has no rowSpan but the
+        // vMerge marker propagates downstream.
+        expect(t.rows[1][0].vMerge).toBe('continue');
+        expect(t.rows[1][0].rowSpan).toBeUndefined();
+    });
 });

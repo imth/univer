@@ -414,16 +414,39 @@ function emitTable(t: ParsedTable, acc: Accumulator, ctx: AssembleContext) {
 
     const rowCount = t.rows.length;
 
+    // Pre-compute each cell's grid rectangle so border perimeter judges
+    // against the *merged* rectangle, not the underlying grid position.
+    // A continuation cell (vMerge without restart) reports its owner's
+    // span — though we don't actually need its borders, since the layout
+    // pass and renderer skip continuation cells. Computing `gridColCount`
+    // up front lets us answer "is this cell on the right edge of the
+    // table?" without relying on the per-row colCountInRow (which differs
+    // from the grid width when continuation rows are shorter).
+    interface CellMeta { colStart: number; colSpan: number; rowSpan: number; isContinue: boolean }
+    const cellMeta: CellMeta[][] = [];
+    let gridColCount = 0;
+    for (let ri = 0; ri < t.rows.length; ri++) {
+        const row = t.rows[ri];
+        const metaRow: CellMeta[] = [];
+        let cursor = 0;
+        for (const c of row) {
+            const colSpan = c.columnSpan ?? 1;
+            metaRow.push({
+                colStart: cursor,
+                colSpan,
+                rowSpan: c.rowSpan ?? 1,
+                isContinue: c.vMerge === 'continue',
+            });
+            cursor += colSpan;
+        }
+        gridColCount = Math.max(gridColCount, cursor);
+        cellMeta.push(metaRow);
+    }
+
     acc.tableSource[tableId] = {
         tableId,
         tableRows: t.rows.map((row, ri) => {
-            const colCountInRow = row.reduce((n, c) => n + (c.columnSpan ?? 1), 0);
-            let colCursor = 0;
-            const tableCells = row.map((c) => {
-                const colStart = colCursor;
-                const colEnd = colCursor + (c.columnSpan ?? 1) - 1;
-                colCursor += c.columnSpan ?? 1;
-
+            const tableCells = row.map((c, ci) => {
                 const cellEntry: Record<string, unknown> = {
           // Cell margin: cell-level overrides table-level, table-level overrides global default.
                     margin: marginToUniver(c.margin, {
@@ -435,23 +458,32 @@ function emitTable(t: ParsedTable, acc: Accumulator, ctx: AssembleContext) {
                 };
                 if (c.rowSpan !== undefined) cellEntry.rowSpan = c.rowSpan;
                 if (c.columnSpan !== undefined) cellEntry.columnSpan = c.columnSpan;
+                // OOXML <w:vMerge/> (without val="restart") marks a cell as
+                // the continuation of a vertical merge. The layout pass
+                // skips painting these and folds their grid slot into the
+                // restart cell above. BooleanNumber.TRUE = 1.
+                if (c.vMerge === 'continue') cellEntry.vMergeContinue = 1;
 
         // Background: cell shading wins, falls back to table-level default.
                 const fill = c.shadingFill ?? t.shadingFill;
                 if (fill && fill !== 'auto') cellEntry.backgroundColor = { rgb: `#${fill.toUpperCase()}` };
 
         // Borders: per-side resolution against table perimeter / inside borders.
-        // Note: rowSpan continuation isn't perimeter-aware (e.g. a merged cell
-        // crossing the bottom row treats its bottom as interior). Word's actual
-        // perimeter detection accounts for vMerge — we do the simple geometric
-        // check here; misalignment shows up only on vertically merged cells
-        // touching the table edge.
+        // Border perimeter checks the cell's MERGED rectangle against the
+        // table's grid edges. Continuation cells (`vMerge` without
+        // restart) get no border data emitted — the layout/renderer skip
+        // them, and the owning restart cell's bottom edge is the one
+        // visible at the merged region's bottom.
+                const meta = cellMeta[ri][ci];
+                if (meta.isContinue) {
+                    return cellEntry;
+                }
                 const sides: Array<'top' | 'bottom' | 'left' | 'right'> = ['top', 'bottom', 'left', 'right'];
                 const isPerimeter: Record<typeof sides[number], boolean> = {
                     top: ri === 0,
-                    bottom: ri + (c.rowSpan ?? 1) - 1 === rowCount - 1,
-                    left: colStart === 0,
-                    right: colEnd === colCountInRow - 1,
+                    bottom: ri + meta.rowSpan - 1 === rowCount - 1,
+                    left: meta.colStart === 0,
+                    right: meta.colStart + meta.colSpan === gridColCount,
                 };
                 for (const side of sides) {
                     const resolved = resolveCellBorder(side, c.borders, t.borders, isPerimeter[side]);
