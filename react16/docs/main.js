@@ -1,38 +1,38 @@
 import {
   UniverDocsMentionUIPlugin
-} from "../chunk-3COAZ3S6.js";
+} from "../chunk-H5RJ6FP2.js";
 import {
   SetActiveCommentOperation,
   ThreadCommentPanel,
   ThreadCommentPanelService,
   UniverThreadCommentUIPlugin
-} from "../chunk-3LZY7QQP.js";
-import "../chunk-ZNK66HMQ.js";
+} from "../chunk-2GTWJNDP.js";
+import "../chunk-ONRZRDGF.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-UNYHVPNY.js";
+} from "../chunk-QUP76F7P.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-HSOCFSU5.js";
+} from "../chunk-HFLTRR5X.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
   ThreadCommentModel,
   getDT
 } from "../chunk-CB7V3IIA.js";
-import "../chunk-CXA5KQ3D.js";
+import "../chunk-QQILDGRH.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-Q33T22F3.js";
+} from "../chunk-LKRAL3A2.js";
 import {
   FUniver
 } from "../chunk-GLLJOGIP.js";
-import "../chunk-XDZ5CUIG.js";
+import "../chunk-TQL525AY.js";
 import {
   DEFAULT_DOCUMENT_DATA_SIMPLE
-} from "../chunk-KSHKBW3R.js";
+} from "../chunk-MQ7SILF6.js";
 import {
   BulletListCommand,
   CutContentCommand,
@@ -66,7 +66,7 @@ import {
   getAnchorBounding,
   replaceSelectionFactory,
   whenDocAndEditorFocused
-} from "../chunk-WROESJ3X.js";
+} from "../chunk-SK4TRILR.js";
 import "../chunk-LI6UXASZ.js";
 import {
   Button,
@@ -99,20 +99,20 @@ import {
   useDependency,
   useEvent,
   useObservable
-} from "../chunk-O757RHHG.js";
+} from "../chunk-Y3QSWE6O.js";
 import {
   zh_CN_default
 } from "../chunk-CDZYV7BA.js";
-import "../chunk-HSOKXHAZ.js";
+import "../chunk-CYJUNQ7N.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-MJAXIOMM.js";
+} from "../chunk-3QIG335W.js";
 import {
   IRenderManagerService,
   UniverRenderEnginePlugin,
   ptToPixel,
   withCurrentTypeOfRenderer
-} from "../chunk-SFWFNTNZ.js";
+} from "../chunk-YO7JIRAQ.js";
 import {
   BehaviorSubject,
   BuildTextUtils,
@@ -6730,6 +6730,8 @@ function sectionToBreakFields(parsed) {
   const out = {};
   if (parsed.sectionBreakDefaults.linePitch !== void 0) out.linePitch = parsed.sectionBreakDefaults.linePitch;
   if (parsed.sectionBreakDefaults.gridType !== void 0) out.gridType = parsed.sectionBreakDefaults.gridType;
+  if (parsed.sectionBreakDefaults.columnProperties !== void 0) out.columnProperties = parsed.sectionBreakDefaults.columnProperties;
+  if (parsed.sectionBreakDefaults.columnSeparatorType !== void 0) out.columnSeparatorType = parsed.sectionBreakDefaults.columnSeparatorType;
   const ds = parsed.documentStyle;
   if (ds.pageSize) out.pageSize = ds.pageSize;
   if (ds.pageOrient !== void 0) out.pageOrient = ds.pageOrient;
@@ -7093,6 +7095,12 @@ function assembleDocument(children, ctx) {
       }
       if (sb.gridType === void 0 && ctx.sectionBreakDefaults.gridType !== void 0) {
         sb.gridType = ctx.sectionBreakDefaults.gridType;
+      }
+      if (sb.columnProperties === void 0 && ctx.sectionBreakDefaults.columnProperties !== void 0) {
+        sb.columnProperties = ctx.sectionBreakDefaults.columnProperties;
+      }
+      if (sb.columnSeparatorType === void 0 && ctx.sectionBreakDefaults.columnSeparatorType !== void 0) {
+        sb.columnSeparatorType = ctx.sectionBreakDefaults.columnSeparatorType;
       }
     }
   }
@@ -7763,7 +7771,7 @@ function parseSectionProperties(body) {
   return parseSectionPropertiesFromNode(sectPr);
 }
 function parseSectionPropertiesFromNode(sectPr) {
-  var _a, _b;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i;
   const style = { documentFlavor: DOCUMENT_FLAVOR_TRADITIONAL };
   const sectionBreakDefaults = {};
   const headerRefs = {};
@@ -7824,6 +7832,41 @@ function parseSectionPropertiesFromNode(sectPr) {
     const typeName = attrs["@_w:type"];
     if (typeName !== void 0 && typeName in GRID_TYPE_BY_NAME) {
       sectionBreakDefaults.gridType = GRID_TYPE_BY_NAME[typeName];
+    }
+  }
+  const cols = findChild(sectPr, "w:cols");
+  if (cols) {
+    const a = nodeAttrs(cols);
+    const numAttr = Number(a["@_w:num"]);
+    const num = Number.isFinite(numAttr) && numAttr > 0 ? Math.floor(numAttr) : 1;
+    const defaultSpace = (_c = dxaAttrToPx(a["@_w:space"])) != null ? _c : 0;
+    const sepRaw = a["@_w:sep"];
+    const sep = sepRaw === "true" || sepRaw === "1";
+    const equalWidthRaw = a["@_w:equalWidth"];
+    const equalWidth = equalWidthRaw === void 0 ? true : !(equalWidthRaw === "false" || equalWidthRaw === "0");
+    const colNodes = findChildren(cols, "w:col");
+    const properties = [];
+    if (!equalWidth && colNodes.length > 0) {
+      for (let i = 0; i < colNodes.length; i++) {
+        const ca = nodeAttrs(colNodes[i]);
+        const width = (_d = dxaAttrToPx(ca["@_w:w"])) != null ? _d : 0;
+        const padding = i === colNodes.length - 1 ? 0 : (_e = dxaAttrToPx(ca["@_w:space"])) != null ? _e : defaultSpace;
+        properties.push({ width, paddingEnd: padding });
+      }
+    } else if (num > 1) {
+      const pageW = (_g = (_f = style.pageSize) == null ? void 0 : _f.width) != null ? _g : DEFAULT_A4.width;
+      const marginL = (_h = style.marginLeft) != null ? _h : 0;
+      const marginR = (_i = style.marginRight) != null ? _i : 0;
+      const contentWidth = Math.max(0, pageW - marginL - marginR);
+      const totalGutter = defaultSpace * (num - 1);
+      const each = (contentWidth - totalGutter) / num;
+      for (let i = 0; i < num; i++) {
+        properties.push({ width: each, paddingEnd: i === num - 1 ? 0 : defaultSpace });
+      }
+    }
+    if (properties.length > 1) {
+      sectionBreakDefaults.columnProperties = properties;
+      sectionBreakDefaults.columnSeparatorType = sep ? 2 /* BETWEEN_EACH_COLUMN */ : 1 /* NONE */;
     }
   }
   return { documentStyle: style, sectionBreakDefaults, headerRefs, footerRefs, titlePage, sectionTypeRaw };
