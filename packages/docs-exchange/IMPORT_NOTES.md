@@ -36,24 +36,26 @@ Update this file when you add a TODO that crosses the importer/renderer boundary
 
 ### Paragraph `tabStops`
 
-- **Importer status:** parsed. `parsePPr` collects `<w:tabs>` and the
-  `clear`/`right`/`center` merge with inherited pStyle tabs (see
-  `header-footer-fidelity.test.ts` "right tab at 8844 dxa" case).
-- **Renderer status:** not consumed. `shaping.ts` shapes every `<w:tab/>`
-  with `getCharSpaceApply(charSpace, defaultTabStop, ...)` — a fixed-width
-  tab using the document-level `defaultTabStop`. The per-paragraph
-  `tabStops` array on `IParagraphStyle` is never read.
-- **Concrete symptom (文书格式.docx header2):** Word puts header text on the
-  right edge by writing `<w:jc w:val="left"/>` + a single right-aligned tab
-  stop at `pos=8844` + a leading `<w:tab/>` run. Word advances to the right
-  tab stop and right-aligns the text against it; Univer renders a
-  default-width tab and the text stays at the left margin.
-- **Why this is more than parsing:** right-aligned tab stops require a
-  back-fill or two-pass layout — the tab glyph's width depends on how wide
-  the *following* runs are. Adding it touches shaping (variable-width tab
-  glyph), line break (post-shaping width fixup), and the section/paragraph
-  config plumbing that hands `tabStops` down to `shaping.ts`. Out of scope
-  for an importer-only change.
+- **Status:** supported (importer + layout + renderer).
+- **Importer:** `parsePPr` reads `<w:tabs>`/`<w:tab>` including the
+  `w:val` (start/center/end), `w:pos` (dxa → CSS px), and `w:leader`
+  attributes. `w:val="clear"` entries prune inherited pStyle tabs and
+  the rest merge into the paragraph's `tabStops[]`.
+- **Layout:** `applyParagraphTabStops` in `line-adjustment.ts` runs a
+  second pass after each line is shaped and resizes its TAB glyphs:
+  - **START** — fills to the next stop past `cursorX`.
+  - **CENTER** — leaves half the trailing run-width before the stop.
+  - **END** — leaves the full trailing run-width before the stop.
+  When a tab is past the last stop, the shaping-time default-tab width
+  is kept; same fallback applies if the computed width would be
+  negative (trailing content already overruns the stop).
+- **Renderer:** `_drawTabLeaders` paints the leader character (dot,
+  hyphen, underscore, middle-dot) across each tab's reserved x-range
+  in body/cell/header/footer paths. `w:leader="none"`/`heavy` produce
+  no leader (`heavy` is a stylistic hint Word resolves to none).
+- **Known follow-ups:** `w:val="decimal"`/`"bar"` map to START
+  (Univer's `TabStopAlignment` has no decimal/bar slots). RTL is out
+  of scope until the overall RTL pass lands.
 
 ### Mid-document orientation switch (`pageOrient` change between sections)
 
