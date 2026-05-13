@@ -64,6 +64,9 @@ export interface ParsedParagraphStyle {
         dashStyle?: number;
         padding?: number;
     };
+    borderLeft?: { color?: { rgb: string }; width?: number; dashStyle?: number; padding?: number };
+    borderRight?: { color?: { rgb: string }; width?: number; dashStyle?: number; padding?: number };
+    borderBetween?: { color?: { rgb: string }; width?: number; dashStyle?: number; padding?: number };
   /**
    * Tab stops from <w:tabs>. `offset` is CSS px (dxa / 15). `alignment` mirrors
    * Univer's TabStopAlignment enum (1=START, 2=CENTER, 3=END). Sorted by offset

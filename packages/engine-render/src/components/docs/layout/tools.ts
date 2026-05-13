@@ -481,36 +481,209 @@ export function updateInlineDrawingCoordsAndBorder(ctx: ILayoutContext, pages: I
         if (affectInlineDrawings && affectInlineDrawings.size > 0) {
             updateInlineDrawingPosition(line, affectInlineDrawings, drawingAnchor?.top);
         }
+    });
 
-        const paragraphStyle = paragraphConfig?.paragraphStyle;
-        if (line.divides.length > 0) {
-            const lastDivide = line.divides[line.divides.length - 1];
-            const lastGlyph = lastDivide.glyphGroup[lastDivide.glyphGroup.length - 1];
+    assignParagraphBorders(ctx, pages);
+}
 
-            // The line carries this paragraph's terminator if any of its divide
-            // groups contains the PARAGRAPH glyph (`\r`). For non-final paragraphs
-            // that's also the last glyph; for the document's final paragraph the
-            // SECTION_BREAK glyph (`\n`) sits to its right on the same line, so
-            // checking only the last glyph would miss the final paragraph's
-            // bottom border.
-            let hasParagraphTerminator = lastGlyph?.streamType === DataStreamTreeTokenType.PARAGRAPH;
-            if (!hasParagraphTerminator) {
-                for (const divide of line.divides) {
-                    for (const glyph of divide.glyphGroup) {
-                        if (glyph.streamType === DataStreamTreeTokenType.PARAGRAPH) {
-                            hasParagraphTerminator = true;
-                            break;
-                        }
-                    }
-                    if (hasParagraphTerminator) break;
-                }
-            }
+/**
+ * Word merges adjacent paragraphs that share the same border style on all
+ * sides into one continuous box. Inside a merged group the seam between
+ * paragraphs draws nothing (or `between` if the style opted in); only the
+ * group's outer rectangle paints.
+ *
+ * On top of merging, Word repaints the box's top/bottom whenever the group
+ * is split across pages or columns — every "page (or column) of the group"
+ * gets framed independently. Left and right edges flow naturally because
+ * they're drawn per-line.
+ *
+ * Implementation:
+ *   1. Walk paragraphs in document order, group adjacent paragraphs whose
+ *      5 borders (top/bottom/left/right/between) all deep-equal.
+ *   2. For every (group, column) bucket: top → first line, bottom → last
+ *      line, left/right → every line. This single rule covers single-line,
+ *      multi-line, multi-paragraph, cross-column and cross-page boxes.
+ *   3. between → attached to the first line of each non-first paragraph
+ *      of a group*. Painter draws it above the line, so cross-column
+ *      seams correctly land at the new column's top, not the old column's
+ *      bottom.
+ */
+export function assignParagraphBorders(ctx: ILayoutContext, pages: IDocumentSkeletonPage[]) {
+    const buckets = collectParagraphLines(pages);
+    if (buckets.size === 0) return;
 
-            if (hasParagraphTerminator && paragraphStyle?.borderBottom) {
-                line.borderBottom = paragraphStyle.borderBottom;
+    for (const [segmentId, byParagraph] of buckets) {
+        const paragraphIndices = [...byParagraph.keys()].sort((a, b) => a - b);
+        const cache = ctx.paragraphConfigCache.get(segmentId);
+        if (!cache) continue;
+
+        // Step 1: borderBottom-only fallback. For paragraphs that aren't
+        // a 4-side box (the legacy "underline-style" borderBottom case),
+        // pin borderBottom on the terminator line. Box paragraphs are
+        // handled by the group pass below — assigning bottom here would
+        // leak it onto inner paragraphs of a merged group.
+        for (const pIdx of paragraphIndices) {
+            const lines = byParagraph.get(pIdx)!;
+            const style = cache.get(pIdx)?.paragraphStyle;
+            if (!style || hasFourSideBox(style)) continue;
+            const terminator = findTerminatorLine(lines);
+            if (terminator && style.borderBottom) {
+                terminator.borderBottom = style.borderBottom;
             }
         }
+
+        // Step 2: walk paragraphs, build groups (only those with full
+        // 4-side box style — borderBottom-only paragraphs aren't "boxes"
+        // and we don't merge them).
+        let groupStart = -1;
+        const flushGroup = (endExclusive: number) => {
+            if (groupStart < 0) return;
+            paintGroup(paragraphIndices, byParagraph, cache, groupStart, endExclusive);
+            groupStart = -1;
+        };
+
+        for (let i = 0; i < paragraphIndices.length; i++) {
+            const pIdx = paragraphIndices[i];
+            const style = cache.get(pIdx)?.paragraphStyle;
+            const isBox = !!(style && hasFourSideBox(style));
+
+            if (!isBox) {
+                flushGroup(i);
+                continue;
+            }
+
+            if (groupStart < 0) {
+                groupStart = i;
+                continue;
+            }
+
+            const prevStyle = cache.get(paragraphIndices[i - 1])!.paragraphStyle!;
+            if (sameBorderShape(prevStyle, style!)) {
+                continue; // extend group
+            }
+            flushGroup(i);
+            groupStart = i;
+        }
+        flushGroup(paragraphIndices.length);
+    }
+}
+
+function collectParagraphLines(
+    pages: IDocumentSkeletonPage[]
+): Map<string, Map<number, IDocumentSkeletonLine[]>> {
+    const out = new Map<string, Map<number, IDocumentSkeletonLine[]>>();
+    lineIterator(pages, (line, _, __, page) => {
+        const seg = page.segmentId;
+        let bySeg = out.get(seg);
+        if (!bySeg) {
+            bySeg = new Map();
+            out.set(seg, bySeg);
+        }
+        let arr = bySeg.get(line.paragraphIndex);
+        if (!arr) {
+            arr = [];
+            bySeg.set(line.paragraphIndex, arr);
+        }
+        arr.push(line);
     });
+    return out;
+}
+
+function findTerminatorLine(lines: IDocumentSkeletonLine[]): IDocumentSkeletonLine | undefined {
+    for (const line of lines) {
+        if (lineHasParagraphTerminator(line)) return line;
+    }
+    return undefined;
+}
+
+function lineHasParagraphTerminator(line: IDocumentSkeletonLine): boolean {
+    if (line.divides.length === 0) return false;
+    // Fast path: most paragraphs end with PARAGRAPH as the very last glyph.
+    // Document-final paragraphs append SECTION_BREAK after PARAGRAPH on the
+    // same line, so a full scan is needed for those.
+    const lastDivide = line.divides[line.divides.length - 1];
+    const lastGlyph = lastDivide.glyphGroup[lastDivide.glyphGroup.length - 1];
+    if (lastGlyph?.streamType === DataStreamTreeTokenType.PARAGRAPH) return true;
+    for (const divide of line.divides) {
+        for (const glyph of divide.glyphGroup) {
+            if (glyph.streamType === DataStreamTreeTokenType.PARAGRAPH) return true;
+        }
+    }
+    return false;
+}
+
+function hasFourSideBox(style: IParagraphStyle): boolean {
+    return !!(style.borderTop && style.borderBottom && style.borderLeft && style.borderRight);
+}
+
+function sameBorderShape(a: IParagraphStyle, b: IParagraphStyle): boolean {
+    return sideEqual(a.borderTop, b.borderTop)
+        && sideEqual(a.borderBottom, b.borderBottom)
+        && sideEqual(a.borderLeft, b.borderLeft)
+        && sideEqual(a.borderRight, b.borderRight)
+        && sideEqual(a.borderBetween, b.borderBetween);
+}
+
+function sideEqual(a: IParagraphStyle['borderBottom'], b: IParagraphStyle['borderBottom']): boolean {
+    if (!a && !b) return true;
+    if (!a || !b) return false;
+    return a.color?.rgb === b.color?.rgb
+        && a.width === b.width
+        && a.dashStyle === b.dashStyle
+        && a.padding === b.padding;
+}
+
+function paintGroup(
+    paragraphIndices: number[],
+    byParagraph: Map<number, IDocumentSkeletonLine[]>,
+    cache: Map<number, IParagraphConfig>,
+    start: number,
+    endExclusive: number
+) {
+    const groupStyle = cache.get(paragraphIndices[start])!.paragraphStyle!;
+
+    // Bucket all group lines by their parent column reference, in
+    // document order. Same column referenced twice (extremely unlikely
+    // — would mean the layout split and rejoined within a column)
+    // would produce two buckets; that's fine.
+    interface IBucket { column: IDocumentSkeletonColumn; lines: IDocumentSkeletonLine[] }
+    const buckets: IBucket[] = [];
+    let current: IBucket | undefined;
+    for (let i = start; i < endExclusive; i++) {
+        const lines = byParagraph.get(paragraphIndices[i])!;
+        for (const line of lines) {
+            const col = line.parent!;
+            if (!current || current.column !== col) {
+                current = { column: col, lines: [line] };
+                buckets.push(current);
+            } else {
+                current.lines.push(line);
+            }
+        }
+    }
+
+    for (const bucket of buckets) {
+        const { lines } = bucket;
+        if (groupStyle.borderTop) lines[0].borderTop = groupStyle.borderTop;
+        if (groupStyle.borderBottom) lines[lines.length - 1].borderBottom = groupStyle.borderBottom;
+        if (groupStyle.borderLeft) {
+            for (const line of lines) line.borderLeft = groupStyle.borderLeft;
+        }
+        if (groupStyle.borderRight) {
+            for (const line of lines) line.borderRight = groupStyle.borderRight;
+        }
+    }
+
+    // between: paint at the seam between adjacent paragraphs in the group
+    // by attaching to the FIRST line of each non-first paragraph. Painter
+    // anchors above the line so the seam tracks the next paragraph (cross-
+    // column / cross-page friendly).
+    if (groupStyle.borderBetween) {
+        for (let i = start + 1; i < endExclusive; i++) {
+            const lines = byParagraph.get(paragraphIndices[i])!;
+            if (lines.length > 0) lines[0].borderBetween = groupStyle.borderBetween;
+        }
+    }
 }
 
 export function glyphIterator(
