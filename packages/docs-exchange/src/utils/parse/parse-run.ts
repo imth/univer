@@ -430,7 +430,7 @@ export function parseRunsFromPNode(
       // Handle drawing content
             const drawingNode = findChild(child, 'w:drawing');
             if (drawingNode && drawingsOut && !isWatermarkDrawing(drawingNode)) {
-                const info = parseDrawingFromXmlNode(drawingNode);
+                const info = parseDrawingFromXmlNode(drawingNode, styles, themeFonts);
                 if (info) {
                     const drawingId = uuidv4();
                     drawingsOut.set(drawingId, info);

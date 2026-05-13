@@ -50,8 +50,12 @@ describe('parseRunsFromPNode – drawing extraction', () => {
         expect(runs[0].drawingId).toBeDefined();
         const drawingId = runs[0].drawingId!;
         expect(drawings.has(drawingId)).toBe(true);
-        expect(drawings.get(drawingId)?.rId).toBe('rId9');
-        expect(drawings.get(drawingId)?.widthPx).toBe(100);
+        const info = drawings.get(drawingId);
+        expect(info?.kind).toBe('image');
+        if (info?.kind === 'image') {
+            expect(info.rId).toBe('rId9');
+            expect(info.widthPx).toBe(100);
+        }
     });
 
     it('w:r with both w:t and w:drawing → two runs (text run + drawing run)', () => {

@@ -409,7 +409,7 @@ function parseDrawingMlAnchorAsImage(
     opts: ParseHfWatermarksOptions
 ): IParsedImageWatermark | null {
     const info = parseDrawingFromXmlNode(anchor);
-    if (!info) return null;
+    if (!info || info.kind !== 'image') return null;
     const rel = opts.rels.get(info.rId);
     if (!rel || !rel.target) return null;
     const path = resolveMediaPath(rel.target);
