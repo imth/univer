@@ -194,6 +194,10 @@ export interface IDocumentSkeletonLine {
     tableId: string; // tableId 如果段落包含 table，那么 tableId 不为空，主要用来计算 st\ed.
 
     borderBottom?: IParagraphBorder; // borderBottom
+    borderTop?: IParagraphBorder;
+    borderLeft?: IParagraphBorder;
+    borderRight?: IParagraphBorder;
+    borderBetween?: IParagraphBorder;
     bullet?: IDocumentSkeletonBullet; // 无序和有序列表标题
     width?: number; // the actual width of a line
     // dtId: string[]; // drawingTBIds 影响行的元素id集合，会切割divide，影响上下
