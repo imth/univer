@@ -130,11 +130,14 @@ export function createTableSkeleton(
 
     // Pass 2 — Resolve rowSpan cells. A spanned cell's required height
     // may exceed the natural total of its spanned rows; per Word/WPS,
-    // the deficit is absorbed by the LAST row in the span. Walk every
-    // row after the affected one down by the deficit to keep `top`s
-    // consistent.
+    // the deficit is absorbed by the LAST row in the span. Done in two
+    // sub-passes so an earlier rowSpan cell's pageHeight reflects later
+    // cells' row stretching (otherwise the earlier cell would be sealed
+    // at the row heights that existed when it was processed).
+    //   2a: apply every deficit to row heights & top offsets.
+    //   2b: set each spanned cell's pageHeight from the FINAL row heights.
     for (const rec of spanned) {
-        const { slot, contentHeight, skeleton } = rec;
+        const { slot, contentHeight } = rec;
         const firstRow = slot.rowIdx;
         const lastRow = slot.rowIdx + slot.rowSpan - 1;
         let available = 0;
@@ -144,13 +147,19 @@ export function createTableSkeleton(
         const deficit = contentHeight - available;
         if (deficit > 0) {
             rowSkeletons[lastRow].height += deficit;
-            available += deficit;
             for (let r = lastRow + 1; r < rowSkeletons.length; r++) {
                 rowSkeletons[r].top += deficit;
             }
             rowTop += deficit;
         }
-        skeleton.pageHeight = available;
+    }
+    for (const rec of spanned) {
+        const { slot, skeleton } = rec;
+        const firstRow = slot.rowIdx;
+        const lastRow = slot.rowIdx + slot.rowSpan - 1;
+        let h = 0;
+        for (let r = firstRow; r <= lastRow; r++) h += rowSkeletons[r].height;
+        skeleton.pageHeight = h;
     }
 
     // Pass 3 — Single-row cells get the final row height; apply vAlign.

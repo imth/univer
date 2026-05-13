@@ -252,6 +252,71 @@ describe('docs table layout', () => {
         expect(skeleton!.rows[1].cells[0].left).toBe(spanned.pageWidth);
     });
 
+    it('keeps an earlier rowSpan cell tall when a later rowSpan cell stretches the rows', () => {
+        // 2-row × 2-col table. Both cells in row 0 are rowSpan=2 owners.
+        // col-0 owner needs 20 px (short). col-1 owner needs 60 px (tall).
+        // Natural row heights are 22 each (20 content + 1+1 margins) → row
+        // total 44 → col-1 needs 16 px of deficit, absorbed by row 1.
+        // Regression: col-0 pageHeight must reflect the FINAL row total
+        // (22 + 38 = 60), not the row total at the time col-0 was processed
+        // (22 + 22 = 44).
+        createSkeletonCellPagesMock.mockReset();
+        createSkeletonCellPagesMock.mockImplementation(
+            (_ctx: unknown, _vm: unknown, _cell: unknown, _sec: unknown, _t: unknown, row: number, col: number) => {
+                if (row === 0 && col === 0) return [makeCellPage(60, 20)];
+                if (row === 0 && col === 1) return [makeCellPage(60, 60)];
+                return [makeCellPage(60, 0)];
+            }
+        );
+
+        const tableSource = {
+            tableId: 'table-multi-span',
+            align: TableAlignmentType.START,
+            indent: { v: 0 },
+            tableRows: [
+                {
+                    repeatHeaderRow: BooleanNumber.FALSE,
+                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
+                    cantSplit: BooleanNumber.FALSE,
+                    tableCells: [{ rowSpan: 2 }, { rowSpan: 2 }],
+                },
+                {
+                    repeatHeaderRow: BooleanNumber.FALSE,
+                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
+                    cantSplit: BooleanNumber.FALSE,
+                    tableCells: [{ vMergeContinue: BooleanNumber.TRUE }, { vMergeContinue: BooleanNumber.TRUE }],
+                },
+            ],
+        } as any;
+        const viewModel = { getTableByStartIndex: vi.fn(() => ({ tableSource })) } as any;
+        const tableNode = {
+            startIndex: 0,
+            endIndex: 80,
+            children: [createRowNode(1, 20, 2), createRowNode(21, 40, 2)],
+        } as any;
+        const curPage = {
+            pageWidth: 400,
+            pageHeight: 300,
+            marginTop: 20,
+            marginBottom: 20,
+            marginLeft: 10,
+            marginRight: 10,
+        } as any;
+
+        const skeleton = createTableSkeleton({} as any, curPage, viewModel, tableNode, {} as any);
+        expect(skeleton).toBeTruthy();
+        // Row 0 stays at 0 (no single-row cells contribute height); row 1
+        // absorbs deficits from BOTH spanned cells (22 from col-0, then
+        // another 40 from col-1's 62 px requirement), so row 1 = 62.
+        expect(skeleton!.rows[0].height).toBe(0);
+        expect(skeleton!.rows[1].height).toBe(62);
+        // Regression check: col-0's pageHeight reflects row 1's FINAL
+        // height (after col-1 stretched it), not the row total at the
+        // moment col-0 was processed. Both spanned cells should be 62.
+        expect(skeleton!.rows[0].cells[0].pageHeight).toBe(62);
+        expect(skeleton!.rows[0].cells[1].pageHeight).toBe(62);
+    });
+
     it('handles rollback/slice id helpers and missing table branches', () => {
         const listCache = new Map<string, any[][]>([
             ['a', [[{ paragraph: { startIndex: 1 } }, { paragraph: { startIndex: 20 } }]]],
