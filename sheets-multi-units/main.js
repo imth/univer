@@ -7,7 +7,7 @@ import {
 import {
   UniverThreadCommentUIPlugin
 } from "../chunk-GQG566ZE.js";
-import "../chunk-FUUWBDLU.js";
+import "../chunk-ZNFLL6HD.js";
 import "../chunk-OS5RWOYF.js";
 import {
   UniverSheetsThreadCommentPlugin
@@ -25,9 +25,9 @@ import {
 import "../chunk-IQUVNM4H.js";
 import {
   UniverDocsDrawingUIPlugin
-} from "../chunk-HJXP54CP.js";
+} from "../chunk-Z2S6O4AA.js";
 import "../chunk-TM5QNBBA.js";
-import "../chunk-XSI67AV7.js";
+import "../chunk-G6UAX7N3.js";
 import {
   FUniver
 } from "../chunk-32E5INCS.js";
@@ -187,13 +187,13 @@ var injector = univer.__getInjector();
 var userManagerService = injector.get(UserManagerService);
 userManagerService.setCurrentUser(mockUser);
 setTimeout(() => {
-  import("../lazy-CWYYJLZU.js").then((lazy) => {
+  import("../lazy-AXZPMPNI.js").then((lazy) => {
     const plugins = lazy.default();
     plugins.forEach((p) => univer.registerPlugin(p[0], p[1]));
   });
 }, LOAD_LAZY_PLUGINS_TIMEOUT);
 setTimeout(() => {
-  import("../very-lazy-5ILQ4SSX.js").then((lazy) => {
+  import("../very-lazy-Z2P4UP3B.js").then((lazy) => {
     const plugins = lazy.default();
     plugins.forEach((p) => univer.registerPlugin(p[0], p[1]));
   });

@@ -10,11 +10,11 @@ import {
 import "../chunk-IQUVNM4H.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-CFUBSM5O.js";
+} from "../chunk-2IOR4GAA.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-HJXP54CP.js";
+} from "../chunk-Z2S6O4AA.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
@@ -25,7 +25,7 @@ import "../chunk-YJYPSLQA.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-XSI67AV7.js";
+} from "../chunk-G6UAX7N3.js";
 import {
   FUniver
 } from "../chunk-32E5INCS.js";
@@ -2559,6 +2559,18 @@ function bytesToBase64(bytes) {
     binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
   }
   return btoa(binary);
+}
+
+// ../packages/docs-exchange/src/utils/units.ts
+var PT_PER_PX = 0.75;
+function dxaToPx(dxa) {
+  return dxa / 15;
+}
+function hpToPt(hp) {
+  return hp / 2;
+}
+function ptToPx(pt) {
+  return pt / PT_PER_PX;
 }
 
 // ../node_modules/.pnpm/fast-xml-parser@5.7.2/node_modules/fast-xml-parser/src/util.js
@@ -6543,6 +6555,715 @@ function flattenSdt(nodes) {
   return out;
 }
 
+// ../packages/docs-exchange/src/utils/parse/parse-paragraph-style.ts
+var ALIGN_MAP = {
+  start: 1,
+  left: 1,
+  center: 2,
+  end: 3,
+  right: 3,
+  both: 5,
+  justify: 5,
+  distribute: 6
+};
+var TAB_ALIGN_MAP = {
+  start: 1,
+  left: 1,
+  center: 2,
+  end: 3,
+  right: 3,
+  decimal: 1,
+  bar: 1,
+  num: 1
+};
+var TAB_LEADER_MAP = {
+  dot: 1,
+  hyphen: 2,
+  underscore: 3,
+  middleDot: 4
+};
+var HEADING_MAP = {
+  Title: 2,
+  Subtitle: 3,
+  Heading1: 4,
+  Heading2: 5,
+  Heading3: 6,
+  Heading4: 7,
+  Heading5: 8
+};
+var DEFAULT_BORDER_COLOR_RGB = "#000000";
+function parseBorder(b) {
+  const a = nodeAttrs(b);
+  const out = {};
+  const colorAttr = a["@_w:color"];
+  if (colorAttr && colorAttr !== "auto") out.color = { rgb: `#${colorAttr.toUpperCase()}` };
+  else out.color = { rgb: DEFAULT_BORDER_COLOR_RGB };
+  const sz = Number(a["@_w:sz"]);
+  if (!Number.isNaN(sz)) out.width = Math.max(1, Math.round(sz / 6));
+  const valAttr = a["@_w:val"];
+  out.dashStyle = valAttr && DOCX_BORDER_TO_UNIVER_DASH[valAttr] || 1;
+  const space = Number(a["@_w:space"]);
+  if (!Number.isNaN(space)) out.padding = space * 4 / 3;
+  return out;
+}
+function parseSpacingInto(spacing, out) {
+  var _a;
+  const a = nodeAttrs(spacing);
+  if (a["@_w:before"] !== void 0) {
+    const before = Number(a["@_w:before"]);
+    if (!Number.isNaN(before)) out.spaceAbove = { v: dxaToPx(before) };
+  } else if (a["@_w:beforeLines"] !== void 0) {
+    const beforeLines = Number(a["@_w:beforeLines"]);
+    if (!Number.isNaN(beforeLines)) out.spaceAbove = { v: beforeLines / 100 * 16 };
+  }
+  if (a["@_w:after"] !== void 0) {
+    const after = Number(a["@_w:after"]);
+    if (!Number.isNaN(after)) out.spaceBelow = { v: dxaToPx(after) };
+  } else if (a["@_w:afterLines"] !== void 0) {
+    const afterLines = Number(a["@_w:afterLines"]);
+    if (!Number.isNaN(afterLines)) out.spaceBelow = { v: afterLines / 100 * 16 };
+  }
+  const line = Number(a["@_w:line"]);
+  if (!Number.isNaN(line)) {
+    const rule = (_a = a["@_w:lineRule"]) != null ? _a : "auto";
+    if (rule === "auto") {
+      out.lineSpacing = line / 240;
+      out.spacingRule = 0;
+    } else if (rule === "atLeast") {
+      out.lineSpacing = dxaToPx(line);
+      out.spacingRule = 1;
+    } else if (rule === "exact") {
+      out.lineSpacing = dxaToPx(line);
+      out.spacingRule = 2;
+    }
+  }
+}
+var CHAR_TO_PT = 10.5;
+var DXA_ARTIFACT_EPSILON_PT = 0.5;
+function parseIndentInto(ind, out) {
+  var _a, _b, _c, _d;
+  const a = nodeAttrs(ind);
+  const pickPx = (charsAttr, dxaAttr) => {
+    if (charsAttr !== void 0) {
+      const n = Number(charsAttr);
+      if (!Number.isNaN(n)) return ptToPx(n / 100 * CHAR_TO_PT);
+    }
+    if (dxaAttr !== void 0) {
+      const n = Number(dxaAttr);
+      if (!Number.isNaN(n)) return dxaToPx(n);
+    }
+    return void 0;
+  };
+  const dropArtifact = (charsAttr, valuePx) => charsAttr === void 0 && Math.abs(valuePx) < ptToPx(DXA_ARTIFACT_EPSILON_PT);
+  const startPx = pickPx(
+    (_a = a["@_w:leftChars"]) != null ? _a : a["@_w:startChars"],
+    (_b = a["@_w:left"]) != null ? _b : a["@_w:start"]
+  );
+  const endPx = pickPx(
+    (_c = a["@_w:rightChars"]) != null ? _c : a["@_w:endChars"],
+    (_d = a["@_w:right"]) != null ? _d : a["@_w:end"]
+  );
+  if (endPx !== void 0) out.indentEnd = { v: endPx };
+  const firstLineChars = a["@_w:firstLineChars"];
+  const firstLinePx = pickPx(firstLineChars, a["@_w:firstLine"]);
+  if (firstLinePx !== void 0 && !dropArtifact(firstLineChars, firstLinePx)) {
+    out.indentFirstLine = { v: firstLinePx };
+  }
+  const hangingChars = a["@_w:hangingChars"];
+  const hangingPxRaw = pickPx(hangingChars, a["@_w:hanging"]);
+  const hangingPx = hangingPxRaw !== void 0 && !dropArtifact(hangingChars, hangingPxRaw) ? hangingPxRaw : void 0;
+  if (hangingPx !== void 0) out.hanging = { v: hangingPx };
+  if (startPx !== void 0) {
+    out.indentStart = { v: hangingPx !== void 0 ? startPx - hangingPx : startPx };
+  }
+}
+function parseTabsInto(tabs, out) {
+  const stops = [];
+  const cleared = [];
+  for (const t of nodeChildren(tabs)) {
+    if (nodeName(t) !== "w:tab") continue;
+    const a = nodeAttrs(t);
+    const pos = Number(a["@_w:pos"]);
+    if (Number.isNaN(pos)) continue;
+    const offset = dxaToPx(pos);
+    const val = a["@_w:val"];
+    if (val === "clear") {
+      cleared.push(offset);
+      continue;
+    }
+    const alignment = val && TAB_ALIGN_MAP[val] || 1;
+    const leaderVal = a["@_w:leader"];
+    const leader = leaderVal ? TAB_LEADER_MAP[leaderVal] : void 0;
+    stops.push(leader !== void 0 ? { offset, alignment, leader } : { offset, alignment });
+  }
+  if (stops.length > 0) out.tabStops = stops;
+  if (cleared.length > 0) out.tabStopsClear = cleared;
+}
+function parsePPr(pPr) {
+  if (!pPr) return void 0;
+  const out = {};
+  for (const child of nodeChildren(pPr)) {
+    const name = nodeName(child);
+    if (name === "w:jc") {
+      const v = nodeAttrs(child)["@_w:val"];
+      if (v && v in ALIGN_MAP) out.horizontalAlign = ALIGN_MAP[v];
+    } else if (name === "w:pStyle") {
+      const v = nodeAttrs(child)["@_w:val"];
+      if (v && v in HEADING_MAP) out.namedStyleType = HEADING_MAP[v];
+    } else if (name === "w:spacing") {
+      parseSpacingInto(child, out);
+    } else if (name === "w:ind") {
+      parseIndentInto(child, out);
+    } else if (name === "w:pBdr") {
+      for (const b of nodeChildren(child)) {
+        const bn = nodeName(b);
+        if (bn === "w:bottom") out.borderBottom = parseBorder(b);
+        else if (bn === "w:top") out.borderTop = parseBorder(b);
+        else if (bn === "w:left") out.borderLeft = parseBorder(b);
+        else if (bn === "w:right") out.borderRight = parseBorder(b);
+        else if (bn === "w:between") out.borderBetween = parseBorder(b);
+      }
+    } else if (name === "w:tabs") {
+      parseTabsInto(child, out);
+    }
+  }
+  return Object.keys(out).length > 0 ? out : void 0;
+}
+function pPrStyleRef(pPr) {
+  if (!pPr) return void 0;
+  for (const child of nodeChildren(pPr)) {
+    if (nodeName(child) === "w:pStyle") {
+      return nodeAttrs(child)["@_w:val"];
+    }
+  }
+  return void 0;
+}
+
+// ../packages/docs-exchange/src/utils/parse/parse-run.ts
+var uuidv4 = () => generateRandomId();
+var HIGHLIGHT_COLORS = {
+  black: "000000",
+  blue: "0000FF",
+  cyan: "00FFFF",
+  green: "00FF00",
+  magenta: "FF00FF",
+  red: "FF0000",
+  yellow: "FFFF00",
+  white: "FFFFFF",
+  darkBlue: "000080",
+  darkCyan: "008080",
+  darkGreen: "008000",
+  darkMagenta: "800080",
+  darkRed: "800000",
+  darkYellow: "808000",
+  darkGray: "808080",
+  lightGray: "C0C0C0"
+};
+function isToggleOn(val) {
+  return val !== "0" && val !== "false" && val !== "none";
+}
+var UNDERLINE_VAL_TO_DECORATION = {
+  single: 12 /* SINGLE */,
+  double: 10 /* DOUBLE */,
+  thick: 13 /* THICK */,
+  dotted: 8 /* DOTTED */,
+  dottedHeavy: 9 /* DOTTED_HEAVY */,
+  dash: 0 /* DASH */,
+  dashedHeavy: 3 /* DASHED_HEAVY */,
+  dashLong: 4 /* DASH_LONG */,
+  dashLongHeavy: 5 /* DASH_LONG_HEAVY */,
+  dotDash: 6 /* DOT_DASH */,
+  dashDotHeavy: 2 /* DASH_DOT_HEAVY */,
+  dotDotDash: 7 /* DOT_DOT_DASH */,
+  dashDotDotHeavy: 1 /* DASH_DOT_DOT_HEAVY */,
+  wave: 14 /* WAVE */,
+  wavyHeavy: 16 /* WAVY_HEAVY */,
+  wavyDouble: 15 /* WAVY_DOUBLE */,
+  words: 17 /* WORDS */
+};
+function parseRPr(rPr) {
+  if (!rPr) return void 0;
+  const style = {};
+  for (const child of nodeChildren(rPr)) {
+    const name = nodeName(child);
+    const attrs = nodeAttrs(child);
+    switch (name) {
+      case "w:b":
+        if (isToggleOn(attrs["@_w:val"])) style.bl = 1;
+        break;
+      case "w:i":
+        if (isToggleOn(attrs["@_w:val"])) style.it = 1;
+        break;
+      case "w:u": {
+        const val = attrs["@_w:val"];
+        if (val === "none") break;
+        if (!isToggleOn(val)) break;
+        const t = val ? UNDERLINE_VAL_TO_DECORATION[val] : void 0;
+        style.ul = t != null ? { s: 1, t } : { s: 1 };
+        break;
+      }
+      case "w:strike":
+        if (isToggleOn(attrs["@_w:val"])) style.st = { s: 1 };
+        break;
+      // OOXML §17.3.2.9 — separate element from <w:strike/>; renderer
+      // treats `st.t = DOUBLE` as two stacked strike lines.
+      case "w:dstrike":
+        if (isToggleOn(attrs["@_w:val"])) style.st = { s: 1, t: 10 /* DOUBLE */ };
+        break;
+      case "w:sz": {
+        const val = Number(attrs["@_w:val"]);
+        if (!Number.isNaN(val)) style.fs = hpToPt(val);
+        break;
+      }
+      case "w:rFonts": {
+        const fam = attrs["@_w:ascii"] || attrs["@_w:hAnsi"] || attrs["@_w:cs"];
+        if (fam) style.ff = fam;
+        break;
+      }
+      case "w:color": {
+        const v = attrs["@_w:val"];
+        if (v && v !== "auto") style.cl = { rgb: `#${v.toUpperCase()}` };
+        break;
+      }
+      case "w:highlight": {
+        const v = attrs["@_w:val"];
+        const rgb = v ? HIGHLIGHT_COLORS[v] : void 0;
+        if (rgb) style.bg = { rgb: `#${rgb}` };
+        break;
+      }
+      case "w:shd": {
+        const fill = attrs["@_w:fill"];
+        if (fill && fill !== "auto") style.bg = { rgb: `#${fill.toUpperCase()}` };
+        break;
+      }
+      case "w:vertAlign": {
+        const v = attrs["@_w:val"];
+        if (v === "superscript") style.va = 3;
+        else if (v === "subscript") style.va = 2;
+        break;
+      }
+    }
+  }
+  return Object.keys(style).length > 0 ? style : void 0;
+}
+function rPrStyleRef(rPr) {
+  if (!rPr) return void 0;
+  for (const child of nodeChildren(rPr)) {
+    if (nodeName(child) === "w:rStyle") {
+      return nodeAttrs(child)["@_w:val"];
+    }
+  }
+  return void 0;
+}
+function extractRFonts(rPr) {
+  if (!rPr) return void 0;
+  for (const child of nodeChildren(rPr)) {
+    if (nodeName(child) !== "w:rFonts") continue;
+    const a = nodeAttrs(child);
+    const out = {};
+    if (a["@_w:ascii"]) out.ascii = a["@_w:ascii"];
+    if (a["@_w:hAnsi"]) out.hAnsi = a["@_w:hAnsi"];
+    if (a["@_w:eastAsia"]) out.eastAsia = a["@_w:eastAsia"];
+    if (a["@_w:cs"]) out.cs = a["@_w:cs"];
+    if (a["@_w:asciiTheme"]) out.asciiTheme = a["@_w:asciiTheme"];
+    if (a["@_w:hAnsiTheme"]) out.hAnsiTheme = a["@_w:hAnsiTheme"];
+    if (a["@_w:eastAsiaTheme"]) out.eastAsiaTheme = a["@_w:eastAsiaTheme"];
+    if (a["@_w:cstheme"]) out.cstheme = a["@_w:cstheme"];
+    return Object.keys(out).length > 0 ? out : void 0;
+  }
+  return void 0;
+}
+var CJK_PATTERN = /[\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]/;
+function resolveFontFamily(rfonts, text, themeFonts) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
+  if (!rfonts) return void 0;
+  const wantsEastAsia = CJK_PATTERN.test(text);
+  const themeOf = (ref) => themeFonts && ref ? themeFonts.resolve(ref) : void 0;
+  if (wantsEastAsia) {
+    return (_g = (_f = (_e = (_d = (_c = (_b = (_a = rfonts.eastAsia) != null ? _a : themeOf(rfonts.eastAsiaTheme)) != null ? _b : rfonts.ascii) != null ? _c : rfonts.hAnsi) != null ? _d : themeOf(rfonts.asciiTheme)) != null ? _e : themeOf(rfonts.hAnsiTheme)) != null ? _f : rfonts.cs) != null ? _g : themeOf(rfonts.cstheme);
+  }
+  return (_n = (_m = (_l = (_k = (_j = (_i = (_h = rfonts.ascii) != null ? _h : rfonts.hAnsi) != null ? _i : themeOf(rfonts.asciiTheme)) != null ? _j : themeOf(rfonts.hAnsiTheme)) != null ? _k : rfonts.eastAsia) != null ? _l : themeOf(rfonts.eastAsiaTheme)) != null ? _m : rfonts.cs) != null ? _n : themeOf(rfonts.cstheme);
+}
+function mergeRFonts(parent, child) {
+  if (!parent) return child;
+  if (!child) return parent;
+  return { ...parent, ...child };
+}
+function runTextFromR(r) {
+  let text = "";
+  for (const child of nodeChildren(r)) {
+    const name = nodeName(child);
+    if (name === "w:t") {
+      text += textOf(child);
+    } else if (name === "w:tab") {
+      text += "	";
+    } else if (name === "w:br") {
+      const brType = nodeAttrs(child)["@_w:type"];
+      if (brType === "page") text += "\f" /* PAGE_BREAK */;
+      else if (brType === "column") text += "\v" /* COLUMN_BREAK */;
+      else text += "\x07" /* LINE_BREAK */;
+    }
+  }
+  return text;
+}
+function readRunFieldSignals(r) {
+  let out;
+  for (const child of nodeChildren(r)) {
+    const name = nodeName(child);
+    if (name === "w:fldChar") {
+      const v = nodeAttrs(child)["@_w:fldCharType"];
+      if (v === "begin" || v === "separate" || v === "end") {
+        (out != null ? out : out = {}).fldChar = v;
+      }
+    } else if (name === "w:instrText") {
+      (out != null ? out : out = {}).instrText = textOf(child);
+    }
+  }
+  return out;
+}
+function classifyFieldInstr(instr) {
+  var _a;
+  const head = (_a = instr.trim().split(/\s+/, 1)[0]) == null ? void 0 : _a.toUpperCase();
+  if (head === "PAGE") return "PAGE";
+  if (head === "NUMPAGES") return "NUMPAGES";
+  return void 0;
+}
+function parseRunsFromPNode(pNode, drawingsOut, styles, pStyleRpr, themeFonts, pStyleRFonts) {
+  var _a;
+  const docDefaultRpr = styles == null ? void 0 : styles.docDefaults.rPr;
+  const docDefaultRFonts = styles == null ? void 0 : styles.docDefaults.rFonts;
+  const baseRpr = mergeRpr(docDefaultRpr, pStyleRpr);
+  const baseRFonts = mergeRFonts(docDefaultRFonts, pStyleRFonts);
+  const runs = [];
+  let fieldDepth = 0;
+  let fieldInstr = "";
+  let inFieldResult = false;
+  const emitField = (rPrForStyle, fallbackText) => {
+    const kind = classifyFieldInstr(fieldInstr);
+    if (!kind) {
+      if (fallbackText.length > 0) {
+        const style2 = resolveRunStyle(rPrForStyle, baseRpr, baseRFonts, styles, themeFonts, fallbackText);
+        runs.push(style2 ? { text: fallbackText, style: style2 } : { text: fallbackText });
+      }
+      return;
+    }
+    const placeholder = "1";
+    const style = resolveRunStyle(rPrForStyle, baseRpr, baseRFonts, styles, themeFonts, placeholder);
+    runs.push(style ? { text: placeholder, style, fieldType: kind } : { text: placeholder, fieldType: kind });
+  };
+  let pendingFieldRPr;
+  let pendingFieldResultRPr;
+  let pendingFieldFallback = "";
+  for (const child of nodeChildren(pNode)) {
+    const name = nodeName(child);
+    if (name === "w:r") {
+      const rPr = findChild(child, "w:rPr");
+      const signals = readRunFieldSignals(child);
+      if ((signals == null ? void 0 : signals.fldChar) === "begin") {
+        fieldDepth++;
+        fieldInstr = "";
+        inFieldResult = false;
+        pendingFieldRPr = rPr;
+        pendingFieldResultRPr = void 0;
+        pendingFieldFallback = "";
+        continue;
+      }
+      if ((signals == null ? void 0 : signals.fldChar) === "separate") {
+        if (fieldDepth > 0) inFieldResult = true;
+        continue;
+      }
+      if ((signals == null ? void 0 : signals.fldChar) === "end") {
+        if (fieldDepth > 0) {
+          emitField(pendingFieldResultRPr != null ? pendingFieldResultRPr : pendingFieldRPr, pendingFieldFallback);
+          fieldDepth--;
+          fieldInstr = "";
+          inFieldResult = false;
+          pendingFieldRPr = void 0;
+          pendingFieldResultRPr = void 0;
+          pendingFieldFallback = "";
+        }
+        continue;
+      }
+      if (fieldDepth > 0) {
+        if ((signals == null ? void 0 : signals.instrText) !== void 0 && !inFieldResult) {
+          fieldInstr += signals.instrText;
+          continue;
+        }
+        if (inFieldResult) {
+          if (pendingFieldResultRPr === void 0 && rPr !== void 0 && runTextFromR(child).length > 0) {
+            pendingFieldResultRPr = rPr;
+          }
+          pendingFieldFallback += runTextFromR(child);
+          continue;
+        }
+        continue;
+      }
+      const text = runTextFromR(child);
+      const style = resolveRunStyle(rPr, baseRpr, baseRFonts, styles, themeFonts, text);
+      if (text.length > 0) runs.push(style ? { text, style } : { text });
+      const drawingNode = (_a = findChild(child, "w:drawing")) != null ? _a : findChild(child, "mc:AlternateContent");
+      if (drawingNode && drawingsOut && !isWatermarkDrawing(drawingNode)) {
+        const info = parseDrawingFromXmlNode(drawingNode, styles, themeFonts);
+        if (info) {
+          const drawingId = uuidv4();
+          drawingsOut.set(drawingId, info);
+          runs.push({ text: "", drawingId });
+        }
+      }
+    } else if (name === "w:hyperlink") {
+      const rId = nodeAttrs(child)["@_r:id"];
+      for (const inner of nodeChildren(child)) {
+        if (nodeName(inner) === "w:r") {
+          const rPr = findChild(inner, "w:rPr");
+          const text = runTextFromR(inner);
+          if (text.length === 0) continue;
+          const style = resolveRunStyle(rPr, baseRpr, baseRFonts, styles, themeFonts, text);
+          if (rId) runs.push({ text, style, hyperlink: { url: rId } });
+          else runs.push(style ? { text, style } : { text });
+        }
+      }
+    }
+  }
+  if (fieldDepth > 0 && pendingFieldFallback.length > 0) {
+    const style = resolveRunStyle(pendingFieldResultRPr != null ? pendingFieldResultRPr : pendingFieldRPr, baseRpr, baseRFonts, styles, themeFonts, pendingFieldFallback);
+    runs.push(style ? { text: pendingFieldFallback, style } : { text: pendingFieldFallback });
+  }
+  return runs;
+}
+function mergeRpr(parent, child) {
+  if (!parent) return child;
+  if (!child) return parent;
+  return { ...parent, ...child };
+}
+function isWatermarkDrawing(drawing) {
+  var _a;
+  const find = (node, tag) => {
+    for (const c of nodeChildren(node)) {
+      if (nodeName(c) === tag) return c;
+      const inner = find(c, tag);
+      if (inner) return inner;
+    }
+    return void 0;
+  };
+  const anchor = find(drawing, "wp:anchor");
+  if (!anchor) return false;
+  const docPr = find(anchor, "wp:docPr");
+  const name = docPr ? (_a = nodeAttrs(docPr)["@_name"]) != null ? _a : "" : "";
+  return /watermark/i.test(name);
+}
+function resolveRunStyle(rPr, baseRpr, baseRFonts, styles, themeFonts, text) {
+  let merged = baseRpr;
+  let rfonts = baseRFonts;
+  if (styles && rPr) {
+    const ref = rPrStyleRef(rPr);
+    if (ref) {
+      merged = mergeRpr(merged, styles.resolveRStyle(ref));
+      rfonts = mergeRFonts(rfonts, styles.resolveRFonts(ref));
+    }
+  }
+  const inline = parseRPr(rPr);
+  merged = mergeRpr(merged, inline);
+  rfonts = mergeRFonts(rfonts, extractRFonts(rPr));
+  const ff = resolveFontFamily(rfonts, text, themeFonts);
+  if (ff) merged = { ...merged != null ? merged : {}, ff };
+  return merged;
+}
+
+// ../packages/docs-exchange/src/utils/parse/parse-section.ts
+var DEFAULT_A4 = { width: 793.7, height: 1122.7 };
+var PAGE_ORIENT_PORTRAIT = 0;
+var PAGE_ORIENT_LANDSCAPE = 1;
+var DOCUMENT_FLAVOR_TRADITIONAL = 1;
+var GRID_TYPE_BY_NAME = {
+  default: 0,
+  lines: 1,
+  linesAndChars: 2,
+  snapToChars: 3
+};
+function dxaAttrToPx(value) {
+  if (value === void 0) return void 0;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return void 0;
+  return dxaToPx(n);
+}
+function parseSectionProperties(body) {
+  const sectPr = body ? findChild(body, "w:sectPr") : void 0;
+  if (!sectPr) {
+    return {
+      documentStyle: { pageSize: { ...DEFAULT_A4 }, documentFlavor: DOCUMENT_FLAVOR_TRADITIONAL },
+      sectionBreakDefaults: {},
+      headerRefs: {},
+      footerRefs: {},
+      titlePage: false
+    };
+  }
+  return parseSectionPropertiesFromNode(sectPr);
+}
+function parseSectionPropertiesFromNode(sectPr) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i;
+  const style = { documentFlavor: DOCUMENT_FLAVOR_TRADITIONAL };
+  const sectionBreakDefaults = {};
+  const headerRefs = {};
+  const footerRefs = {};
+  for (const ref of findChildren(sectPr, "w:headerReference")) {
+    const a = nodeAttrs(ref);
+    const type = (_a = a["@_w:type"]) != null ? _a : "default";
+    const rId = a["@_r:id"];
+    if (rId && (type === "default" || type === "first" || type === "even")) headerRefs[type] = rId;
+  }
+  for (const ref of findChildren(sectPr, "w:footerReference")) {
+    const a = nodeAttrs(ref);
+    const type = (_b = a["@_w:type"]) != null ? _b : "default";
+    const rId = a["@_r:id"];
+    if (rId && (type === "default" || type === "first" || type === "even")) footerRefs[type] = rId;
+  }
+  const titlePage = findChild(sectPr, "w:titlePg") !== void 0;
+  const typeNode = findChild(sectPr, "w:type");
+  const sectionTypeRaw = typeNode ? nodeAttrs(typeNode)["@_w:val"] : void 0;
+  const pgSz = findChild(sectPr, "w:pgSz");
+  if (pgSz) {
+    const attrs = nodeAttrs(pgSz);
+    const width = dxaAttrToPx(attrs["@_w:w"]);
+    const height = dxaAttrToPx(attrs["@_w:h"]);
+    style.pageSize = {
+      width: width != null ? width : DEFAULT_A4.width,
+      height: height != null ? height : DEFAULT_A4.height
+    };
+    if (attrs["@_w:orient"] === "landscape") {
+      style.pageOrient = PAGE_ORIENT_LANDSCAPE;
+    } else if (attrs["@_w:orient"] === "portrait") {
+      style.pageOrient = PAGE_ORIENT_PORTRAIT;
+    }
+  } else {
+    style.pageSize = { ...DEFAULT_A4 };
+  }
+  const pgMar = findChild(sectPr, "w:pgMar");
+  if (pgMar) {
+    const attrs = nodeAttrs(pgMar);
+    const top = dxaAttrToPx(attrs["@_w:top"]);
+    const right = dxaAttrToPx(attrs["@_w:right"]);
+    const bottom = dxaAttrToPx(attrs["@_w:bottom"]);
+    const left = dxaAttrToPx(attrs["@_w:left"]);
+    const header = dxaAttrToPx(attrs["@_w:header"]);
+    const footer = dxaAttrToPx(attrs["@_w:footer"]);
+    if (top !== void 0) style.marginTop = top;
+    if (right !== void 0) style.marginRight = right;
+    if (bottom !== void 0) style.marginBottom = bottom;
+    if (left !== void 0) style.marginLeft = left;
+    if (header !== void 0) style.marginHeader = header;
+    if (footer !== void 0) style.marginFooter = footer;
+  }
+  const docGrid = findChild(sectPr, "w:docGrid");
+  if (docGrid) {
+    const attrs = nodeAttrs(docGrid);
+    const linePitch = dxaAttrToPx(attrs["@_w:linePitch"]);
+    if (linePitch !== void 0) sectionBreakDefaults.linePitch = linePitch;
+    const typeName = attrs["@_w:type"];
+    if (typeName !== void 0 && typeName in GRID_TYPE_BY_NAME) {
+      sectionBreakDefaults.gridType = GRID_TYPE_BY_NAME[typeName];
+    }
+  }
+  const cols = findChild(sectPr, "w:cols");
+  if (cols) {
+    const a = nodeAttrs(cols);
+    const numAttr = Number(a["@_w:num"]);
+    const num = Number.isFinite(numAttr) && numAttr > 0 ? Math.floor(numAttr) : 1;
+    const defaultSpace = (_c = dxaAttrToPx(a["@_w:space"])) != null ? _c : 0;
+    const sepRaw = a["@_w:sep"];
+    const sep = sepRaw === "true" || sepRaw === "1";
+    const equalWidthRaw = a["@_w:equalWidth"];
+    const equalWidth = equalWidthRaw === void 0 ? true : !(equalWidthRaw === "false" || equalWidthRaw === "0");
+    const colNodes = findChildren(cols, "w:col");
+    const properties = [];
+    if (!equalWidth && colNodes.length > 0) {
+      for (let i = 0; i < colNodes.length; i++) {
+        const ca = nodeAttrs(colNodes[i]);
+        const width = (_d = dxaAttrToPx(ca["@_w:w"])) != null ? _d : 0;
+        const padding = i === colNodes.length - 1 ? 0 : (_e = dxaAttrToPx(ca["@_w:space"])) != null ? _e : defaultSpace;
+        properties.push({ width, paddingEnd: padding });
+      }
+    } else if (num > 1) {
+      const pageW = (_g = (_f = style.pageSize) == null ? void 0 : _f.width) != null ? _g : DEFAULT_A4.width;
+      const marginL = (_h = style.marginLeft) != null ? _h : 0;
+      const marginR = (_i = style.marginRight) != null ? _i : 0;
+      const contentWidth = Math.max(0, pageW - marginL - marginR);
+      const totalGutter = defaultSpace * (num - 1);
+      const each = (contentWidth - totalGutter) / num;
+      for (let i = 0; i < num; i++) {
+        properties.push({ width: each, paddingEnd: i === num - 1 ? 0 : defaultSpace });
+      }
+    }
+    if (properties.length > 1) {
+      sectionBreakDefaults.columnProperties = properties;
+      sectionBreakDefaults.columnSeparatorType = sep ? 2 /* BETWEEN_EACH_COLUMN */ : 1 /* NONE */;
+    }
+  }
+  return { documentStyle: style, sectionBreakDefaults, headerRefs, footerRefs, titlePage, sectionTypeRaw };
+}
+function parseEvenAndOddHeaders(settingsXml) {
+  if (!settingsXml) return false;
+  return /<w:evenAndOddHeaders\b/.test(settingsXml);
+}
+
+// ../packages/docs-exchange/src/utils/parse/parse-paragraph.ts
+function parseBulletFromPPr(pPr) {
+  var _a;
+  if (!pPr) return void 0;
+  const numPr = findChild(pPr, "w:numPr");
+  if (!numPr) return void 0;
+  const numId = findChild(numPr, "w:numId");
+  const ilvl = findChild(numPr, "w:ilvl");
+  const numIdVal = numId ? nodeAttrs(numId)["@_w:val"] : void 0;
+  if (!numIdVal) return void 0;
+  if (numIdVal === "0") return void 0;
+  const ilvlVal = ilvl ? Number((_a = nodeAttrs(ilvl)["@_w:val"]) != null ? _a : "0") : 0;
+  return { numId: numIdVal, ilvl: Number.isNaN(ilvlVal) ? 0 : ilvlVal };
+}
+function parseBullet(pNode) {
+  return parseBulletFromPPr(findChild(pNode, "w:pPr"));
+}
+function mergePPr(parent, child) {
+  var _a, _b, _c;
+  if (!parent) return child;
+  if (!child) return parent;
+  const merged = { ...parent, ...child };
+  if (parent.tabStops || child.tabStops || child.tabStopsClear) {
+    const cleared = new Set((_a = child.tabStopsClear) != null ? _a : []);
+    const byOffset = /* @__PURE__ */ new Map();
+    for (const stop of (_b = parent.tabStops) != null ? _b : []) {
+      if (!cleared.has(stop.offset)) byOffset.set(stop.offset, stop);
+    }
+    for (const stop of (_c = child.tabStops) != null ? _c : []) {
+      byOffset.set(stop.offset, stop);
+    }
+    const finalStops = [...byOffset.values()].sort((a, b) => a.offset - b.offset);
+    if (finalStops.length > 0) merged.tabStops = finalStops;
+    else delete merged.tabStops;
+    delete merged.tabStopsClear;
+  }
+  return merged;
+}
+function parseParagraph(pNode, drawingsOut, styles, themeFonts) {
+  var _a;
+  const pPr = findChild(pNode, "w:pPr");
+  const styleRef = pPrStyleRef(pPr);
+  const resolved = styles == null ? void 0 : styles.resolvePStyle(styleRef);
+  const inline = parsePPr(pPr);
+  let style = mergePPr(styles == null ? void 0 : styles.docDefaults.pPr, resolved == null ? void 0 : resolved.pPr);
+  style = mergePPr(style, inline);
+  const pStyleRpr = resolved == null ? void 0 : resolved.rPr;
+  const pStyleRFonts = resolved == null ? void 0 : resolved.rFonts;
+  const out = {
+    runs: parseRunsFromPNode(pNode, drawingsOut, styles, pStyleRpr, themeFonts, pStyleRFonts)
+  };
+  if (style) out.style = style;
+  const bullet = (_a = parseBullet(pNode)) != null ? _a : resolved == null ? void 0 : resolved.bullet;
+  if (bullet) out.bullet = bullet;
+  const inlineSectPr = pPr ? findChild(pPr, "w:sectPr") : void 0;
+  if (inlineSectPr) out.sectionBreakAfter = parseSectionPropertiesFromNode(inlineSectPr);
+  return out;
+}
+
 // ../packages/docs-exchange/src/utils/parse/parse-drawing.ts
 var EMU_PER_PX = 9525;
 function findFirstByName(node, target) {
@@ -6555,22 +7276,177 @@ function findFirstByName(node, target) {
   }
   return void 0;
 }
-function parseDrawingFromXmlNode(node) {
+function parseDrawingFromXmlNode(node, styles, themeFonts) {
   if (!node) return void 0;
+  const altContent = findFirstByName(node, "mc:AlternateContent");
+  if (altContent) {
+    const choice = findChild(altContent, "mc:Choice");
+    if (choice) {
+      const fromChoice = parseDrawingFromXmlNode(choice, styles, themeFonts);
+      if (fromChoice) return fromChoice;
+    }
+  }
   const blip = findFirstByName(node, "a:blip");
-  if (!blip) return void 0;
-  const rId = nodeAttrs(blip)["@_r:embed"];
-  if (!rId) return void 0;
-  const extent = findFirstByName(node, "wp:extent");
-  const out = { rId };
-  if (extent) {
-    const a = nodeAttrs(extent);
-    const cx = Number(a["@_cx"]);
-    const cy = Number(a["@_cy"]);
-    if (!Number.isNaN(cx)) out.widthPx = Math.round(cx / EMU_PER_PX);
-    if (!Number.isNaN(cy)) out.heightPx = Math.round(cy / EMU_PER_PX);
+  if (blip) {
+    const rId = nodeAttrs(blip)["@_r:embed"];
+    if (rId) {
+      const out = { kind: "image", rId };
+      const extent = findFirstByName(node, "wp:extent");
+      if (extent) {
+        const a = nodeAttrs(extent);
+        const cx = Number(a["@_cx"]);
+        const cy = Number(a["@_cy"]);
+        if (!Number.isNaN(cx)) out.widthPx = Math.round(cx / EMU_PER_PX);
+        if (!Number.isNaN(cy)) out.heightPx = Math.round(cy / EMU_PER_PX);
+      }
+      return out;
+    }
+  }
+  const graphicData = findFirstByName(node, "a:graphicData");
+  const uri = graphicData ? nodeAttrs(graphicData)["@_uri"] : void 0;
+  if (graphicData && uri && uri.includes("wordprocessingShape")) {
+    const wsp = findFirstByName(graphicData, "wps:wsp");
+    if (wsp) return parseShape(node, wsp, styles, themeFonts);
+  }
+  return void 0;
+}
+function emuAttrToPx(node, attr) {
+  if (!node) return void 0;
+  const v = nodeAttrs(node)[attr];
+  if (v === void 0) return void 0;
+  const n = Number(v);
+  if (Number.isNaN(n)) return void 0;
+  return n / EMU_PER_PX;
+}
+function parseShape(drawingNode, wsp, styles, themeFonts) {
+  const anchor = findFirstByName(drawingNode, "wp:anchor");
+  const inline = findFirstByName(drawingNode, "wp:inline");
+  const positioning = anchor != null ? anchor : inline;
+  if (!positioning) return void 0;
+  const extent = findChild(positioning, "wp:extent");
+  const widthPx = emuAttrToPx(extent, "@_cx");
+  const heightPx = emuAttrToPx(extent, "@_cy");
+  if (widthPx === void 0 || heightPx === void 0) return void 0;
+  const out = {
+    kind: "shape",
+    widthPx: Math.round(widthPx),
+    heightPx: Math.round(heightPx),
+    shapeProps: {}
+  };
+  if (anchor) {
+    const behindDocAttr = nodeAttrs(anchor)["@_behindDoc"];
+    if (behindDocAttr === "1") out.behindDoc = true;
+    const positionH = findChild(anchor, "wp:positionH");
+    const positionV = findChild(anchor, "wp:positionV");
+    if (positionH) {
+      out.relativeFromH = nodeAttrs(positionH)["@_relativeFrom"];
+      const offset = findChild(positionH, "wp:posOffset");
+      if (offset) {
+        const n = Number(textOf(offset));
+        if (!Number.isNaN(n)) out.posXPx = n / EMU_PER_PX;
+      }
+    }
+    if (positionV) {
+      out.relativeFromV = nodeAttrs(positionV)["@_relativeFrom"];
+      const offset = findChild(positionV, "wp:posOffset");
+      if (offset) {
+        const n = Number(textOf(offset));
+        if (!Number.isNaN(n)) out.posYPx = n / EMU_PER_PX;
+      }
+    }
+  }
+  const spPr = findChild(wsp, "wps:spPr");
+  if (spPr) {
+    const prstGeom = findChild(spPr, "a:prstGeom");
+    if (prstGeom) {
+      const prst = nodeAttrs(prstGeom)["@_prst"];
+      if (prst) out.shapeProps.presetGeometry = prst;
+    }
+    if (findChild(spPr, "a:noFill")) {
+      out.shapeProps.fill = { type: "none" };
+    } else {
+      const solidFill = findChild(spPr, "a:solidFill");
+      const fillRgb = solidFill ? srgbFromFill(solidFill) : void 0;
+      if (fillRgb) out.shapeProps.fill = { rgb: fillRgb };
+    }
+    const ln = findChild(spPr, "a:ln");
+    if (ln) {
+      const wAttr = nodeAttrs(ln)["@_w"];
+      const widthEmu = wAttr !== void 0 ? Number(wAttr) : Number.NaN;
+      const noLineFill = findChild(ln, "a:noFill");
+      if (!noLineFill) {
+        const solidFill = findChild(ln, "a:solidFill");
+        const strokeRgb = solidFill ? srgbFromFill(solidFill) : void 0;
+        const finalRgb = strokeRgb != null ? strokeRgb : "#000000";
+        const widthPxStroke = !Number.isNaN(widthEmu) ? widthEmu / EMU_PER_PX : 1;
+        out.shapeProps.stroke = { rgb: finalRgb, width: widthPxStroke };
+      }
+    }
+  }
+  const bodyPr = findChild(wsp, "wps:bodyPr");
+  if (bodyPr) {
+    const a = nodeAttrs(bodyPr);
+    const ins = {};
+    const lInsRaw = a["@_lIns"];
+    const tInsRaw = a["@_tIns"];
+    const rInsRaw = a["@_rIns"];
+    const bInsRaw = a["@_bIns"];
+    ins.lIns = (lInsRaw !== void 0 ? Number(lInsRaw) : 91440) / EMU_PER_PX;
+    ins.tIns = (tInsRaw !== void 0 ? Number(tInsRaw) : 45720) / EMU_PER_PX;
+    ins.rIns = (rInsRaw !== void 0 ? Number(rInsRaw) : 91440) / EMU_PER_PX;
+    ins.bIns = (bInsRaw !== void 0 ? Number(bInsRaw) : 45720) / EMU_PER_PX;
+    const wrap = a["@_wrap"];
+    if (wrap === "square" || wrap === "none") ins.wrap = wrap;
+    const anchorAttr = a["@_anchor"];
+    if (anchorAttr === "top" || anchorAttr === "ctr" || anchorAttr === "bottom" || anchorAttr === "just" || anchorAttr === "dist") {
+      ins.anchor = anchorAttr;
+    } else if (anchorAttr === "t") {
+      ins.anchor = "top";
+    } else if (anchorAttr === "b") {
+      ins.anchor = "bottom";
+    }
+    out.shapeProps.bodyPr = ins;
+  }
+  const txbx = findChild(wsp, "wps:txbx");
+  const txbxContent = txbx ? findChild(txbx, "w:txbxContent") : void 0;
+  if (txbxContent) {
+    const body = assembleTextBoxBody(txbxContent, styles, themeFonts);
+    if (body) out.textBoxBody = body;
   }
   return out;
+}
+function srgbFromFill(fillNode) {
+  const srgb = findChild(fillNode, "a:srgbClr");
+  if (!srgb) return void 0;
+  const v = nodeAttrs(srgb)["@_val"];
+  if (!v) return void 0;
+  return `#${v.toUpperCase()}`;
+}
+function assembleTextBoxBody(txbxContent, styles, themeFonts) {
+  let data = "";
+  const textRuns = [];
+  const paragraphs = [];
+  for (const child of nodeChildren(txbxContent)) {
+    if (nodeName(child) !== "w:p") continue;
+    const parsed = parseParagraph(child, void 0, styles, themeFonts);
+    for (const run of parsed.runs) {
+      if (!run.text) continue;
+      const start = data.length;
+      data += run.text;
+      const end = data.length;
+      if (run.style) textRuns.push({ st: start, ed: end, ts: run.style });
+    }
+    const paraEnd = data.length;
+    data += "\r";
+    const entry = { startIndex: paraEnd };
+    if (parsed.style) {
+      const { tabStopsClear: _ignored, ...rest } = parsed.style;
+      entry.paragraphStyle = rest;
+    }
+    paragraphs.push(entry);
+  }
+  if (paragraphs.length === 0) return void 0;
+  return { dataStream: data, textRuns, paragraphs };
 }
 function resolveMediaPath(target) {
   let t = target.replace(/^\/+/, "");
@@ -6579,6 +7455,11 @@ function resolveMediaPath(target) {
   return `word/${t}`;
 }
 function buildDrawing(drawingId, info, rels, media) {
+  if (info.kind === "image") return buildImageDrawing(drawingId, info, rels, media);
+  if (info.kind === "shape") return buildShapeDrawing(drawingId, info);
+  return void 0;
+}
+function buildImageDrawing(drawingId, info, rels, media) {
   var _a, _b, _c, _d;
   const rel = rels.get(info.rId);
   if (!rel || rel.type !== "image") return void 0;
@@ -6604,9 +7485,54 @@ function buildDrawing(drawingId, info, rels, media) {
     }
   };
 }
+var REL_FROM_H_MAP = {
+  page: 0,
+  margin: 1,
+  column: 2,
+  character: 3,
+  leftMargin: 4,
+  rightMargin: 5,
+  insideMargin: 6,
+  outsideMargin: 7
+};
+var REL_FROM_V_MAP = {
+  page: 0,
+  margin: 1,
+  paragraph: 2,
+  line: 3,
+  topMargin: 4,
+  bottomMargin: 5,
+  insideMargin: 6,
+  outsideMargin: 7
+};
+function buildShapeDrawing(drawingId, info) {
+  var _a, _b, _c, _d, _e, _f;
+  const width = info.widthPx;
+  const height = info.heightPx;
+  const relH = info.relativeFromH ? (_a = REL_FROM_H_MAP[info.relativeFromH]) != null ? _a : 2 : 2;
+  const relV = info.relativeFromV ? (_b = REL_FROM_V_MAP[info.relativeFromV]) != null ? _b : 2 : 2;
+  return {
+    drawingId,
+    // DrawingTypeEnum.DRAWING_SHAPE = 1
+    drawingType: 1,
+    // PositionedObjectLayoutType.WRAP_NONE = 1 — Word text boxes draw on top
+    // of body text; we don't yet support real flow-around for wrapSquare etc.
+    layoutType: 1,
+    transform: { left: (_c = info.posXPx) != null ? _c : 0, top: (_d = info.posYPx) != null ? _d : 0, width, height },
+    docTransform: {
+      size: { width, height },
+      positionH: { relativeFrom: relH, posOffset: (_e = info.posXPx) != null ? _e : 0 },
+      positionV: { relativeFrom: relV, posOffset: (_f = info.posYPx) != null ? _f : 0 },
+      angle: 0
+    },
+    shapeProperties: info.shapeProps,
+    textBoxContent: info.textBoxBody ? { body: info.textBoxBody } : void 0,
+    behindDoc: info.behindDoc ? 1 : 0
+  };
+}
 
 // ../packages/docs-exchange/src/utils/parse/assemble.ts
-var uuidv4 = () => generateRandomId();
+var uuidv42 = () => generateRandomId();
 var { TABLE_START, TABLE_ROW_START, TABLE_CELL_START, TABLE_CELL_END, TABLE_ROW_END, TABLE_END } = DataStreamTreeTokenType;
 function emitRun(run, acc, ctx) {
   const runStart = acc.data.length;
@@ -6632,7 +7558,7 @@ function emitRun(run, acc, ctx) {
       startIndex: runStart,
       endIndex: runEnd - 1,
       rangeType: 1 /* FIELD */,
-      rangeId: uuidv4(),
+      rangeId: uuidv42(),
       properties: { subtype: run.fieldType }
     });
   }
@@ -6645,7 +7571,7 @@ function emitRun(run, acc, ctx) {
         startIndex: runStart,
         endIndex: runEnd - 1,
         rangeType: 0,
-        rangeId: uuidv4(),
+        rangeId: uuidv42(),
         properties: { url: real.target }
       });
     }
@@ -6809,7 +7735,7 @@ function resolveCellBorder(side, cellBorders, tableBorders, isPerimeter) {
 }
 function emitTable(t, acc, ctx) {
   var _a, _b, _c;
-  const tableId = `tbl_${uuidv4()}`;
+  const tableId = `tbl_${uuidv42()}`;
   const start = acc.data.length;
   acc.data += TABLE_START;
   for (const row of t.rows) {
@@ -7108,12 +8034,15 @@ function assembleDocument(children, ctx) {
   if (acc.customRanges.length > 0) body.customRanges = acc.customRanges;
   if (acc.customBlocks.length > 0) body.customBlocks = acc.customBlocks;
   const docData = {
-    id: uuidv4(),
+    id: uuidv42(),
     documentStyle: (_a = ctx.documentStyle) != null ? _a : {},
     body
   };
   if (Object.keys(acc.tableSource).length > 0) docData.tableSource = acc.tableSource;
-  if (Object.keys(acc.drawings).length > 0) docData.drawings = acc.drawings;
+  if (Object.keys(acc.drawings).length > 0) {
+    docData.drawings = acc.drawings;
+    docData.drawingsOrder = Object.keys(acc.drawings);
+  }
   if (Object.keys(lists).length > 0) docData.lists = lists;
   return docData;
 }
@@ -7224,726 +8153,6 @@ function parseRelationships(relsXml) {
     result.set(id, { type: kind, target });
   }
   return result;
-}
-
-// ../packages/docs-exchange/src/utils/units.ts
-var PT_PER_PX = 0.75;
-function dxaToPx(dxa) {
-  return dxa / 15;
-}
-function hpToPt(hp) {
-  return hp / 2;
-}
-function ptToPx(pt) {
-  return pt / PT_PER_PX;
-}
-
-// ../packages/docs-exchange/src/utils/parse/parse-paragraph-style.ts
-var ALIGN_MAP = {
-  start: 1,
-  left: 1,
-  center: 2,
-  end: 3,
-  right: 3,
-  both: 5,
-  justify: 5,
-  distribute: 6
-};
-var TAB_ALIGN_MAP = {
-  start: 1,
-  left: 1,
-  center: 2,
-  end: 3,
-  right: 3,
-  decimal: 1,
-  bar: 1,
-  num: 1
-};
-var TAB_LEADER_MAP = {
-  dot: 1,
-  hyphen: 2,
-  underscore: 3,
-  middleDot: 4
-};
-var HEADING_MAP = {
-  Title: 2,
-  Subtitle: 3,
-  Heading1: 4,
-  Heading2: 5,
-  Heading3: 6,
-  Heading4: 7,
-  Heading5: 8
-};
-var DEFAULT_BORDER_COLOR_RGB = "#000000";
-function parseBorder(b) {
-  const a = nodeAttrs(b);
-  const out = {};
-  const colorAttr = a["@_w:color"];
-  if (colorAttr && colorAttr !== "auto") out.color = { rgb: `#${colorAttr.toUpperCase()}` };
-  else out.color = { rgb: DEFAULT_BORDER_COLOR_RGB };
-  const sz = Number(a["@_w:sz"]);
-  if (!Number.isNaN(sz)) out.width = Math.max(1, Math.round(sz / 6));
-  const valAttr = a["@_w:val"];
-  out.dashStyle = valAttr && DOCX_BORDER_TO_UNIVER_DASH[valAttr] || 1;
-  const space = Number(a["@_w:space"]);
-  if (!Number.isNaN(space)) out.padding = space * 4 / 3;
-  return out;
-}
-function parseSpacingInto(spacing, out) {
-  var _a;
-  const a = nodeAttrs(spacing);
-  if (a["@_w:before"] !== void 0) {
-    const before = Number(a["@_w:before"]);
-    if (!Number.isNaN(before)) out.spaceAbove = { v: dxaToPx(before) };
-  } else if (a["@_w:beforeLines"] !== void 0) {
-    const beforeLines = Number(a["@_w:beforeLines"]);
-    if (!Number.isNaN(beforeLines)) out.spaceAbove = { v: beforeLines / 100 * 16 };
-  }
-  if (a["@_w:after"] !== void 0) {
-    const after = Number(a["@_w:after"]);
-    if (!Number.isNaN(after)) out.spaceBelow = { v: dxaToPx(after) };
-  } else if (a["@_w:afterLines"] !== void 0) {
-    const afterLines = Number(a["@_w:afterLines"]);
-    if (!Number.isNaN(afterLines)) out.spaceBelow = { v: afterLines / 100 * 16 };
-  }
-  const line = Number(a["@_w:line"]);
-  if (!Number.isNaN(line)) {
-    const rule = (_a = a["@_w:lineRule"]) != null ? _a : "auto";
-    if (rule === "auto") {
-      out.lineSpacing = line / 240;
-      out.spacingRule = 0;
-    } else if (rule === "atLeast") {
-      out.lineSpacing = dxaToPx(line);
-      out.spacingRule = 1;
-    } else if (rule === "exact") {
-      out.lineSpacing = dxaToPx(line);
-      out.spacingRule = 2;
-    }
-  }
-}
-var CHAR_TO_PT = 10.5;
-var DXA_ARTIFACT_EPSILON_PT = 0.5;
-function parseIndentInto(ind, out) {
-  var _a, _b, _c, _d;
-  const a = nodeAttrs(ind);
-  const pickPx = (charsAttr, dxaAttr) => {
-    if (charsAttr !== void 0) {
-      const n = Number(charsAttr);
-      if (!Number.isNaN(n)) return ptToPx(n / 100 * CHAR_TO_PT);
-    }
-    if (dxaAttr !== void 0) {
-      const n = Number(dxaAttr);
-      if (!Number.isNaN(n)) return dxaToPx(n);
-    }
-    return void 0;
-  };
-  const dropArtifact = (charsAttr, valuePx) => charsAttr === void 0 && Math.abs(valuePx) < ptToPx(DXA_ARTIFACT_EPSILON_PT);
-  const startPx = pickPx(
-    (_a = a["@_w:leftChars"]) != null ? _a : a["@_w:startChars"],
-    (_b = a["@_w:left"]) != null ? _b : a["@_w:start"]
-  );
-  const endPx = pickPx(
-    (_c = a["@_w:rightChars"]) != null ? _c : a["@_w:endChars"],
-    (_d = a["@_w:right"]) != null ? _d : a["@_w:end"]
-  );
-  if (endPx !== void 0) out.indentEnd = { v: endPx };
-  const firstLineChars = a["@_w:firstLineChars"];
-  const firstLinePx = pickPx(firstLineChars, a["@_w:firstLine"]);
-  if (firstLinePx !== void 0 && !dropArtifact(firstLineChars, firstLinePx)) {
-    out.indentFirstLine = { v: firstLinePx };
-  }
-  const hangingChars = a["@_w:hangingChars"];
-  const hangingPxRaw = pickPx(hangingChars, a["@_w:hanging"]);
-  const hangingPx = hangingPxRaw !== void 0 && !dropArtifact(hangingChars, hangingPxRaw) ? hangingPxRaw : void 0;
-  if (hangingPx !== void 0) out.hanging = { v: hangingPx };
-  if (startPx !== void 0) {
-    out.indentStart = { v: hangingPx !== void 0 ? startPx - hangingPx : startPx };
-  }
-}
-function parseTabsInto(tabs, out) {
-  const stops = [];
-  const cleared = [];
-  for (const t of nodeChildren(tabs)) {
-    if (nodeName(t) !== "w:tab") continue;
-    const a = nodeAttrs(t);
-    const pos = Number(a["@_w:pos"]);
-    if (Number.isNaN(pos)) continue;
-    const offset = dxaToPx(pos);
-    const val = a["@_w:val"];
-    if (val === "clear") {
-      cleared.push(offset);
-      continue;
-    }
-    const alignment = val && TAB_ALIGN_MAP[val] || 1;
-    const leaderVal = a["@_w:leader"];
-    const leader = leaderVal ? TAB_LEADER_MAP[leaderVal] : void 0;
-    stops.push(leader !== void 0 ? { offset, alignment, leader } : { offset, alignment });
-  }
-  if (stops.length > 0) out.tabStops = stops;
-  if (cleared.length > 0) out.tabStopsClear = cleared;
-}
-function parsePPr(pPr) {
-  if (!pPr) return void 0;
-  const out = {};
-  for (const child of nodeChildren(pPr)) {
-    const name = nodeName(child);
-    if (name === "w:jc") {
-      const v = nodeAttrs(child)["@_w:val"];
-      if (v && v in ALIGN_MAP) out.horizontalAlign = ALIGN_MAP[v];
-    } else if (name === "w:pStyle") {
-      const v = nodeAttrs(child)["@_w:val"];
-      if (v && v in HEADING_MAP) out.namedStyleType = HEADING_MAP[v];
-    } else if (name === "w:spacing") {
-      parseSpacingInto(child, out);
-    } else if (name === "w:ind") {
-      parseIndentInto(child, out);
-    } else if (name === "w:pBdr") {
-      for (const b of nodeChildren(child)) {
-        const bn = nodeName(b);
-        if (bn === "w:bottom") out.borderBottom = parseBorder(b);
-        else if (bn === "w:top") out.borderTop = parseBorder(b);
-        else if (bn === "w:left") out.borderLeft = parseBorder(b);
-        else if (bn === "w:right") out.borderRight = parseBorder(b);
-        else if (bn === "w:between") out.borderBetween = parseBorder(b);
-      }
-    } else if (name === "w:tabs") {
-      parseTabsInto(child, out);
-    }
-  }
-  return Object.keys(out).length > 0 ? out : void 0;
-}
-function pPrStyleRef(pPr) {
-  if (!pPr) return void 0;
-  for (const child of nodeChildren(pPr)) {
-    if (nodeName(child) === "w:pStyle") {
-      return nodeAttrs(child)["@_w:val"];
-    }
-  }
-  return void 0;
-}
-
-// ../packages/docs-exchange/src/utils/parse/parse-run.ts
-var uuidv42 = () => generateRandomId();
-var HIGHLIGHT_COLORS = {
-  black: "000000",
-  blue: "0000FF",
-  cyan: "00FFFF",
-  green: "00FF00",
-  magenta: "FF00FF",
-  red: "FF0000",
-  yellow: "FFFF00",
-  white: "FFFFFF",
-  darkBlue: "000080",
-  darkCyan: "008080",
-  darkGreen: "008000",
-  darkMagenta: "800080",
-  darkRed: "800000",
-  darkYellow: "808000",
-  darkGray: "808080",
-  lightGray: "C0C0C0"
-};
-function isToggleOn(val) {
-  return val !== "0" && val !== "false" && val !== "none";
-}
-var UNDERLINE_VAL_TO_DECORATION = {
-  single: 12 /* SINGLE */,
-  double: 10 /* DOUBLE */,
-  thick: 13 /* THICK */,
-  dotted: 8 /* DOTTED */,
-  dottedHeavy: 9 /* DOTTED_HEAVY */,
-  dash: 0 /* DASH */,
-  dashedHeavy: 3 /* DASHED_HEAVY */,
-  dashLong: 4 /* DASH_LONG */,
-  dashLongHeavy: 5 /* DASH_LONG_HEAVY */,
-  dotDash: 6 /* DOT_DASH */,
-  dashDotHeavy: 2 /* DASH_DOT_HEAVY */,
-  dotDotDash: 7 /* DOT_DOT_DASH */,
-  dashDotDotHeavy: 1 /* DASH_DOT_DOT_HEAVY */,
-  wave: 14 /* WAVE */,
-  wavyHeavy: 16 /* WAVY_HEAVY */,
-  wavyDouble: 15 /* WAVY_DOUBLE */,
-  words: 17 /* WORDS */
-};
-function parseRPr(rPr) {
-  if (!rPr) return void 0;
-  const style = {};
-  for (const child of nodeChildren(rPr)) {
-    const name = nodeName(child);
-    const attrs = nodeAttrs(child);
-    switch (name) {
-      case "w:b":
-        if (isToggleOn(attrs["@_w:val"])) style.bl = 1;
-        break;
-      case "w:i":
-        if (isToggleOn(attrs["@_w:val"])) style.it = 1;
-        break;
-      case "w:u": {
-        const val = attrs["@_w:val"];
-        if (val === "none") break;
-        if (!isToggleOn(val)) break;
-        const t = val ? UNDERLINE_VAL_TO_DECORATION[val] : void 0;
-        style.ul = t != null ? { s: 1, t } : { s: 1 };
-        break;
-      }
-      case "w:strike":
-        if (isToggleOn(attrs["@_w:val"])) style.st = { s: 1 };
-        break;
-      // OOXML §17.3.2.9 — separate element from <w:strike/>; renderer
-      // treats `st.t = DOUBLE` as two stacked strike lines.
-      case "w:dstrike":
-        if (isToggleOn(attrs["@_w:val"])) style.st = { s: 1, t: 10 /* DOUBLE */ };
-        break;
-      case "w:sz": {
-        const val = Number(attrs["@_w:val"]);
-        if (!Number.isNaN(val)) style.fs = hpToPt(val);
-        break;
-      }
-      case "w:rFonts": {
-        const fam = attrs["@_w:ascii"] || attrs["@_w:hAnsi"] || attrs["@_w:cs"];
-        if (fam) style.ff = fam;
-        break;
-      }
-      case "w:color": {
-        const v = attrs["@_w:val"];
-        if (v && v !== "auto") style.cl = { rgb: `#${v.toUpperCase()}` };
-        break;
-      }
-      case "w:highlight": {
-        const v = attrs["@_w:val"];
-        const rgb = v ? HIGHLIGHT_COLORS[v] : void 0;
-        if (rgb) style.bg = { rgb: `#${rgb}` };
-        break;
-      }
-      case "w:shd": {
-        const fill = attrs["@_w:fill"];
-        if (fill && fill !== "auto") style.bg = { rgb: `#${fill.toUpperCase()}` };
-        break;
-      }
-      case "w:vertAlign": {
-        const v = attrs["@_w:val"];
-        if (v === "superscript") style.va = 3;
-        else if (v === "subscript") style.va = 2;
-        break;
-      }
-    }
-  }
-  return Object.keys(style).length > 0 ? style : void 0;
-}
-function rPrStyleRef(rPr) {
-  if (!rPr) return void 0;
-  for (const child of nodeChildren(rPr)) {
-    if (nodeName(child) === "w:rStyle") {
-      return nodeAttrs(child)["@_w:val"];
-    }
-  }
-  return void 0;
-}
-function extractRFonts(rPr) {
-  if (!rPr) return void 0;
-  for (const child of nodeChildren(rPr)) {
-    if (nodeName(child) !== "w:rFonts") continue;
-    const a = nodeAttrs(child);
-    const out = {};
-    if (a["@_w:ascii"]) out.ascii = a["@_w:ascii"];
-    if (a["@_w:hAnsi"]) out.hAnsi = a["@_w:hAnsi"];
-    if (a["@_w:eastAsia"]) out.eastAsia = a["@_w:eastAsia"];
-    if (a["@_w:cs"]) out.cs = a["@_w:cs"];
-    if (a["@_w:asciiTheme"]) out.asciiTheme = a["@_w:asciiTheme"];
-    if (a["@_w:hAnsiTheme"]) out.hAnsiTheme = a["@_w:hAnsiTheme"];
-    if (a["@_w:eastAsiaTheme"]) out.eastAsiaTheme = a["@_w:eastAsiaTheme"];
-    if (a["@_w:cstheme"]) out.cstheme = a["@_w:cstheme"];
-    return Object.keys(out).length > 0 ? out : void 0;
-  }
-  return void 0;
-}
-var CJK_PATTERN = /[\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]/;
-function resolveFontFamily(rfonts, text, themeFonts) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
-  if (!rfonts) return void 0;
-  const wantsEastAsia = CJK_PATTERN.test(text);
-  const themeOf = (ref) => themeFonts && ref ? themeFonts.resolve(ref) : void 0;
-  if (wantsEastAsia) {
-    return (_g = (_f = (_e = (_d = (_c = (_b = (_a = rfonts.eastAsia) != null ? _a : themeOf(rfonts.eastAsiaTheme)) != null ? _b : rfonts.ascii) != null ? _c : rfonts.hAnsi) != null ? _d : themeOf(rfonts.asciiTheme)) != null ? _e : themeOf(rfonts.hAnsiTheme)) != null ? _f : rfonts.cs) != null ? _g : themeOf(rfonts.cstheme);
-  }
-  return (_n = (_m = (_l = (_k = (_j = (_i = (_h = rfonts.ascii) != null ? _h : rfonts.hAnsi) != null ? _i : themeOf(rfonts.asciiTheme)) != null ? _j : themeOf(rfonts.hAnsiTheme)) != null ? _k : rfonts.eastAsia) != null ? _l : themeOf(rfonts.eastAsiaTheme)) != null ? _m : rfonts.cs) != null ? _n : themeOf(rfonts.cstheme);
-}
-function mergeRFonts(parent, child) {
-  if (!parent) return child;
-  if (!child) return parent;
-  return { ...parent, ...child };
-}
-function runTextFromR(r) {
-  let text = "";
-  for (const child of nodeChildren(r)) {
-    const name = nodeName(child);
-    if (name === "w:t") {
-      text += textOf(child);
-    } else if (name === "w:tab") {
-      text += "	";
-    } else if (name === "w:br") {
-      const brType = nodeAttrs(child)["@_w:type"];
-      if (brType === "page") text += "\f" /* PAGE_BREAK */;
-      else if (brType === "column") text += "\v" /* COLUMN_BREAK */;
-      else text += "\x07" /* LINE_BREAK */;
-    }
-  }
-  return text;
-}
-function readRunFieldSignals(r) {
-  let out;
-  for (const child of nodeChildren(r)) {
-    const name = nodeName(child);
-    if (name === "w:fldChar") {
-      const v = nodeAttrs(child)["@_w:fldCharType"];
-      if (v === "begin" || v === "separate" || v === "end") {
-        (out != null ? out : out = {}).fldChar = v;
-      }
-    } else if (name === "w:instrText") {
-      (out != null ? out : out = {}).instrText = textOf(child);
-    }
-  }
-  return out;
-}
-function classifyFieldInstr(instr) {
-  var _a;
-  const head = (_a = instr.trim().split(/\s+/, 1)[0]) == null ? void 0 : _a.toUpperCase();
-  if (head === "PAGE") return "PAGE";
-  if (head === "NUMPAGES") return "NUMPAGES";
-  return void 0;
-}
-function parseRunsFromPNode(pNode, drawingsOut, styles, pStyleRpr, themeFonts, pStyleRFonts) {
-  const docDefaultRpr = styles == null ? void 0 : styles.docDefaults.rPr;
-  const docDefaultRFonts = styles == null ? void 0 : styles.docDefaults.rFonts;
-  const baseRpr = mergeRpr(docDefaultRpr, pStyleRpr);
-  const baseRFonts = mergeRFonts(docDefaultRFonts, pStyleRFonts);
-  const runs = [];
-  let fieldDepth = 0;
-  let fieldInstr = "";
-  let inFieldResult = false;
-  const emitField = (rPrForStyle, fallbackText) => {
-    const kind = classifyFieldInstr(fieldInstr);
-    if (!kind) {
-      if (fallbackText.length > 0) {
-        const style2 = resolveRunStyle(rPrForStyle, baseRpr, baseRFonts, styles, themeFonts, fallbackText);
-        runs.push(style2 ? { text: fallbackText, style: style2 } : { text: fallbackText });
-      }
-      return;
-    }
-    const placeholder = "1";
-    const style = resolveRunStyle(rPrForStyle, baseRpr, baseRFonts, styles, themeFonts, placeholder);
-    runs.push(style ? { text: placeholder, style, fieldType: kind } : { text: placeholder, fieldType: kind });
-  };
-  let pendingFieldRPr;
-  let pendingFieldResultRPr;
-  let pendingFieldFallback = "";
-  for (const child of nodeChildren(pNode)) {
-    const name = nodeName(child);
-    if (name === "w:r") {
-      const rPr = findChild(child, "w:rPr");
-      const signals = readRunFieldSignals(child);
-      if ((signals == null ? void 0 : signals.fldChar) === "begin") {
-        fieldDepth++;
-        fieldInstr = "";
-        inFieldResult = false;
-        pendingFieldRPr = rPr;
-        pendingFieldResultRPr = void 0;
-        pendingFieldFallback = "";
-        continue;
-      }
-      if ((signals == null ? void 0 : signals.fldChar) === "separate") {
-        if (fieldDepth > 0) inFieldResult = true;
-        continue;
-      }
-      if ((signals == null ? void 0 : signals.fldChar) === "end") {
-        if (fieldDepth > 0) {
-          emitField(pendingFieldResultRPr != null ? pendingFieldResultRPr : pendingFieldRPr, pendingFieldFallback);
-          fieldDepth--;
-          fieldInstr = "";
-          inFieldResult = false;
-          pendingFieldRPr = void 0;
-          pendingFieldResultRPr = void 0;
-          pendingFieldFallback = "";
-        }
-        continue;
-      }
-      if (fieldDepth > 0) {
-        if ((signals == null ? void 0 : signals.instrText) !== void 0 && !inFieldResult) {
-          fieldInstr += signals.instrText;
-          continue;
-        }
-        if (inFieldResult) {
-          if (pendingFieldResultRPr === void 0 && rPr !== void 0 && runTextFromR(child).length > 0) {
-            pendingFieldResultRPr = rPr;
-          }
-          pendingFieldFallback += runTextFromR(child);
-          continue;
-        }
-        continue;
-      }
-      const text = runTextFromR(child);
-      const style = resolveRunStyle(rPr, baseRpr, baseRFonts, styles, themeFonts, text);
-      if (text.length > 0) runs.push(style ? { text, style } : { text });
-      const drawingNode = findChild(child, "w:drawing");
-      if (drawingNode && drawingsOut && !isWatermarkDrawing(drawingNode)) {
-        const info = parseDrawingFromXmlNode(drawingNode);
-        if (info) {
-          const drawingId = uuidv42();
-          drawingsOut.set(drawingId, info);
-          runs.push({ text: "", drawingId });
-        }
-      }
-    } else if (name === "w:hyperlink") {
-      const rId = nodeAttrs(child)["@_r:id"];
-      for (const inner of nodeChildren(child)) {
-        if (nodeName(inner) === "w:r") {
-          const rPr = findChild(inner, "w:rPr");
-          const text = runTextFromR(inner);
-          if (text.length === 0) continue;
-          const style = resolveRunStyle(rPr, baseRpr, baseRFonts, styles, themeFonts, text);
-          if (rId) runs.push({ text, style, hyperlink: { url: rId } });
-          else runs.push(style ? { text, style } : { text });
-        }
-      }
-    }
-  }
-  if (fieldDepth > 0 && pendingFieldFallback.length > 0) {
-    const style = resolveRunStyle(pendingFieldResultRPr != null ? pendingFieldResultRPr : pendingFieldRPr, baseRpr, baseRFonts, styles, themeFonts, pendingFieldFallback);
-    runs.push(style ? { text: pendingFieldFallback, style } : { text: pendingFieldFallback });
-  }
-  return runs;
-}
-function mergeRpr(parent, child) {
-  if (!parent) return child;
-  if (!child) return parent;
-  return { ...parent, ...child };
-}
-function isWatermarkDrawing(drawing) {
-  var _a;
-  const find = (node, tag) => {
-    for (const c of nodeChildren(node)) {
-      if (nodeName(c) === tag) return c;
-      const inner = find(c, tag);
-      if (inner) return inner;
-    }
-    return void 0;
-  };
-  const anchor = find(drawing, "wp:anchor");
-  if (!anchor) return false;
-  const docPr = find(anchor, "wp:docPr");
-  const name = docPr ? (_a = nodeAttrs(docPr)["@_name"]) != null ? _a : "" : "";
-  return /watermark/i.test(name);
-}
-function resolveRunStyle(rPr, baseRpr, baseRFonts, styles, themeFonts, text) {
-  let merged = baseRpr;
-  let rfonts = baseRFonts;
-  if (styles && rPr) {
-    const ref = rPrStyleRef(rPr);
-    if (ref) {
-      merged = mergeRpr(merged, styles.resolveRStyle(ref));
-      rfonts = mergeRFonts(rfonts, styles.resolveRFonts(ref));
-    }
-  }
-  const inline = parseRPr(rPr);
-  merged = mergeRpr(merged, inline);
-  rfonts = mergeRFonts(rfonts, extractRFonts(rPr));
-  const ff = resolveFontFamily(rfonts, text, themeFonts);
-  if (ff) merged = { ...merged != null ? merged : {}, ff };
-  return merged;
-}
-
-// ../packages/docs-exchange/src/utils/parse/parse-section.ts
-var DEFAULT_A4 = { width: 793.7, height: 1122.7 };
-var PAGE_ORIENT_PORTRAIT = 0;
-var PAGE_ORIENT_LANDSCAPE = 1;
-var DOCUMENT_FLAVOR_TRADITIONAL = 1;
-var GRID_TYPE_BY_NAME = {
-  default: 0,
-  lines: 1,
-  linesAndChars: 2,
-  snapToChars: 3
-};
-function dxaAttrToPx(value) {
-  if (value === void 0) return void 0;
-  const n = Number(value);
-  if (!Number.isFinite(n)) return void 0;
-  return dxaToPx(n);
-}
-function parseSectionProperties(body) {
-  const sectPr = body ? findChild(body, "w:sectPr") : void 0;
-  if (!sectPr) {
-    return {
-      documentStyle: { pageSize: { ...DEFAULT_A4 }, documentFlavor: DOCUMENT_FLAVOR_TRADITIONAL },
-      sectionBreakDefaults: {},
-      headerRefs: {},
-      footerRefs: {},
-      titlePage: false
-    };
-  }
-  return parseSectionPropertiesFromNode(sectPr);
-}
-function parseSectionPropertiesFromNode(sectPr) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i;
-  const style = { documentFlavor: DOCUMENT_FLAVOR_TRADITIONAL };
-  const sectionBreakDefaults = {};
-  const headerRefs = {};
-  const footerRefs = {};
-  for (const ref of findChildren(sectPr, "w:headerReference")) {
-    const a = nodeAttrs(ref);
-    const type = (_a = a["@_w:type"]) != null ? _a : "default";
-    const rId = a["@_r:id"];
-    if (rId && (type === "default" || type === "first" || type === "even")) headerRefs[type] = rId;
-  }
-  for (const ref of findChildren(sectPr, "w:footerReference")) {
-    const a = nodeAttrs(ref);
-    const type = (_b = a["@_w:type"]) != null ? _b : "default";
-    const rId = a["@_r:id"];
-    if (rId && (type === "default" || type === "first" || type === "even")) footerRefs[type] = rId;
-  }
-  const titlePage = findChild(sectPr, "w:titlePg") !== void 0;
-  const typeNode = findChild(sectPr, "w:type");
-  const sectionTypeRaw = typeNode ? nodeAttrs(typeNode)["@_w:val"] : void 0;
-  const pgSz = findChild(sectPr, "w:pgSz");
-  if (pgSz) {
-    const attrs = nodeAttrs(pgSz);
-    const width = dxaAttrToPx(attrs["@_w:w"]);
-    const height = dxaAttrToPx(attrs["@_w:h"]);
-    style.pageSize = {
-      width: width != null ? width : DEFAULT_A4.width,
-      height: height != null ? height : DEFAULT_A4.height
-    };
-    if (attrs["@_w:orient"] === "landscape") {
-      style.pageOrient = PAGE_ORIENT_LANDSCAPE;
-    } else if (attrs["@_w:orient"] === "portrait") {
-      style.pageOrient = PAGE_ORIENT_PORTRAIT;
-    }
-  } else {
-    style.pageSize = { ...DEFAULT_A4 };
-  }
-  const pgMar = findChild(sectPr, "w:pgMar");
-  if (pgMar) {
-    const attrs = nodeAttrs(pgMar);
-    const top = dxaAttrToPx(attrs["@_w:top"]);
-    const right = dxaAttrToPx(attrs["@_w:right"]);
-    const bottom = dxaAttrToPx(attrs["@_w:bottom"]);
-    const left = dxaAttrToPx(attrs["@_w:left"]);
-    const header = dxaAttrToPx(attrs["@_w:header"]);
-    const footer = dxaAttrToPx(attrs["@_w:footer"]);
-    if (top !== void 0) style.marginTop = top;
-    if (right !== void 0) style.marginRight = right;
-    if (bottom !== void 0) style.marginBottom = bottom;
-    if (left !== void 0) style.marginLeft = left;
-    if (header !== void 0) style.marginHeader = header;
-    if (footer !== void 0) style.marginFooter = footer;
-  }
-  const docGrid = findChild(sectPr, "w:docGrid");
-  if (docGrid) {
-    const attrs = nodeAttrs(docGrid);
-    const linePitch = dxaAttrToPx(attrs["@_w:linePitch"]);
-    if (linePitch !== void 0) sectionBreakDefaults.linePitch = linePitch;
-    const typeName = attrs["@_w:type"];
-    if (typeName !== void 0 && typeName in GRID_TYPE_BY_NAME) {
-      sectionBreakDefaults.gridType = GRID_TYPE_BY_NAME[typeName];
-    }
-  }
-  const cols = findChild(sectPr, "w:cols");
-  if (cols) {
-    const a = nodeAttrs(cols);
-    const numAttr = Number(a["@_w:num"]);
-    const num = Number.isFinite(numAttr) && numAttr > 0 ? Math.floor(numAttr) : 1;
-    const defaultSpace = (_c = dxaAttrToPx(a["@_w:space"])) != null ? _c : 0;
-    const sepRaw = a["@_w:sep"];
-    const sep = sepRaw === "true" || sepRaw === "1";
-    const equalWidthRaw = a["@_w:equalWidth"];
-    const equalWidth = equalWidthRaw === void 0 ? true : !(equalWidthRaw === "false" || equalWidthRaw === "0");
-    const colNodes = findChildren(cols, "w:col");
-    const properties = [];
-    if (!equalWidth && colNodes.length > 0) {
-      for (let i = 0; i < colNodes.length; i++) {
-        const ca = nodeAttrs(colNodes[i]);
-        const width = (_d = dxaAttrToPx(ca["@_w:w"])) != null ? _d : 0;
-        const padding = i === colNodes.length - 1 ? 0 : (_e = dxaAttrToPx(ca["@_w:space"])) != null ? _e : defaultSpace;
-        properties.push({ width, paddingEnd: padding });
-      }
-    } else if (num > 1) {
-      const pageW = (_g = (_f = style.pageSize) == null ? void 0 : _f.width) != null ? _g : DEFAULT_A4.width;
-      const marginL = (_h = style.marginLeft) != null ? _h : 0;
-      const marginR = (_i = style.marginRight) != null ? _i : 0;
-      const contentWidth = Math.max(0, pageW - marginL - marginR);
-      const totalGutter = defaultSpace * (num - 1);
-      const each = (contentWidth - totalGutter) / num;
-      for (let i = 0; i < num; i++) {
-        properties.push({ width: each, paddingEnd: i === num - 1 ? 0 : defaultSpace });
-      }
-    }
-    if (properties.length > 1) {
-      sectionBreakDefaults.columnProperties = properties;
-      sectionBreakDefaults.columnSeparatorType = sep ? 2 /* BETWEEN_EACH_COLUMN */ : 1 /* NONE */;
-    }
-  }
-  return { documentStyle: style, sectionBreakDefaults, headerRefs, footerRefs, titlePage, sectionTypeRaw };
-}
-function parseEvenAndOddHeaders(settingsXml) {
-  if (!settingsXml) return false;
-  return /<w:evenAndOddHeaders\b/.test(settingsXml);
-}
-
-// ../packages/docs-exchange/src/utils/parse/parse-paragraph.ts
-function parseBulletFromPPr(pPr) {
-  var _a;
-  if (!pPr) return void 0;
-  const numPr = findChild(pPr, "w:numPr");
-  if (!numPr) return void 0;
-  const numId = findChild(numPr, "w:numId");
-  const ilvl = findChild(numPr, "w:ilvl");
-  const numIdVal = numId ? nodeAttrs(numId)["@_w:val"] : void 0;
-  if (!numIdVal) return void 0;
-  if (numIdVal === "0") return void 0;
-  const ilvlVal = ilvl ? Number((_a = nodeAttrs(ilvl)["@_w:val"]) != null ? _a : "0") : 0;
-  return { numId: numIdVal, ilvl: Number.isNaN(ilvlVal) ? 0 : ilvlVal };
-}
-function parseBullet(pNode) {
-  return parseBulletFromPPr(findChild(pNode, "w:pPr"));
-}
-function mergePPr(parent, child) {
-  var _a, _b, _c;
-  if (!parent) return child;
-  if (!child) return parent;
-  const merged = { ...parent, ...child };
-  if (parent.tabStops || child.tabStops || child.tabStopsClear) {
-    const cleared = new Set((_a = child.tabStopsClear) != null ? _a : []);
-    const byOffset = /* @__PURE__ */ new Map();
-    for (const stop of (_b = parent.tabStops) != null ? _b : []) {
-      if (!cleared.has(stop.offset)) byOffset.set(stop.offset, stop);
-    }
-    for (const stop of (_c = child.tabStops) != null ? _c : []) {
-      byOffset.set(stop.offset, stop);
-    }
-    const finalStops = [...byOffset.values()].sort((a, b) => a.offset - b.offset);
-    if (finalStops.length > 0) merged.tabStops = finalStops;
-    else delete merged.tabStops;
-    delete merged.tabStopsClear;
-  }
-  return merged;
-}
-function parseParagraph(pNode, drawingsOut, styles, themeFonts) {
-  var _a;
-  const pPr = findChild(pNode, "w:pPr");
-  const styleRef = pPrStyleRef(pPr);
-  const resolved = styles == null ? void 0 : styles.resolvePStyle(styleRef);
-  const inline = parsePPr(pPr);
-  let style = mergePPr(styles == null ? void 0 : styles.docDefaults.pPr, resolved == null ? void 0 : resolved.pPr);
-  style = mergePPr(style, inline);
-  const pStyleRpr = resolved == null ? void 0 : resolved.rPr;
-  const pStyleRFonts = resolved == null ? void 0 : resolved.rFonts;
-  const out = {
-    runs: parseRunsFromPNode(pNode, drawingsOut, styles, pStyleRpr, themeFonts, pStyleRFonts)
-  };
-  if (style) out.style = style;
-  const bullet = (_a = parseBullet(pNode)) != null ? _a : resolved == null ? void 0 : resolved.bullet;
-  if (bullet) out.bullet = bullet;
-  const inlineSectPr = pPr ? findChild(pPr, "w:sectPr") : void 0;
-  if (inlineSectPr) out.sectionBreakAfter = parseSectionPropertiesFromNode(inlineSectPr);
-  return out;
 }
 
 // ../packages/docs-exchange/src/utils/parse/parse-table.ts
@@ -8925,7 +9134,7 @@ function collectDrawingMlWatermarkAnchors(node) {
 function parseDrawingMlAnchorAsImage(anchor, opts) {
   var _a, _b, _c;
   const info = parseDrawingFromXmlNode(anchor);
-  if (!info) return null;
+  if (!info || info.kind !== "image") return null;
   const rel = opts.rels.get(info.rId);
   if (!rel || !rel.target) return null;
   const path = resolveMediaPath2(rel.target);
