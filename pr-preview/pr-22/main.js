@@ -219,11 +219,11 @@ if (true) {
     // eslint-disable-next-line node/prefer-global/process
     NODE_ENV: "production",
     // eslint-disable-next-line node/prefer-global/process
-    GIT_COMMIT_HASH: "0bab9d5",
+    GIT_COMMIT_HASH: "0c2d480",
     // eslint-disable-next-line node/prefer-global/process
     GIT_REF_NAME: "feat/docx-floating-text-box",
     // eslint-disable-next-line node/prefer-global/process
-    BUILD_TIME: "2026-05-14T03:38:38.616Z"
+    BUILD_TIME: "2026-05-14T03:47:59.861Z"
   });
 }
 function DemoList({ items }) {
