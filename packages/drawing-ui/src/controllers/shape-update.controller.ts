@@ -120,11 +120,15 @@ export class ShapeUpdateController extends Disposable {
                     const tIns = bodyPr?.tIns ?? 0;
                     const rIns = bodyPr?.rIns ?? 0;
                     const bIns = bodyPr?.bIns ?? 0;
+                    const innerW = Math.max(0, width - lIns - rIns);
+                    const innerH = Math.max(0, height - tIns - bIns);
+                    const setClip = (overlay as { setClipSize?: (w: number, h: number) => void }).setClipSize;
+                    if (setClip) setClip.call(overlay, innerW, innerH);
                     overlay.transformByState({
                         left: left + lIns,
                         top: top + tIns,
-                        width: Math.max(0, width - lIns - rIns),
-                        height: Math.max(0, height - tIns - bIns),
+                        width: innerW,
+                        height: innerH,
                         angle,
                     });
                 });

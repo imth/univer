@@ -35,10 +35,39 @@ import { DrawingImageClipService } from './drawing-image-clip.service';
  * with the box automatically.
  */
 class ClippedRichText extends RichText {
+    /**
+     * Intended visual bounds of the text overlay (the shape's inner content
+     * area = outer rect minus bodyPr insets). RichText auto-grows
+     * `this.height` to fit content (see its `onTransformChange$`
+     * subscription that overrides height with the skeleton's natural size),
+     * so we cannot clip against `this.width/height` — that would let tall
+     * content paint outside the box. Instead we capture the requested
+     * box size at construction and re-apply it whenever the parent rect
+     * resizes.
+     */
+    clipWidth: number;
+    clipHeight: number;
+
+    constructor(...args: ConstructorParameters<typeof RichText>) {
+        super(...args);
+        // RichText's constructor calls _initialProps which OVERRIDES
+        // this.width/height with the natural skeleton content size, not
+        // the box size we requested. Pull the intended bounds from the
+        // props arg instead.
+        const props = args[2];
+        this.clipWidth = props?.width ?? this.width;
+        this.clipHeight = props?.height ?? this.height;
+    }
+
+    setClipSize(width: number, height: number): void {
+        this.clipWidth = width;
+        this.clipHeight = height;
+    }
+
     protected override _draw(ctx: UniverRenderingContext): void {
         ctx.save();
         ctx.beginPath();
-        ctx.rect(0, 0, this.width, this.height);
+        ctx.rect(0, 0, this.clipWidth, this.clipHeight);
         ctx.clip();
         super._draw(ctx);
         ctx.restore();
@@ -358,11 +387,14 @@ export class DrawingRenderService {
                 const rIns = bodyPr?.rIns ?? 0;
                 const bIns = bodyPr?.bIns ?? 0;
                 rect.onTransformChange$.subscribeEvent(() => {
+                    const w = Math.max(0, rect.width - lIns - rIns);
+                    const h = Math.max(0, rect.height - tIns - bIns);
+                    text.setClipSize(w, h);
                     text.transformByState({
                         left: rect.left + lIns,
                         top: rect.top + tIns,
-                        width: Math.max(0, rect.width - lIns - rIns),
-                        height: Math.max(0, rect.height - tIns - bIns),
+                        width: w,
+                        height: h,
                         angle: rect.angle,
                     });
                 });
@@ -376,7 +408,7 @@ export class DrawingRenderService {
         shapeProperties: IDocShapeProperties | undefined,
         textBoxContent: ITextBoxContent,
         baseZ: number
-    ): RichText | null {
+    ): ClippedRichText | null {
         const body = textBoxContent.body;
         if (!body || !body.dataStream) return null;
 
@@ -421,6 +453,17 @@ export class DrawingRenderService {
             zIndex: baseZ + 0.5,
             richText: docData,
             forceRender: true,
+        });
+        // RichText's `_initialProps` resizes itself to the natural skeleton
+        // content size, ignoring the width/height we passed. Force it back
+        // to the requested inner box bounds so transformer geometry, clip,
+        // and live-position math all line up with the rect.
+        overlay.transformByState({
+            left: transform.left + lIns,
+            top: transform.top + tIns,
+            width: innerW,
+            height: innerH,
+            angle: transform.angle,
         });
         return overlay;
     }
