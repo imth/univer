@@ -16,13 +16,34 @@
 
 import type { IDocShapeProperties, IDocumentData, IDrawingSearch, ITextBoxContent, Workbook } from '@univerjs/core';
 import type { IDocFloatDomData, IImageData } from '@univerjs/drawing';
-import type { IImageProps, IRectProps, Scene } from '@univerjs/engine-render';
+import type { IImageProps, IRectProps, Scene, UniverRenderingContext } from '@univerjs/engine-render';
 import { DrawingTypeEnum, Inject, IUniverInstanceService, IURLImageService, LocaleService, UniverInstanceType } from '@univerjs/core';
 import { getDrawingShapeKeyByDrawingSearch, IDrawingManagerService, IImageIoService, ImageSourceType } from '@univerjs/drawing';
 import { DRAWING_OBJECT_LAYER_INDEX, Image, Rect, RichText } from '@univerjs/engine-render';
 import { IGalleryService } from '@univerjs/ui';
 import { insertGroupObject } from '../controllers/utils';
 import { DrawingImageClipService } from './drawing-image-clip.service';
+
+/**
+ * RichText subclass that clips its content to its own (pre-transform) bounding
+ * box. Used for floating text-box overlays so that text overflowing the shape's
+ * inner content area is visually cut off — matching Word's default behavior
+ * (no `<a:spAutoFit/>`).
+ *
+ * The clip path is applied in local coordinates; canvas's current matrix
+ * already includes the parent's transform (incl. angle), so the clip rotates
+ * with the box automatically.
+ */
+class ClippedRichText extends RichText {
+    protected override _draw(ctx: UniverRenderingContext): void {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, this.width, this.height);
+        ctx.clip();
+        super._draw(ctx);
+        ctx.restore();
+    }
+}
 
 interface IShapeRenderTransform {
     left: number;
@@ -318,10 +339,34 @@ export class DrawingRenderService {
 
         const rect = new Rect(shapeKey, rectConfig);
         scene.addObject(rect, DRAWING_OBJECT_LAYER_INDEX);
+        if (this._drawingManagerService.getDrawingEditable()) {
+            scene.attachTransformerTo(rect);
+        }
 
         if (textBoxContent) {
             const text = this._buildShapeTextOverlay(shapeKey, transform, shapeProperties, textBoxContent, baseZ);
-            if (text) scene.addObject(text, DRAWING_OBJECT_LAYER_INDEX);
+            if (text) {
+                scene.addObject(text, DRAWING_OBJECT_LAYER_INDEX);
+                // Live-follow the rect during interactive drag/resize/rotate.
+                // refreshTransform$ only fires on layout-driven recompute; the
+                // scene transformer mutates the rect directly without round-
+                // tripping through the model, so we hook the rect's per-mutation
+                // observable to keep the text overlay glued to the box.
+                const bodyPr = shapeProperties?.bodyPr;
+                const lIns = bodyPr?.lIns ?? 0;
+                const tIns = bodyPr?.tIns ?? 0;
+                const rIns = bodyPr?.rIns ?? 0;
+                const bIns = bodyPr?.bIns ?? 0;
+                rect.onTransformChange$.subscribeEvent(() => {
+                    text.transformByState({
+                        left: rect.left + lIns,
+                        top: rect.top + tIns,
+                        width: Math.max(0, rect.width - lIns - rIns),
+                        height: Math.max(0, rect.height - tIns - bIns),
+                        angle: rect.angle,
+                    });
+                });
+            }
         }
     }
 
@@ -367,11 +412,12 @@ export class DrawingRenderService {
             },
         };
 
-        const overlay = new RichText(this._localeService, `${shapeKey}${SHAPE_TEXT_OVERLAY_SUFFIX}`, {
+        const overlay = new ClippedRichText(this._localeService, `${shapeKey}${SHAPE_TEXT_OVERLAY_SUFFIX}`, {
             left: transform.left + lIns,
             top: transform.top + tIns,
             width: innerW,
             height: innerH,
+            angle: transform.angle,
             zIndex: baseZ + 0.5,
             richText: docData,
             forceRender: true,

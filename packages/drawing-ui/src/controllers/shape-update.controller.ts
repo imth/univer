@@ -101,7 +101,7 @@ export class ShapeUpdateController extends Disposable {
 
                     const drawingParam = this._drawingManagerService.getDrawingByParam(param) as {
                         drawingType?: DrawingTypeEnum;
-                        transform?: { left?: number; top?: number; width?: number; height?: number };
+                        transform?: { left?: number; top?: number; width?: number; height?: number; angle?: number };
                         shapeProperties?: { bodyPr?: { lIns?: number; tIns?: number; rIns?: number; bIns?: number } };
                     } | null;
                     if (drawingParam == null) return;
@@ -114,7 +114,7 @@ export class ShapeUpdateController extends Disposable {
                     const overlay = renderObject.scene.getObject(`${shapeKey}${SHAPE_TEXT_OVERLAY_SUFFIX}`);
                     if (overlay == null) return;
 
-                    const { left = 0, top = 0, width = 0, height = 0 } = drawingParam.transform;
+                    const { left = 0, top = 0, width = 0, height = 0, angle = 0 } = drawingParam.transform;
                     const bodyPr = drawingParam.shapeProperties?.bodyPr;
                     const lIns = bodyPr?.lIns ?? 0;
                     const tIns = bodyPr?.tIns ?? 0;
@@ -125,6 +125,7 @@ export class ShapeUpdateController extends Disposable {
                         top: top + tIns,
                         width: Math.max(0, width - lIns - rIns),
                         height: Math.max(0, height - tIns - bIns),
+                        angle,
                     });
                 });
             })

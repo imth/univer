@@ -131,6 +131,24 @@ describe('parseDrawingFromRunXml — shape (wps:wsp text box)', () => {
 
         expect(info.textBoxBody?.dataStream).toBe('Hello box\r');
         expect(info.textBoxBody?.paragraphs?.length).toBe(1);
+        // No rot attribute → undefined.
+        expect(info.rotationDegrees).toBeUndefined();
+    });
+
+    it('extracts <a:xfrm rot> in degrees (60000ths-of-a-degree → degrees)', () => {
+        // 1800000 / 60000 = 30 degrees clockwise.
+        const xml = txtBoxXml().replace(
+            '<a:xfrm><a:off x="0" y="0"/><a:ext cx="2743200" cy="914400"/></a:xfrm>',
+            '<a:xfrm rot="1800000"><a:off x="0" y="0"/><a:ext cx="2743200" cy="914400"/></a:xfrm>'
+        );
+        const info = parseDrawingFromRunXml(xml);
+        expect(info?.kind).toBe('shape');
+        if (info?.kind !== 'shape') return;
+        expect(info.rotationDegrees).toBeCloseTo(30, 5);
+
+        const built = buildDrawing('shape-rot', info, new Map(), new Map());
+        expect(built?.transform?.angle).toBeCloseTo(30, 5);
+        expect(built?.docTransform?.angle).toBeCloseTo(30, 5);
     });
 
     it('emits drawingType=1 SHAPE through buildDrawing with shapeProperties + textBoxContent', () => {

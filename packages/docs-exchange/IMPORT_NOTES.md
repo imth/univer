@@ -251,11 +251,34 @@ body via a custom-block `\b` token in the same way images are.
   drawings on the top-level snapshot fields, so the hook never fired
   for fresh imports.
 
-**Out of scope (Stage B):**
+**Stage B (P1 — interactivity):**
 
-- Interactivity (drag, resize, double-click-to-edit). Shapes go through
-  the same `IDrawingManagerService.add$` pipeline as images, so the
-  transform machinery should attach with minimal extra work.
+- `renderShapes` now calls `scene.attachTransformerTo(rect)`, so shapes
+  go through the same selection / 8-handle transformer as images. Drag,
+  resize, rotate, and Backspace-delete all work via the existing generic
+  `DocDrawingTransformUpdateController` + `DeleteDocDrawingsCommand` —
+  no SHAPE-specific command code needed.
+- Importer extracts `<a:xfrm rot>` (60000ths-of-a-degree → degrees) onto
+  `transform.angle` / `docTransform.angle`, and the renderer applies it
+  to both the rect and the text overlay so rotated text-box imports
+  render at the correct angle.
+- The `_TEXT` overlay subscribes to `rect.onTransformChange$` so it
+  follows the rect live during interactive drag/resize/rotate
+  (`refreshTransform$` only fires on layout-driven recompute, which the
+  scene transformer bypasses).
+- `ClippedRichText` clips the overlay to its own bounds in local
+  coordinates, so text that overflows the box is visually cut off
+  (matching Word's default `<a:bodyPr>` behavior — no `<a:spAutoFit/>`).
+  The clip rotates with the parent automatically because canvas's
+  current matrix already includes the rect's angle.
+
+**Out of scope (Stage C):**
+
+- Double-click to edit text inside a shape. `RichText` is a read-only
+  scene-render component; the real editor is `IEditorService.register`
+  which requires a DOM `HTMLDivElement` overlay (toolbar routing,
+  command stack, IME). Shipping a partial canvas-only editor would
+  diverge from the rest of the docs editing UX.
 - Non-rect preset geometries (`<a:prstGeom prst>` values other than
   `rect` / `roundRect` — e.g. `ellipse`, `triangle`, `rightArrow`, the
   full Autoshapes catalog) are parsed correctly onto
