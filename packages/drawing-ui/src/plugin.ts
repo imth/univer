@@ -23,6 +23,7 @@ import { DrawingUIController } from './controllers/drawing-ui.controller';
 import { DrawingUpdateController } from './controllers/drawing-update.controller';
 import { ImageCropperController } from './controllers/image-cropper.controller';
 import { ImageUpdateController } from './controllers/image-update.controller';
+import { ShapeUpdateController } from './controllers/shape-update.controller';
 import { DrawingImageClipService } from './services/drawing-image-clip.service';
 import { DrawingRenderService } from './services/drawing-render.service';
 
@@ -59,6 +60,7 @@ export class UniverDrawingUIPlugin extends Plugin {
         this._injector.get(DrawingUIController);
         this._injector.get(ImageCropperController);
         this._injector.get(ImageUpdateController);
+        this._injector.get(ShapeUpdateController);
     }
 
     private _initDependencies(): void {
@@ -69,6 +71,7 @@ export class UniverDrawingUIPlugin extends Plugin {
             [DrawingUIController],
             [ImageCropperController],
             [ImageUpdateController],
+            [ShapeUpdateController],
         ];
 
         dependencies.forEach((dependency) => this._injector.add(dependency));

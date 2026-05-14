@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import type { IDocShapeProperties, ITextBoxContent } from '@univerjs/core';
+
 export interface IUniverTextStyle {
     bl?: 0 | 1;
     it?: 0 | 1;
@@ -53,4 +55,12 @@ export interface ISimpleDrawing {
     source?: string;
     transform?: IDrawingTransform;
     docTransform?: IDocTransform;
+    /** SHAPE only — geometry / fill / stroke / bodyPr from <wps:spPr>+<wps:bodyPr>. */
+    shapeProperties?: IDocShapeProperties;
+    /** SHAPE only — embedded paragraphs from <w:txbxContent>. */
+    textBoxContent?: ITextBoxContent;
+    /** OOXML wp:anchor behindDoc — 1 = render below body text, 0 = above (default). */
+    behindDoc?: 0 | 1;
+    /** Univer PositionedObjectLayoutType (INLINE=0, WRAP_NONE=1, etc.). */
+    layoutType?: number;
 }

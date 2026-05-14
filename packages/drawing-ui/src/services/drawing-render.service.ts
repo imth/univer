@@ -14,15 +14,51 @@
  * limitations under the License.
  */
 
-import type { IDrawingSearch, Workbook } from '@univerjs/core';
+import type { IDocShapeProperties, IDocumentData, IDrawingSearch, ITextBoxContent, Workbook } from '@univerjs/core';
 import type { IDocFloatDomData, IImageData } from '@univerjs/drawing';
 import type { IImageProps, IRectProps, Scene } from '@univerjs/engine-render';
-import { DrawingTypeEnum, Inject, IUniverInstanceService, IURLImageService, UniverInstanceType } from '@univerjs/core';
+import { DrawingTypeEnum, Inject, IUniverInstanceService, IURLImageService, LocaleService, UniverInstanceType } from '@univerjs/core';
 import { getDrawingShapeKeyByDrawingSearch, IDrawingManagerService, IImageIoService, ImageSourceType } from '@univerjs/drawing';
-import { DRAWING_OBJECT_LAYER_INDEX, Image, Rect } from '@univerjs/engine-render';
+import { DRAWING_OBJECT_LAYER_INDEX, Image, Rect, RichText } from '@univerjs/engine-render';
 import { IGalleryService } from '@univerjs/ui';
 import { insertGroupObject } from '../controllers/utils';
 import { DrawingImageClipService } from './drawing-image-clip.service';
+
+interface IShapeRenderTransform {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    angle?: number;
+}
+
+interface IShapeRenderParam {
+    unitId: string;
+    subUnitId: string;
+    drawingId: string;
+    drawingType: DrawingTypeEnum;
+    transform?: IShapeRenderTransform;
+    shapeProperties?: IDocShapeProperties;
+    textBoxContent?: ITextBoxContent;
+}
+
+function resolveShapeFill(props: IDocShapeProperties | undefined): string | undefined {
+    if (!props?.fill) return undefined;
+    if ('rgb' in props.fill) return props.fill.rgb;
+    return undefined; // { type: 'none' }
+}
+
+function resolveShapeStroke(props: IDocShapeProperties | undefined): { color: string; width: number } | undefined {
+    if (!props?.stroke) return undefined;
+    return { color: props.stroke.rgb, width: Math.max(0.5, props.stroke.width) };
+}
+
+/**
+ * Sibling scene-object key suffix for the text overlay we paint inside a
+ * DRAWING_SHAPE rect. Exposed so `ShapeUpdateController` can find and
+ * re-position the overlay when `refreshTransform$` fires.
+ */
+export const SHAPE_TEXT_OVERLAY_SUFFIX = '_TEXT';
 
 // const IMAGE_VIEWER_DROPDOWN_PADDING = 50;
 
@@ -33,6 +69,7 @@ export class DrawingRenderService {
         @IGalleryService private readonly _galleryService: IGalleryService,
         @IURLImageService private readonly _urlImageService: IURLImageService,
         @IUniverInstanceService private readonly _univerInstanceService: IUniverInstanceService,
+        @Inject(LocaleService) private readonly _localeService: LocaleService,
         @Inject(DrawingImageClipService) private readonly _drawingImageClipService: DrawingImageClipService
     ) { }
 
@@ -235,8 +272,111 @@ export class DrawingRenderService {
         switch (drawingParam.drawingType) {
             case DrawingTypeEnum.DRAWING_IMAGE:
                 return this.renderImages(drawingParam as IImageData, scene);
+            case DrawingTypeEnum.DRAWING_SHAPE:
+                return this.renderShapes(drawingParam as IShapeRenderParam, scene);
             default:
         }
+    }
+
+    /**
+     * Render a DRAWING_SHAPE — currently scoped to OOXML text boxes
+     * (preset rect / roundRect with fill / stroke + optional embedded
+     * text body). Painted as a Rect on the DRAWING_OBJECT_LAYER, with
+     * the embedded paragraphs overlaid via a sibling RichText object
+     * when `textBoxContent` is present. RichText already wraps
+     * DocumentSkeleton + Documents and handles layout against a page
+     * size, so we only need to pass the inner content area (shape size
+     * minus `bodyPr` insets).
+     */
+    renderShapes(param: IShapeRenderParam, scene: Scene) {
+        const { transform, unitId, subUnitId, drawingId, drawingType, shapeProperties, textBoxContent } = param;
+        if (drawingType !== DrawingTypeEnum.DRAWING_SHAPE) return;
+        if (!this._drawingManagerService.getDrawingVisible()) return;
+        if (transform == null) return;
+
+        const shapeKey = getDrawingShapeKeyByDrawingSearch({ unitId, subUnitId, drawingId });
+        const existing = scene.getObject(shapeKey);
+        if (existing) {
+            existing.transformByState({ ...transform });
+            return;
+        }
+
+        const orders = this._drawingManagerService.getDrawingOrder(unitId, subUnitId);
+        const zIndex = orders.indexOf(drawingId);
+        const baseZ = zIndex === -1 ? orders.length - 1 : zIndex;
+
+        const fill = resolveShapeFill(shapeProperties);
+        const stroke = resolveShapeStroke(shapeProperties);
+        const rectConfig: IRectProps = {
+            ...transform,
+            zIndex: baseZ,
+            fill,
+            stroke: stroke?.color,
+            strokeWidth: stroke?.width,
+            printable: true,
+        };
+
+        const rect = new Rect(shapeKey, rectConfig);
+        scene.addObject(rect, DRAWING_OBJECT_LAYER_INDEX);
+
+        if (textBoxContent) {
+            const text = this._buildShapeTextOverlay(shapeKey, transform, shapeProperties, textBoxContent, baseZ);
+            if (text) scene.addObject(text, DRAWING_OBJECT_LAYER_INDEX);
+        }
+    }
+
+    private _buildShapeTextOverlay(
+        shapeKey: string,
+        transform: IShapeRenderTransform,
+        shapeProperties: IDocShapeProperties | undefined,
+        textBoxContent: ITextBoxContent,
+        baseZ: number
+    ): RichText | null {
+        const body = textBoxContent.body;
+        if (!body || !body.dataStream) return null;
+
+        const bodyPr = shapeProperties?.bodyPr;
+        const lIns = bodyPr?.lIns ?? 0;
+        const rIns = bodyPr?.rIns ?? 0;
+        const tIns = bodyPr?.tIns ?? 0;
+        const bIns = bodyPr?.bIns ?? 0;
+        const innerW = Math.max(0, transform.width - lIns - rIns);
+        const innerH = Math.max(0, transform.height - tIns - bIns);
+        if (innerW <= 0 || innerH <= 0) return null;
+
+        // The importer emits one `\r` per paragraph but no trailing `\n` — the
+        // docs skeleton needs a section terminator to produce a page, so append
+        // `\n` if it isn't already there.
+        const dataStream = body.dataStream.endsWith('\n')
+            ? body.dataStream
+            : `${body.dataStream}\n`;
+
+        // RichText takes a full IDocumentData. We only need the body — wrap
+        // it with a minimal documentStyle whose pageSize forces wrap at the
+        // inner width (height stays Infinity so content doesn't paginate;
+        // overflow is clipped at the rect bound visually).
+        const docData: IDocumentData = {
+            id: `${shapeKey}_DOC`,
+            body: { ...body, dataStream },
+            documentStyle: {
+                pageSize: { width: innerW, height: Number.POSITIVE_INFINITY },
+                marginTop: 0,
+                marginBottom: 0,
+                marginLeft: 0,
+                marginRight: 0,
+            },
+        };
+
+        const overlay = new RichText(this._localeService, `${shapeKey}${SHAPE_TEXT_OVERLAY_SUFFIX}`, {
+            left: transform.left + lIns,
+            top: transform.top + tIns,
+            width: innerW,
+            height: innerH,
+            zIndex: baseZ + 0.5,
+            richText: docData,
+            forceRender: true,
+        });
+        return overlay;
     }
 
     previewImage(key: string, src: string, width: number, height: number) {

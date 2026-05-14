@@ -648,6 +648,47 @@ export interface IDocDrawingBase extends IDrawingParam {
     distR?: number; // wrapSquare | wrapThrough | wrapTight
     distT?: number; // wrapSquare | wrapTopAndBottom
     distB?: number; // wrapSquare | wrapTopAndBottom
+
+    /** SHAPE only. Geometry preset + fill + stroke + bodyPr from <wps:spPr>/<wps:bodyPr>. */
+    shapeProperties?: IDocShapeProperties;
+    /** SHAPE only. Embedded body parsed from <w:txbxContent>. */
+    textBoxContent?: ITextBoxContent;
+}
+
+/**
+ * Shape geometry / fill / stroke / inset properties for a DRAWING_SHAPE
+ * floating object. Sourced from OOXML wps:spPr + wps:bodyPr (DrawingML).
+ *
+ * Distinct from {@link IShapeProperties} (the shared shape-fill model used
+ * for sheet shapes); this one keeps the bits docs-exchange needs to
+ * round-trip a Word text box: preset geometry, optional fill (none ≠ unset),
+ * optional stroke, and the text-frame insets / vertical anchor.
+ */
+export interface IDocShapeProperties {
+    /** a:prstGeom prst — currently we only render rect / roundRect as a plain Rect. */
+    presetGeometry?: string;
+    /** a:solidFill / a:noFill on wps:spPr. */
+    fill?: { rgb: string } | { type: 'none' };
+    /** a:ln on wps:spPr. width is in CSS px. dashStyle uses Univer BorderStyleTypes. */
+    stroke?: { rgb: string; width: number; dashStyle?: number };
+    /** wps:bodyPr — text-frame insets (CSS px), wrap mode, vertical anchor. */
+    bodyPr?: {
+        lIns?: number;
+        tIns?: number;
+        rIns?: number;
+        bIns?: number;
+        wrap?: 'square' | 'none';
+        anchor?: 'top' | 'ctr' | 'bottom' | 'just' | 'dist';
+    };
+}
+
+/**
+ * Embedded document body inside a DRAWING_SHAPE text box. Parsed from
+ * <w:txbxContent>, shaped exactly like the main IDocumentBody so the
+ * paragraph / character pipeline can be reused.
+ */
+export interface ITextBoxContent {
+    body: IDocumentBody;
 }
 
 /**
@@ -681,10 +722,6 @@ export interface IDocDrawingPosition {
     positionH: IObjectPositionH;
     positionV: IObjectPositionV;
     angle: number;
-    // Union field properties can be only one of the following:
-    // shapeProperties?: IShapeProperties;
-    // chartProperties?: IChartProperties;
-    // imageProperties?: IImageProperties;
 }
 
 /**
