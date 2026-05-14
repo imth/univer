@@ -221,3 +221,53 @@ converts to px (`* 4 / 3`) before handing to the renderer.
 - Theme color resolution (`themeColor` / `themeTint` / `themeShade`)
   on borders falls back to the explicit `w:color` or black; theme
   tokens are not yet honored.
+
+## Floating drawings → Text box (`DRAWING_SHAPE`)
+
+Word's "Insert Text Box" / `<wps:wsp>` floating shapes are imported as
+`DrawingTypeEnum.DRAWING_SHAPE` and rendered as a scene-layer `Rect`
+(white fill + black stroke by default). The shape is anchored in the
+body via a custom-block `\b` token in the same way images are.
+
+- **Importer:** `parseDrawingFromXmlNode` recurses into
+  `<mc:AlternateContent>/<mc:Choice>`; on `graphicData` URI
+  `…/wordprocessingShape` it dispatches to `parseShape`, which extracts
+  geometry (`<a:xfrm>`), fill (`<a:solidFill>`), stroke (`<a:ln>`),
+  body insets (`<wps:bodyPr>`), and embedded paragraphs from
+  `<w:txbx><w:txbxContent>` reusing `parseParagraph`.
+- **Renderer:** the `DRAWING_SHAPE` branch of
+  `DrawingRenderService.renderDrawing` paints a `Rect` plus a sibling
+  `RichText` overlay for `textBoxContent` (positioned inside the box's
+  inner content area — outer rect minus `bodyPr` insets). A new
+  `ShapeUpdateController` mirrors `ImageUpdateController` and dispatches
+  `DRAWING_SHAPE` items off `IDrawingManagerService.add$`; it also
+  subscribes to `refreshTransform$` to keep the `_TEXT` overlay aligned
+  when the docs layout pass recomputes the anchored position (the generic
+  drawing-update controller only re-positions the primary shape key).
+- **Wiring:** `DocDrawingController` now subscribes to
+  `getTypeOfUnitAdded$(UNIVER_DOC)` and calls `loadDrawingDataForUnit`
+  itself. The previous resource-hook path only fired when a snapshot
+  carried a `resources[]` entry for the plugin; DOCX import puts
+  drawings on the top-level snapshot fields, so the hook never fired
+  for fresh imports.
+
+**Out of scope (Stage B):**
+
+- Interactivity (drag, resize, double-click-to-edit). Shapes go through
+  the same `IDrawingManagerService.add$` pipeline as images, so the
+  transform machinery should attach with minimal extra work.
+- Non-rect preset geometries (`<a:prstGeom prst>` values other than
+  `rect` / `roundRect` — e.g. `ellipse`, `triangle`, `rightArrow`, the
+  full Autoshapes catalog) are parsed correctly onto
+  `shapeProperties.presetGeometry` but rendered as a plain `Rect` with
+  the shape's fill / stroke. The `Image` class already implements preset
+  → path conversion via `setPrstGeom`; lifting that to a shape-side
+  helper is the planned follow-up after interactivity.
+- Custom geometries (`<a:custGeom>`), gradient fills, shadow / 3D
+  effects, VML fallback (`<mc:Fallback>`), and `<w:wrap*>` text
+  wrapping (we render every shape as `WRAP_NONE`, "in front of text" —
+  so WordArt frames using `wrapSquare` will visually overlap surrounding
+  body text instead of pushing it aside).
+- Position `relativeFrom` values other than `page` and `column`
+  fall back to the OOXML default.
+

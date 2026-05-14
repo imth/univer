@@ -758,7 +758,15 @@ export function assembleDocument(children: DocumentChild[], ctx: AssembleContext
         body,
     };
     if (Object.keys(acc.tableSource).length > 0) docData.tableSource = acc.tableSource as IDocumentData['tableSource'];
-    if (Object.keys(acc.drawings).length > 0) docData.drawings = acc.drawings as IDocumentData['drawings'];
+    if (Object.keys(acc.drawings).length > 0) {
+        docData.drawings = acc.drawings as IDocumentData['drawings'];
+        // doc-drawing.controller.loadDrawingDataForUnit() bails when
+        // drawingsOrder is missing, even if drawings is present — so
+        // every drawing has to appear here for the renderer to pick it
+        // up. Emit insertion order; the importer doesn't yet model
+        // explicit z-ordering.
+        docData.drawingsOrder = Object.keys(acc.drawings);
+    }
     if (Object.keys(lists).length > 0) docData.lists = lists;
 
     return docData;

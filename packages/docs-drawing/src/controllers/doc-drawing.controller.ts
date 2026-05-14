@@ -38,6 +38,22 @@ export class DocDrawingController extends Disposable {
 
     private _init(): void {
         this._initSnapshot();
+        this._initUnitAddedListener();
+    }
+
+    private _initUnitAddedListener() {
+        // Resource manager only fires onLoad when snapshot.resources contains
+        // a plugin entry. Imported docs (DOCX → createUnit) put drawings on
+        // the top-level snapshot fields, not inside resources[], so we
+        // additionally drive loadDrawingDataForUnit from the unit-added
+        // stream. Idempotent: add$ subscribers dedup by drawing id.
+        this.disposeWithMe(
+            this._univerInstanceService
+                .getTypeOfUnitAdded$<DocumentDataModel>(UniverInstanceType.UNIVER_DOC)
+                .subscribe((event) => {
+                    this.loadDrawingDataForUnit(event.unit.getUnitId());
+                })
+        );
     }
 
     private _initSnapshot() {
@@ -128,6 +144,15 @@ export class DocDrawingController extends Disposable {
 
         this._docDrawingService.registerDrawingData(unitId, subDrawings);
         this._drawingManagerService.registerDrawingData(unitId, subDrawings);
+        // registerDrawingData stores the data but doesn't fire add$.
+        // Subscribers (image-update, shape-update controllers) need an
+        // explicit initializeNotification to start rendering. Some
+        // render-time controllers also call this on their own lifecycle,
+        // but those run for the *initial* render only — when a unit is
+        // re-loaded (e.g. DOCX import creates a fresh DocumentDataModel),
+        // we have to drive it from here. The add$ subscribers dedup by
+        // (unitId, subUnitId, drawingId), so a duplicate firing is a no-op.
+        this._drawingManagerService.initializeNotification(unitId);
         return true;
     }
 }

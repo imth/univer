@@ -427,8 +427,12 @@ export function parseRunsFromPNode(
             const style = resolveRunStyle(rPr, baseRpr, baseRFonts, styles, themeFonts, text);
       // Handle text content
             if (text.length > 0) runs.push(style ? { text, style } : { text });
-      // Handle drawing content
-            const drawingNode = findChild(child, 'w:drawing');
+      // Handle drawing content. <w:drawing> is the modern path; some older /
+      // python-docx outputs wrap it in <mc:AlternateContent>/<mc:Choice> with a
+      // VML <mc:Fallback>. parseDrawingFromXmlNode walks into Choice itself,
+      // so we just hand whichever node is present.
+            const drawingNode =
+                findChild(child, 'w:drawing') ?? findChild(child, 'mc:AlternateContent');
             if (drawingNode && drawingsOut && !isWatermarkDrawing(drawingNode)) {
                 const info = parseDrawingFromXmlNode(drawingNode, styles, themeFonts);
                 if (info) {

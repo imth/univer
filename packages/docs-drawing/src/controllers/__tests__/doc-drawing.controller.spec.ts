@@ -39,6 +39,7 @@ describe('DocDrawingController', () => {
 
         const univerInstanceService = {
             getUnit: vi.fn((_unitId: string, _type?: UniverInstanceType) => doc),
+            getTypeOfUnitAdded$: vi.fn(() => ({ subscribe: () => ({ closed: false, unsubscribe: () => {} }) })),
         };
 
         let capturedResource: any;
@@ -51,7 +52,7 @@ describe('DocDrawingController', () => {
 
         const controller = new DocDrawingController(
             { registerDrawingData } as any,
-            { registerDrawingData: registerDrawingDataForManager } as any,
+            { registerDrawingData: registerDrawingDataForManager, initializeNotification: vi.fn() } as any,
             resourceManagerService as any,
             univerInstanceService as any
         );
