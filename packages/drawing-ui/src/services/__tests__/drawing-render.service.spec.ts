@@ -67,6 +67,7 @@ function createService(options?: { unitType?: UniverInstanceType; visible?: bool
             {} as never,
             urlImageService as never,
             univerInstanceService as never,
+            {} as never,
             drawingImageClipService as never
         ),
         univerInstanceService,
