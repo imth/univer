@@ -51,7 +51,7 @@ import {
 import {
   UniverSheetsDrawingPlugin,
   UniverSheetsDrawingUIPlugin
-} from "../chunk-NZ23BXP7.js";
+} from "../chunk-ILW6OEOM.js";
 import {
   FUniver
 } from "../chunk-32E5INCS.js";

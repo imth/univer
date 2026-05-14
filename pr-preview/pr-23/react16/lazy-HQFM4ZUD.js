@@ -1,6 +1,6 @@
 import {
   UniverSheetsDrawingUIPlugin
-} from "./chunk-NZ23BXP7.js";
+} from "./chunk-ILW6OEOM.js";
 import {
   UniverSheetsConditionalFormattingUIPlugin,
   UniverSheetsDataValidationUIPlugin,

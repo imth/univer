@@ -8,7 +8,7 @@ import {
   OpenImageCropOperation,
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "./chunk-NZ23BXP7.js";
+} from "./chunk-ILW6OEOM.js";
 import {
   DRAWING_IMAGE_ALLOW_IMAGE_LIST,
   DRAWING_IMAGE_ALLOW_SIZE,

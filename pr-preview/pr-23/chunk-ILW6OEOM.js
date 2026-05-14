@@ -3099,10 +3099,33 @@ var DrawingImageClipService = class extends Disposable {
 
 // ../packages/drawing-ui/src/services/drawing-render.service.ts
 var ClippedRichText = class extends RichText {
+  constructor(...args) {
+    var _a, _b;
+    super(...args);
+    /**
+     * Intended visual bounds of the text overlay (the shape's inner content
+     * area = outer rect minus bodyPr insets). RichText auto-grows
+     * `this.height` to fit content (see its `onTransformChange$`
+     * subscription that overrides height with the skeleton's natural size),
+     * so we cannot clip against `this.width/height` — that would let tall
+     * content paint outside the box. Instead we capture the requested
+     * box size at construction and re-apply it whenever the parent rect
+     * resizes.
+     */
+    __publicField(this, "clipWidth");
+    __publicField(this, "clipHeight");
+    const props = args[2];
+    this.clipWidth = (_a = props == null ? void 0 : props.width) != null ? _a : this.width;
+    this.clipHeight = (_b = props == null ? void 0 : props.height) != null ? _b : this.height;
+  }
+  setClipSize(width, height) {
+    this.clipWidth = width;
+    this.clipHeight = height;
+  }
   _draw(ctx) {
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, 0, this.width, this.height);
+    ctx.rect(0, 0, this.clipWidth, this.clipHeight);
     ctx.clip();
     super._draw(ctx);
     ctx.restore();
@@ -3345,11 +3368,14 @@ var DrawingRenderService = class {
         const rIns = (_c = bodyPr == null ? void 0 : bodyPr.rIns) != null ? _c : 0;
         const bIns = (_d = bodyPr == null ? void 0 : bodyPr.bIns) != null ? _d : 0;
         rect.onTransformChange$.subscribeEvent(() => {
+          const w = Math.max(0, rect.width - lIns - rIns);
+          const h = Math.max(0, rect.height - tIns - bIns);
+          text.setClipSize(w, h);
           text.transformByState({
             left: rect.left + lIns,
             top: rect.top + tIns,
-            width: Math.max(0, rect.width - lIns - rIns),
-            height: Math.max(0, rect.height - tIns - bIns),
+            width: w,
+            height: h,
             angle: rect.angle
           });
         });
@@ -3390,6 +3416,13 @@ var DrawingRenderService = class {
       zIndex: baseZ + 0.5,
       richText: docData,
       forceRender: true
+    });
+    overlay.transformByState({
+      left: transform.left + lIns,
+      top: transform.top + tIns,
+      width: innerW,
+      height: innerH,
+      angle: transform.angle
     });
     return overlay;
   }
@@ -3700,11 +3733,15 @@ var ShapeUpdateController = class extends Disposable {
           const tIns = (_c = bodyPr == null ? void 0 : bodyPr.tIns) != null ? _c : 0;
           const rIns = (_d = bodyPr == null ? void 0 : bodyPr.rIns) != null ? _d : 0;
           const bIns = (_e = bodyPr == null ? void 0 : bodyPr.bIns) != null ? _e : 0;
+          const innerW = Math.max(0, width - lIns - rIns);
+          const innerH = Math.max(0, height - tIns - bIns);
+          const setClip = overlay.setClipSize;
+          if (setClip) setClip.call(overlay, innerW, innerH);
           overlay.transformByState({
             left: left + lIns,
             top: top + tIns,
-            width: Math.max(0, width - lIns - rIns),
-            height: Math.max(0, height - tIns - bIns),
+            width: innerW,
+            height: innerH,
             angle
           });
         });
