@@ -122,11 +122,34 @@ export class ShapeUpdateController extends Disposable {
                     const bIns = bodyPr?.bIns ?? 0;
                     const innerW = Math.max(0, width - lIns - rIns);
                     const innerH = Math.max(0, height - tIns - bIns);
+                    // Both rect and overlay rotate about their own center
+                    // (BaseObject.transformForAngle remaps composeMatrix's
+                    // top-left pivot back to the geometric center). Align
+                    // the overlay's center with the rect's inner-area
+                    // center after rotation, then back out the top-left.
+                    let overlayLeft: number;
+                    let overlayTop: number;
+                    if (angle) {
+                        const rad = (angle * Math.PI) / 180;
+                        const cos = Math.cos(rad);
+                        const sin = Math.sin(rad);
+                        const cx = left + width / 2;
+                        const cy = top + height / 2;
+                        const ox = lIns + innerW / 2 - width / 2;
+                        const oy = tIns + innerH / 2 - height / 2;
+                        const innerCx = cx + ox * cos - oy * sin;
+                        const innerCy = cy + ox * sin + oy * cos;
+                        overlayLeft = innerCx - innerW / 2;
+                        overlayTop = innerCy - innerH / 2;
+                    } else {
+                        overlayLeft = left + lIns;
+                        overlayTop = top + tIns;
+                    }
                     const setClip = (overlay as { setClipSize?: (w: number, h: number) => void }).setClipSize;
                     if (setClip) setClip.call(overlay, innerW, innerH);
                     overlay.transformByState({
-                        left: left + lIns,
-                        top: top + tIns,
+                        left: overlayLeft,
+                        top: overlayTop,
                         width: innerW,
                         height: innerH,
                         angle,
