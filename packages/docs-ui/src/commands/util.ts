@@ -33,17 +33,20 @@ export function getRichTextEditPath(docDataModel: DocumentDataModel, segmentId =
         return ['body'];
     }
 
-    const { headers, footers } = docDataModel.getSnapshot();
+    const { headers, footers, drawings } = docDataModel.getSnapshot();
 
-    if (headers == null && footers == null) {
-        throw new Error('Document data model must have headers or footers when update by segment id');
-    }
+    // Old code threw early when both headers and footers were null;
+    // we drop that guard. Plain-body callers (no segments) hit the
+    // empty-segmentId branch above and never reach here, so the
+    // pre-condition was not load-bearing.
 
     if (headers?.[segmentId] != null) {
         return ['headers', segmentId, 'body'];
     } else if (footers?.[segmentId] != null) {
         return ['footers', segmentId, 'body'];
+    } else if (drawings?.[segmentId]?.textBoxContent != null) {
+        return ['drawings', segmentId, 'textBoxContent', 'body'];
     } else {
-        throw new Error('Segment id not found in headers or footers');
+        throw new Error(`Segment id "${segmentId}" not found in headers, footers, or drawings`);
     }
 }
