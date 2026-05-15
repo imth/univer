@@ -532,6 +532,26 @@ export class Documents extends DocComponent {
                 );
             }
 
+            // Stage C — render textbox bodies on this page (after header /
+            // footer, before _pageRender$ emit). ctx is at the page-local
+            // origin; rotation has been reset by the prior _resetRotation
+            // call. _drawLiquid state is whatever the body loop's outer
+            // translateRestore left it at — `_drawTextBoxes` does its own
+            // translateSave/Restore for each textbox so we don't pollute the
+            // parent state.
+            this._drawTextBoxes(
+                page,
+                ctx,
+                extensions,
+                backgroundExtension,
+                glyphExtensionsExcludeBackground,
+                centerAngle,
+                vertexAngle,
+                renderConfig,
+                parentScale,
+                pages.length
+            );
+
             this._pageRender$.next({
                 page,
                 pageLeft,
@@ -1019,7 +1039,18 @@ export class Documents extends DocComponent {
         ctx.restore();
     }
 
-    private _drawHeaderFooter(
+    /**
+     * Generic page-tree draw used by header / footer / textbox sub-skeletons.
+     * Iterates sections / columns / lines / glyphs and dispatches extensions.
+     * Caller controls per-line skipping via `shouldSkipLine` (header / footer
+     * use this to clip to their half of the page; textbox passes always-false).
+     *
+     * Stage C extracted this from `_drawHeaderFooter`. Functional equivalence
+     * with the previous header/footer body is verified by diff in the plan
+     * (Step 2.5). The only departure from the old body is the half-page clip
+     * being parameterised as `shouldSkipLine`.
+     */
+    private _drawSegmentBody(
         page: IDocumentSkeletonPage,
         ctx: UniverRenderingContext,
         extensions: ComponentExtension<IDocumentSkeletonGlyph | IDocumentSkeletonLine, DOCS_EXTENSION_TYPE, IBoundRectNoAngle[]>[],
@@ -1031,8 +1062,8 @@ export class Documents extends DocComponent {
         renderConfig: IDocumentRenderConfig,
         parentScale: IScale,
         parentPage: IDocumentSkeletonPage,
-        isHeader = true,
-        totalPages = 1
+        totalPages: number,
+        shouldSkipLine: (line: IDocumentSkeletonLine, y: number, originY: number, alignOffset: Vector2, lineHeight: number) => boolean
     ) {
         if (this._drawLiquid == null) {
             return;
@@ -1082,16 +1113,9 @@ export class Documents extends DocComponent {
                         this._drawLiquid.translateLine(line, true, true);
                         const { y } = this._drawLiquid;
 
-                        if (isHeader) {
-                            if ((y - originY + alignOffset.y) > (parentPage.pageHeight - 100) / 2) {
-                                this._drawLiquid.translateRestore();
-                                continue;
-                            }
-                        } else {
-                            if ((y - originY + alignOffset.y + lineHeight) < (parentPage.pageHeight - 100) / 2 + 100) {
-                                this._drawLiquid.translateRestore();
-                                continue;
-                            }
+                        if (shouldSkipLine(line, y, originY, alignOffset, lineHeight)) {
+                            this._drawLiquid.translateRestore();
+                            continue;
                         }
 
                         const divideLength = divides.length;
@@ -1202,6 +1226,116 @@ export class Documents extends DocComponent {
             }
 
             this._drawLiquid.translateRestore();
+        }
+    }
+
+    /**
+     * Header / footer wrapper around `_drawSegmentBody`. The skip predicate
+     * is the half-page clip that's been here forever.
+     */
+    private _drawHeaderFooter(
+        page: IDocumentSkeletonPage,
+        ctx: UniverRenderingContext,
+        extensions: ComponentExtension<IDocumentSkeletonGlyph | IDocumentSkeletonLine, DOCS_EXTENSION_TYPE, IBoundRectNoAngle[]>[],
+        backgroundExtension: Nullable<ComponentExtension<IDocumentSkeletonGlyph | IDocumentSkeletonLine, DOCS_EXTENSION_TYPE, IBoundRectNoAngle[]>>,
+        glyphExtensionsExcludeBackground: ComponentExtension<IDocumentSkeletonGlyph | IDocumentSkeletonLine, DOCS_EXTENSION_TYPE, IBoundRectNoAngle[]>[],
+        alignOffsetNoAngle: Vector2,
+        centerAngle: number,
+        vertexAngle: number,
+        renderConfig: IDocumentRenderConfig,
+        parentScale: IScale,
+        parentPage: IDocumentSkeletonPage,
+        isHeader = true,
+        totalPages = 1
+    ) {
+        const halfClip = (_line: IDocumentSkeletonLine, y: number, originY: number, alignOffset: Vector2, lineHeight: number) => {
+            if (isHeader) {
+                return (y - originY + alignOffset.y) > (parentPage.pageHeight - 100) / 2;
+            }
+            return (y - originY + alignOffset.y + lineHeight) < (parentPage.pageHeight - 100) / 2 + 100;
+        };
+
+        this._drawSegmentBody(
+            page,
+            ctx,
+            extensions,
+            backgroundExtension,
+            glyphExtensionsExcludeBackground,
+            alignOffsetNoAngle,
+            centerAngle,
+            vertexAngle,
+            renderConfig,
+            parentScale,
+            parentPage,
+            totalPages,
+            halfClip
+        );
+    }
+
+    /**
+     * Stage C — draw textbox bodies for every drawing on this page that has a
+     * populated `bodySke` (set by `populateTextBoxBodies` during layout).
+     * Translates to the drawing's `(aLeft, aTop)`, rotates by `drawing.angle`
+     * around the centre, and applies `bodyPr` insets, then dispatches the
+     * sub-skeleton through `_drawSegmentBody`. Shape backgrounds / borders are
+     * still drawn by DrawingRenderService — only text moves here.
+     *
+     * `_drawLiquid.translateBy(0, 0)` (Liquid's absolute-set API at
+     * liquid.ts:48-51) gives each textbox its own coordinate space.
+     */
+    private _drawTextBoxes(
+        parentPage: IDocumentSkeletonPage,
+        ctx: UniverRenderingContext,
+        extensions: ComponentExtension<IDocumentSkeletonGlyph | IDocumentSkeletonLine, DOCS_EXTENSION_TYPE, IBoundRectNoAngle[]>[],
+        backgroundExtension: Nullable<ComponentExtension<IDocumentSkeletonGlyph | IDocumentSkeletonLine, DOCS_EXTENSION_TYPE, IBoundRectNoAngle[]>>,
+        glyphExtensionsExcludeBackground: ComponentExtension<IDocumentSkeletonGlyph | IDocumentSkeletonLine, DOCS_EXTENSION_TYPE, IBoundRectNoAngle[]>[],
+        centerAngle: number,
+        vertexAngle: number,
+        renderConfig: IDocumentRenderConfig,
+        parentScale: IScale,
+        totalPages: number
+    ) {
+        if (!parentPage.skeDrawings || parentPage.skeDrawings.size === 0) return;
+        if (this._drawLiquid == null) return;
+
+        for (const [, skeDrawing] of parentPage.skeDrawings) {
+            if (!skeDrawing.bodySke) continue; // image-only drawing or feature off
+
+            ctx.save();
+            // Translate to drawing's page-relative top-left.
+            ctx.translate(skeDrawing.aLeft, skeDrawing.aTop);
+            // Rotate around drawing centre.
+            if (skeDrawing.angle !== 0) {
+                ctx.translate(skeDrawing.width / 2, skeDrawing.height / 2);
+                ctx.rotate(skeDrawing.angle);
+                ctx.translate(-skeDrawing.width / 2, -skeDrawing.height / 2);
+            }
+            // Apply bodyPr inset translation so text starts inside the inner rect.
+            const bodyPr = skeDrawing.drawingOrigin.shapeProperties?.bodyPr;
+            ctx.translate(bodyPr?.lIns ?? 9.6, bodyPr?.tIns ?? 4.8);
+
+            // Reset _drawLiquid origin for the sub-skeleton, restore after.
+            this._drawLiquid.translateSave();
+            this._drawLiquid.translateBy(0, 0);
+
+            this._drawSegmentBody(
+                skeDrawing.bodySke,
+                ctx,
+                extensions,
+                backgroundExtension,
+                glyphExtensionsExcludeBackground,
+                Vector2.create(0, 0),
+                centerAngle,
+                vertexAngle,
+                renderConfig,
+                parentScale,
+                skeDrawing.bodySke,
+                totalPages,
+                () => false // textboxes never half-clip
+            );
+
+            this._drawLiquid.translateRestore();
+            ctx.restore();
         }
     }
 
