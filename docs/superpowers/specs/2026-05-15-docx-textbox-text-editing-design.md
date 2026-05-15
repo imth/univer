@@ -78,12 +78,25 @@ Word's stories don't share selection ranges. We enforce this in two complementar
 
 ### `engine-render` — view-model & layout (≈ 80 LOC)
 
+**File: `packages/core/src/docs/data-model/document-data-model.ts`** (added during plan review — see "Reasoning correction" below)
+- Add `textBoxModelMap: Map<string, DocumentDataModel>` peer to `headerModelMap` / `footerModelMap`
+- Extend `_initializeHeaderFooterModel` to also init textbox sub-data-models from `documentData.drawings[id].textBoxContent.body`
+- Extend `apply()`'s rebuild trigger to fire when actions touch `drawings`, so textbox sub-models stay in sync with parent snapshot replacement
+- Extend `getSelfOrHeaderFooterModel` (or add `getSelfOrSegmentModel` peer) so callers can resolve a textbox segmentId to the sub-model
+
 **File: `packages/engine-render/src/components/docs/view-model/document-view-model.ts`**
 - Add `DocumentEditArea.TEXT_BOX = 'TEXT_BOX'`
 - Add `_textBoxTreeMap: Map<string, DocumentViewModel>`
-- Add a new method `getSelfOrSegmentViewModel(segmentId)` that checks all three maps (header / footer / textbox). **Keep the existing `getSelfOrHeaderFooterViewModel` as a delegating thin wrapper** — no rename, no deprecation churn. Existing call sites stay correct (they only ever look up header/footer ids); textbox-aware code uses the new method by name.
-- Resolve text box bodies on construction (parse `documentData.drawings[id].textBoxContent.body` for each drawing that has one)
-- Subscribe to `documentData` drawing add / delete / replace mutations and rebuild / drop entries in `_textBoxTreeMap` so the map can never go stale (Stage B already supports drag/resize/delete on shapes; the map must follow). Assert empty on `dispose`.
+- Add a new method `getSelfOrSegmentViewModel(segmentId)` that checks all three maps (header / footer / textbox). **Keep the existing `getSelfOrHeaderFooterViewModel` non-delegating** so its 12+ callers preserve their original "header/footer-only" contract — see "Reasoning correction" below.
+- Build textbox sub-view-models in `_buildHeaderFooterViewModel` (rename to `_buildSegmentViewModels`) by reading `_documentDataModel.textBoxModelMap`. Sub data-model rebuilds in core handle the synchronization; we just rebuild the view-model map alongside header/footer when `apply()` rebuilds the data-model maps.
+
+### Reasoning correction (added during plan review)
+
+The first draft of this spec underestimated how header/footer sub-models stay in sync with the parent. They are NOT just "view-model wrappers around a body reference" — they are full sub-`DocumentDataModel` instances stored on the parent (`headerModelMap` in core), and the parent's `apply()` clears + rebuilds the entire map whenever a mutation touches `headers` / `footers` (because `JSONX.apply` is immutable and replaces sub-trees, leaving any cached body reference stale).
+
+Textbox bodies need the same treatment: a parallel `textBoxModelMap` in `core/DocumentDataModel`, rebuilt whenever a mutation touches `drawings`. Otherwise the first edit would leave the sub-view-model pointing at a stale body and subsequent edits would not render.
+
+Also, **the legacy `getSelfOrHeaderFooterViewModel` must NOT delegate to the new method** even though that initially seemed cleaner. Delegating would change its return value for any caller that ever sees a drawingId (currently impossible because no caller passes drawingIds, but coupling the contracts means a future segmentId convention change in textbox-aware code would silently leak into the 12+ legacy callers). Keep the contracts independent.
 
 **File: `packages/engine-render/src/basics/i-document-skeleton-cached.ts`**
 - Add `IDocumentSkeletonDrawing.bodySke?: IDocumentSkeletonHeaderFooter` (reuses the same shape as headers/footers)
