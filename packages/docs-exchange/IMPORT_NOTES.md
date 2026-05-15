@@ -275,13 +275,32 @@ body via a custom-block `\b` token in the same way images are.
   size rather than the auto-grown content size — see the class-level
   comment in `drawing-render.service.ts` for the full why.
 
-**Out of scope (Stage C):**
+**Stage C (P1 — text editing inside a textbox):**
 
-- Double-click to edit text inside a shape. `RichText` is a read-only
-  scene-render component; the real editor is `IEditorService.register`
-  which requires a DOM `HTMLDivElement` overlay (toolbar routing,
-  command stack, IME). Shipping a partial canvas-only editor would
-  diverge from the rest of the docs editing UX.
+- Double-click a non-rotated textbox to enter edit mode. The body
+  Documents object's editArea switches to `TEXT_BOX`, the doc selection
+  service's segment is set to the drawing id, and the in-rect
+  `ClippedRichText` overlay is hidden so the live editor surface is
+  what you see and type into. Esc, outside-click, or selection of
+  another drawing exits edit mode and restores the cached overlay.
+- The textbox body is a sub-`DocumentViewModel` keyed by drawing id in
+  the same `headerModelMap` / `footerModelMap` style — `getRichTextEditPath`
+  returns `['drawings', drawingId, 'textBoxContent', 'body']`, so all
+  existing rich-text mutations (insert, delete, format, undo/redo) flow
+  to the textbox body without per-command branching.
+- Format toolbar items that don't make sense inside a textbox (insert
+  table) are gated off when `editArea === TEXT_BOX`, mirroring the
+  existing HEADER / FOOTER gating.
+
+**Out of scope:**
+
+- Edit on rotated textboxes. Selection hit-test in the rotated frame
+  needs separate work (matrix-inverted point projection), and the body
+  editor's caret/selection geometry assumes axis-aligned content.
+- Nested tables inside textboxes. Word allows them, but Univer's
+  importer intentionally drops them inside `<w:txbxContent>` (see the
+  Stage A scope decision in the spec) and the toolbar gates the insert
+  command anyway.
 - Non-rect preset geometries (`<a:prstGeom prst>` values other than
   `rect` / `roundRect`): supported via `PresetGeometryRect` which paints
   the OOXML preset outline using path data from a vendored copy of

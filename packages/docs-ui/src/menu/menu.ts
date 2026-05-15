@@ -92,7 +92,7 @@ function getInsertTableHiddenObservable(
             const viewModel = currentRender.with(DocSkeletonManagerService).getViewModel();
 
             viewModel.editAreaChange$.subscribe((editArea) => {
-                subscriber.next(editArea === DocumentEditArea.HEADER || editArea === DocumentEditArea.FOOTER);
+                subscriber.next(editArea === DocumentEditArea.HEADER || editArea === DocumentEditArea.FOOTER || editArea === DocumentEditArea.TEXT_BOX);
             });
         });
 
