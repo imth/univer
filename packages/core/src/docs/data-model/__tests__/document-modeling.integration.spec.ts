@@ -17,6 +17,7 @@
 import type { IDocumentData } from '../../../types/interfaces/i-document-data';
 import { describe, expect, it } from 'vitest';
 import { BooleanNumber, HorizontalAlign, TextDecoration, TextDirection } from '../../../types/enum/text-style';
+import { DrawingTypeEnum } from '../../../types/interfaces/i-drawing';
 import { DocumentDataModel } from '../document-data-model';
 import { JSONX } from '../json-x/json-x';
 import { ParagraphStyleBuilder, RichTextBuilder, TextDecorationBuilder, TextStyleBuilder } from '../rich-text-builder';
@@ -200,5 +201,90 @@ describe('DocumentDataModel + RichTextBuilder integration', () => {
         expect(model.getUnitId()).toBe('doc-reset');
         expect(model.sliceBody(0, 5)?.dataStream).toContain('Reset');
         model.dispose();
+    });
+});
+
+function buildDocWithTextbox() {
+    return new DocumentDataModel({
+        id: 'test-doc',
+        body: { dataStream: 'Body\r\n', textRuns: [], paragraphs: [{ startIndex: 5 }] },
+        headers: { h1: { headerId: 'h1', body: { dataStream: 'H\r\n', textRuns: [], paragraphs: [{ startIndex: 2 }] } } },
+        footers: { f1: { footerId: 'f1', body: { dataStream: 'F\r\n', textRuns: [], paragraphs: [{ startIndex: 2 }] } } },
+        drawings: {
+            tb1: {
+                unitId: 'test-doc',
+                subUnitId: 'test-doc',
+                drawingId: 'tb1',
+                drawingType: DrawingTypeEnum.DRAWING_SHAPE,
+                textBoxContent: { body: { dataStream: 'Textbox\r\n', textRuns: [], paragraphs: [{ startIndex: 8 }] } },
+                transform: { left: 0, top: 0, width: 100, height: 100, angle: 0 },
+                docTransform: { size: { width: 100, height: 100 }, positionH: { relativeFrom: 2, posOffset: 0 }, positionV: { relativeFrom: 2, posOffset: 0 }, angle: 0 },
+                layoutType: 1,
+            } as any,
+            imgOnly: { drawingId: 'imgOnly', drawingType: DrawingTypeEnum.DRAWING_IMAGE } as any, // no textBoxContent
+        },
+        drawingsOrder: ['tb1', 'imgOnly'],
+        documentStyle: { pageSize: { width: 595, height: 842 } },
+    });
+}
+
+describe('textBoxModelMap', () => {
+    it('is populated for drawings with textBoxContent', () => {
+        const m = buildDocWithTextbox();
+        expect(m.textBoxModelMap.has('tb1')).toBe(true);
+        expect(m.textBoxModelMap.get('tb1')?.getBody()?.dataStream).toContain('Textbox');
+    });
+
+    it('is NOT populated for drawings without textBoxContent (image-only)', () => {
+        const m = buildDocWithTextbox();
+        expect(m.textBoxModelMap.has('imgOnly')).toBe(false);
+    });
+
+    it('sub-model shares the parent unitId (matches header/footer pattern)', () => {
+        const m = buildDocWithTextbox();
+        expect(m.textBoxModelMap.get('tb1')!.getUnitId()).toBe(m.getUnitId());
+    });
+});
+
+describe('getSelfOrSegmentModel', () => {
+    it('returns self for empty / undefined segmentId', () => {
+        const m = buildDocWithTextbox();
+        expect(m.getSelfOrSegmentModel('')).toBe(m);
+        expect(m.getSelfOrSegmentModel(undefined)).toBe(m);
+    });
+
+    it('returns header sub-model for a header segmentId', () => {
+        expect(buildDocWithTextbox().getSelfOrSegmentModel('h1').getBody()?.dataStream).toContain('H');
+    });
+
+    it('returns footer sub-model for a footer segmentId', () => {
+        expect(buildDocWithTextbox().getSelfOrSegmentModel('f1').getBody()?.dataStream).toContain('F');
+    });
+
+    it('returns textbox sub-model for a drawingId with textBoxContent', () => {
+        expect(buildDocWithTextbox().getSelfOrSegmentModel('tb1').getBody()?.dataStream).toContain('Textbox');
+    });
+
+    it('returns self for a drawingId WITHOUT textBoxContent', () => {
+        const m = buildDocWithTextbox();
+        expect(m.getSelfOrSegmentModel('imgOnly')).toBe(m);
+    });
+
+    it('returns self for an unknown segmentId', () => {
+        const m = buildDocWithTextbox();
+        expect(m.getSelfOrSegmentModel('does-not-exist')).toBe(m);
+    });
+});
+
+describe('getSelfOrHeaderFooterModel — legacy contract preserved', () => {
+    it('still resolves headers and footers as before', () => {
+        const m = buildDocWithTextbox();
+        expect(m.getSelfOrHeaderFooterModel('h1').getBody()?.dataStream).toContain('H');
+        expect(m.getSelfOrHeaderFooterModel('f1').getBody()?.dataStream).toContain('F');
+    });
+
+    it('does NOT resolve textbox segments — caller must opt in via getSelfOrSegmentModel', () => {
+        const m = buildDocWithTextbox();
+        expect(m.getSelfOrHeaderFooterModel('tb1')).toBe(m);
     });
 });

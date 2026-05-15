@@ -235,6 +235,8 @@ export class DocumentDataModel extends DocumentDataModelSimple {
     headerModelMap: Map<string, DocumentDataModel> = new Map();
 
     footerModelMap: Map<string, DocumentDataModel> = new Map();
+
+    textBoxModelMap: Map<string, DocumentDataModel> = new Map();
     change$ = new BehaviorSubject<number>(0);
 
     constructor(snapshot: Partial<IDocumentData>) {
@@ -256,6 +258,10 @@ export class DocumentDataModel extends DocumentDataModelSimple {
 
         this.footerModelMap.forEach((footer) => {
             footer.dispose();
+        });
+
+        this.textBoxModelMap.forEach((textbox) => {
+            textbox.dispose();
         });
 
         this._name$.complete();
@@ -306,6 +312,25 @@ export class DocumentDataModel extends DocumentDataModelSimple {
         return this as DocumentDataModel;
     }
 
+    /**
+     * Resolve a segmentId to its owning data model — body / header / footer / textbox.
+     * Textbox segments use the drawingId as segmentId. Falls through to `this`
+     * when the segmentId is empty or unknown.
+     *
+     * Distinct from `getSelfOrHeaderFooterModel`, which preserves the
+     * legacy "header / footer only" contract for its 12+ callers. New
+     * code that may see a textbox segmentId should use this method.
+     */
+    getSelfOrSegmentModel(segmentId?: string): DocumentDataModel {
+        if (segmentId == null || segmentId === '') {
+            return this;
+        }
+        if (this.headerModelMap.has(segmentId)) return this.headerModelMap.get(segmentId)!;
+        if (this.footerModelMap.has(segmentId)) return this.footerModelMap.get(segmentId)!;
+        if (this.textBoxModelMap.has(segmentId)) return this.textBoxModelMap.get(segmentId)!;
+        return this;
+    }
+
     override getUnitId() {
         return this._unitId;
     }
@@ -318,9 +343,10 @@ export class DocumentDataModel extends DocumentDataModelSimple {
         this.snapshot = JSONX.apply(this.snapshot, actions) as unknown as IDocumentData;
 
         // FIXME: @JOCS, ANY better solution to find action that create or delete header/footer?
-        if (actions?.some((a) => Array.isArray(a) && (a?.[0] === 'headers' || a?.[0] === 'footers'))) {
+        if (actions?.some((a) => Array.isArray(a) && (a?.[0] === 'headers' || a?.[0] === 'footers' || a?.[0] === 'drawings'))) {
             this.headerModelMap.clear();
             this.footerModelMap.clear();
+            this.textBoxModelMap.clear();
             this._initializeHeaderFooterModel();
         }
 
@@ -339,7 +365,7 @@ export class DocumentDataModel extends DocumentDataModelSimple {
     }
 
     private _initializeHeaderFooterModel() {
-        const { headers, footers } = this.getSnapshot();
+        const { headers, footers, drawings } = this.getSnapshot();
 
         if (headers) {
             for (const headerId in headers) {
@@ -354,6 +380,27 @@ export class DocumentDataModel extends DocumentDataModelSimple {
                 const footer = footers[footerId];
                 this.footerModelMap.set(footerId, new DocumentDataModel(footer));
                 this.footerModelMap.get(footerId)!.updateDocumentId(this.getUnitId());
+            }
+        }
+
+        if (drawings) {
+            for (const drawingId in drawings) {
+                const drawing = drawings[drawingId];
+                if (drawing.textBoxContent?.body) {
+                    // Textbox body wrapped in its own DocumentDataModel so it
+                    // participates in the same lifecycle as headers / footers.
+                    // Mirrors the header/footer initialisation pattern above.
+                    // documentStyle is forwarded so default font / locale resolve
+                    // inside the textbox the same way they do in the parent body.
+                    this.textBoxModelMap.set(
+                        drawingId,
+                        new DocumentDataModel({
+                            body: drawing.textBoxContent.body,
+                            documentStyle: this.snapshot.documentStyle,
+                        })
+                    );
+                    this.textBoxModelMap.get(drawingId)!.updateDocumentId(this.getUnitId());
+                }
             }
         }
     }
