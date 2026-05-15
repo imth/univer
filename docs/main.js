@@ -10,11 +10,11 @@ import {
 import "../chunk-IQUVNM4H.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-B7WLLW5T.js";
+} from "../chunk-Z3UHAL7Y.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-E6VAVGYR.js";
+} from "../chunk-7SDOUPZO.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
@@ -25,7 +25,7 @@ import "../chunk-YJYPSLQA.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-INBG5SZW.js";
+} from "../chunk-AQEQGIAN.js";
 import {
   FUniver
 } from "../chunk-32E5INCS.js";
@@ -7331,7 +7331,8 @@ function parseShape(drawingNode, wsp, styles, themeFonts) {
     kind: "shape",
     widthPx: Math.round(widthPx),
     heightPx: Math.round(heightPx),
-    shapeProps: {}
+    shapeProps: {},
+    isInline: positioning === inline
   };
   if (anchor) {
     const behindDocAttr = nodeAttrs(anchor)["@_behindDoc"];
@@ -7523,9 +7524,13 @@ function buildShapeDrawing(drawingId, info) {
     drawingId,
     // DrawingTypeEnum.DRAWING_SHAPE = 1
     drawingType: 1,
-    // PositionedObjectLayoutType.WRAP_NONE = 1 — Word text boxes draw on top
-    // of body text; we don't yet support real flow-around for wrapSquare etc.
-    layoutType: 1,
+    // PositionedObjectLayoutType: INLINE = 0 (occupies a glyph slot
+    // in the line and pushes following text right), WRAP_NONE = 1
+    // (floats over body text, doesn't displace it). `<wp:inline>`
+    // shapes need INLINE so they don't draw on top of the next
+    // run; `<wp:anchor>` shapes use WRAP_NONE because we don't
+    // yet implement actual flow-around for wrapSquare etc.
+    layoutType: info.isInline ? 0 : 1,
     transform: { left: (_c = info.posXPx) != null ? _c : 0, top: (_d = info.posYPx) != null ? _d : 0, width, height, angle: (_e = info.rotationDegrees) != null ? _e : 0 },
     docTransform: {
       size: { width, height },
