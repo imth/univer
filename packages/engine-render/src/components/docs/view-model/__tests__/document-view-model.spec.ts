@@ -245,3 +245,99 @@ describe('DocumentViewModel', () => {
         });
     });
 });
+
+// Stage C — textbox sub-view-model tests. Build through real DocumentDataModel
+// (not the mock builder above) so textBoxModelMap is populated.
+async function _stageCImports() {
+    const { DocumentDataModel } = await import('@univerjs/core');
+    return { DocumentDataModel };
+}
+
+function buildVm(DocumentDataModelCtor: any) {
+    const model = new DocumentDataModelCtor({
+        id: 'd',
+        body: { dataStream: '\r\n', textRuns: [], paragraphs: [{ startIndex: 1 }] },
+        headers: { h1: { headerId: 'h1', body: { dataStream: 'h\r\n', textRuns: [], paragraphs: [{ startIndex: 2 }] } } },
+        footers: { f1: { footerId: 'f1', body: { dataStream: 'f\r\n', textRuns: [], paragraphs: [{ startIndex: 2 }] } } },
+        drawings: {
+            tb1: { drawingId: 'tb1', textBoxContent: { body: { dataStream: 't\r\n', textRuns: [], paragraphs: [{ startIndex: 2 }] } } },
+            tb2: { drawingId: 'tb2', textBoxContent: { body: { dataStream: 'x\r\n', textRuns: [], paragraphs: [{ startIndex: 2 }] } } },
+            imgOnly: { drawingId: 'imgOnly' },
+        },
+        drawingsOrder: ['tb1', 'tb2', 'imgOnly'],
+        documentStyle: {},
+    });
+    return new DocumentViewModel(model);
+}
+
+describe('Stage C — getSelfOrSegmentViewModel', () => {
+    it('returns self when segmentId is empty or undefined', async () => {
+        const { DocumentDataModel } = await _stageCImports();
+        const vm = buildVm(DocumentDataModel);
+        expect(vm.getSelfOrSegmentViewModel()).toBe(vm);
+        expect(vm.getSelfOrSegmentViewModel('')).toBe(vm);
+    });
+
+    it('returns the header sub-view-model for a header segmentId', async () => {
+        const { DocumentDataModel } = await _stageCImports();
+        const vm = buildVm(DocumentDataModel);
+        expect(vm.getSelfOrSegmentViewModel('h1')).not.toBe(vm);
+    });
+
+    it('returns the footer sub-view-model for a footer segmentId', async () => {
+        const { DocumentDataModel } = await _stageCImports();
+        const vm = buildVm(DocumentDataModel);
+        expect(vm.getSelfOrSegmentViewModel('f1')).not.toBe(vm);
+    });
+
+    it('returns a textbox sub-view-model for a drawingId with textBoxContent', async () => {
+        const { DocumentDataModel } = await _stageCImports();
+        const vm = buildVm(DocumentDataModel);
+        const tbVm = vm.getSelfOrSegmentViewModel('tb1');
+        expect(tbVm).not.toBe(vm);
+        expect(tbVm).toBeInstanceOf(DocumentViewModel);
+    });
+
+    it('returns self for a drawingId WITHOUT textBoxContent', async () => {
+        const { DocumentDataModel } = await _stageCImports();
+        const vm = buildVm(DocumentDataModel);
+        expect(vm.getSelfOrSegmentViewModel('imgOnly')).toBe(vm);
+    });
+
+    it('returns self for an unknown segmentId', async () => {
+        const { DocumentDataModel } = await _stageCImports();
+        const vm = buildVm(DocumentDataModel);
+        expect(vm.getSelfOrSegmentViewModel('nope')).toBe(vm);
+    });
+
+    it('returns the same instance on repeated lookups (cached)', async () => {
+        const { DocumentDataModel } = await _stageCImports();
+        const vm = buildVm(DocumentDataModel);
+        expect(vm.getSelfOrSegmentViewModel('tb1')).toBe(vm.getSelfOrSegmentViewModel('tb1'));
+    });
+
+    it('emits header / footer / textbox sub-view-models on segmentViewModels$', async () => {
+        const { DocumentDataModel } = await _stageCImports();
+        const vm = buildVm(DocumentDataModel);
+        const emitted = await new Promise<DocumentViewModel[]>((resolve) => {
+            vm.segmentViewModels$.subscribe((vms) => resolve(vms));
+        });
+        // h1 + f1 + tb1 + tb2 = 4. imgOnly excluded (no textBoxContent).
+        expect(emitted.length).toBe(4);
+    });
+});
+
+describe('Stage C — getSelfOrHeaderFooterViewModel — legacy contract preserved', () => {
+    it('still resolves headers and footers as before', async () => {
+        const { DocumentDataModel } = await _stageCImports();
+        const vm = buildVm(DocumentDataModel);
+        expect(vm.getSelfOrHeaderFooterViewModel('h1')).toBe(vm.getSelfOrSegmentViewModel('h1'));
+        expect(vm.getSelfOrHeaderFooterViewModel('f1')).toBe(vm.getSelfOrSegmentViewModel('f1'));
+    });
+
+    it('does NOT resolve textbox segments — caller must opt in via getSelfOrSegmentViewModel', async () => {
+        const { DocumentDataModel } = await _stageCImports();
+        const vm = buildVm(DocumentDataModel);
+        expect(vm.getSelfOrHeaderFooterViewModel('tb1')).toBe(vm);
+    });
+});

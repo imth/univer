@@ -37,6 +37,7 @@ export enum DocumentEditArea {
     BODY = 'BODY',
     HEADER = 'HEADER',
     FOOTER = 'FOOTER',
+    TEXT_BOX = 'TEXT_BOX',
 }
 
 function batchParent(
@@ -206,6 +207,7 @@ export class DocumentViewModel implements IDisposable {
 
     private _headerTreeMap: Map<string, DocumentViewModel> = new Map();
     private _footerTreeMap: Map<string, DocumentViewModel> = new Map();
+    private _textBoxTreeMap: Map<string, DocumentViewModel> = new Map();
 
     private readonly _segmentViewModels$ = new BehaviorSubject<DocumentViewModel[]>([]);
     readonly segmentViewModels$ = this._segmentViewModels$.asObservable();
@@ -296,6 +298,24 @@ export class DocumentViewModel implements IDisposable {
             return this._footerTreeMap.get(segmentId)!;
         }
 
+        return this as DocumentViewModel;
+    }
+
+    /**
+     * Resolve a segmentId to its sub-view-model — body / header / footer / textbox.
+     * Mirrors `DocumentDataModel.getSelfOrSegmentModel`. Returns `this` when the
+     * segmentId is empty or unknown.
+     *
+     * Distinct from `getSelfOrHeaderFooterViewModel`, which preserves the
+     * legacy "header / footer only" contract for its existing callers.
+     */
+    getSelfOrSegmentViewModel(segmentId?: string): DocumentViewModel {
+        if (segmentId == null || segmentId === '') {
+            return this as DocumentViewModel;
+        }
+        if (this._headerTreeMap.has(segmentId)) return this._headerTreeMap.get(segmentId)!;
+        if (this._footerTreeMap.has(segmentId)) return this._footerTreeMap.get(segmentId)!;
+        if (this._textBoxTreeMap.has(segmentId)) return this._textBoxTreeMap.get(segmentId)!;
         return this as DocumentViewModel;
     }
 
@@ -481,7 +501,14 @@ export class DocumentViewModel implements IDisposable {
     }
 
     private _buildHeaderFooterViewModel() {
-        const { headerModelMap, footerModelMap } = this._documentDataModel;
+        // Clear only the textbox map — the existing header/footer maps' rebuild
+        // semantics are preserved (.set() overwrites entries; stale entries from
+        // a prior reset survive). Textbox sub-vms must NOT survive a doc reset
+        // because Stage B's drag-delete-shape path can remove a drawing without
+        // touching headers or footers, and we don't want phantom edit re-entry.
+        this._textBoxTreeMap.clear();
+
+        const { headerModelMap, footerModelMap, textBoxModelMap } = this._documentDataModel;
         const viewModels = [];
         for (const [headerId, headerModel] of headerModelMap) {
             this._headerTreeMap.set(headerId, new DocumentViewModel(headerModel));
@@ -491,6 +518,16 @@ export class DocumentViewModel implements IDisposable {
         for (const [footerId, footerModel] of footerModelMap) {
             this._footerTreeMap.set(footerId, new DocumentViewModel(footerModel));
             viewModels.push(this._footerTreeMap.get(footerId)!);
+        }
+
+        // Defensive: textBoxModelMap was added in Stage C and may not exist on
+        // older mock DocumentDataModel test fixtures. Older tests still pass
+        // even though the engine-render package now expects this field.
+        if (textBoxModelMap) {
+            for (const [drawingId, textBoxModel] of textBoxModelMap) {
+                this._textBoxTreeMap.set(drawingId, new DocumentViewModel(textBoxModel));
+                viewModels.push(this._textBoxTreeMap.get(drawingId)!);
+            }
         }
 
         this._segmentViewModels$.next(viewModels);
