@@ -524,17 +524,6 @@ export class DrawingRenderService {
             richText: docData,
             forceRender: true,
         });
-        // RichText's `_initialProps` resizes itself to the natural skeleton
-        // content size, ignoring the width/height we passed. Force it back
-        // to the requested inner box bounds so transformer geometry, clip,
-        // and live-position math all line up with the rect.
-        overlay.transformByState({
-            left: overlayLeft,
-            top: overlayTop,
-            width: innerW,
-            height: innerH,
-            angle: transform.angle,
-        });
         return overlay;
     }
 
