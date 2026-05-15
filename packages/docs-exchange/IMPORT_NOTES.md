@@ -270,19 +270,10 @@ body via a custom-block `\b` token in the same way images are.
   coordinates, so text that overflows the box is visually cut off
   (matching Word's default `<a:bodyPr>` behavior — no `<a:spAutoFit/>`).
   The clip rotates with the parent automatically because canvas's
-  current matrix already includes the rect's angle.
-- Rotation pivot alignment: `BaseObject.transformForAngle` rotates each
-  scene object about its own geometric center `(this.width/2,
-  this.height/2)`. RichText's `_initialProps` overrides
-  `this.width/height` with the natural skeleton content size, NOT the
-  box size we asked for, so by default the overlay rotates about a
-  *content-sized* center while the sibling rect rotates about the
-  *box-sized* center — the two centers don't coincide and the text
-  visibly drifts off the rotated frame's inner area. `ClippedRichText`
-  overrides `transformForAngle` to use the captured `clipWidth /
-  clipHeight` (= the inner-area size) as the pivot, so the overlay's
-  rotation center lands on the same world point as the rect's, and the
-  text stays glued inside the rotated box.
+  current matrix already includes the rect's angle. It also overrides
+  `transformForAngle` so the overlay's rotation pivot tracks the box
+  size rather than the auto-grown content size — see the class-level
+  comment in `drawing-render.service.ts` for the full why.
 
 **Out of scope (Stage C):**
 

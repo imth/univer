@@ -34,26 +34,13 @@ import { DrawingImageClipService } from './drawing-image-clip.service';
  * already includes the parent's transform (incl. angle), so the clip rotates
  * with the box automatically.
  */
-class ClippedRichText extends RichText {
-    /**
-     * Intended visual bounds of the text overlay (the shape's inner content
-     * area = outer rect minus bodyPr insets). RichText auto-grows
-     * `this.height` to fit content (see its `onTransformChange$`
-     * subscription that overrides height with the skeleton's natural size),
-     * so we cannot clip against `this.width/height` — that would let tall
-     * content paint outside the box. Instead we capture the requested
-     * box size at construction and re-apply it whenever the parent rect
-     * resizes.
-     */
+export class ClippedRichText extends RichText {
+    /** Box bounds captured at construction; see `transformForAngle` for why. */
     clipWidth: number;
     clipHeight: number;
 
     constructor(...args: ConstructorParameters<typeof RichText>) {
         super(...args);
-        // RichText's constructor calls _initialProps which OVERRIDES
-        // this.width/height with the natural skeleton content size, not
-        // the box size we requested. Pull the intended bounds from the
-        // props arg instead.
         const props = args[2];
         this.clipWidth = props?.width ?? this.width;
         this.clipHeight = props?.height ?? this.height;
@@ -134,7 +121,7 @@ function resolveShapeStroke(props: IDocShapeProperties | undefined): { color: st
  * world space after the rect rotates about its own center, then back
  * out the overlay's top-left by subtracting half the overlay's size.
  */
-function rotateInsetToWorld(
+export function rotateInsetToWorld(
     rectLeft: number,
     rectTop: number,
     rectW: number,
