@@ -16,11 +16,11 @@ import "./chunk-TYXMO7FW.js";
 import "./chunk-5SIMKMJF.js";
 import {
   UniverDocsDrawingUIPlugin
-} from "./chunk-RLUY45VK.js";
+} from "./chunk-E6VAVGYR.js";
 import "./chunk-TM5QNBBA.js";
 import {
   UniverSheetsDrawingUIPlugin
-} from "./chunk-GK4TELZP.js";
+} from "./chunk-INBG5SZW.js";
 import {
   UniverSheetsConditionalFormattingUIPlugin,
   UniverSheetsDataValidationUIPlugin,

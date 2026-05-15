@@ -3102,16 +3102,7 @@ var ClippedRichText = class extends RichText {
   constructor(...args) {
     var _a, _b;
     super(...args);
-    /**
-     * Intended visual bounds of the text overlay (the shape's inner content
-     * area = outer rect minus bodyPr insets). RichText auto-grows
-     * `this.height` to fit content (see its `onTransformChange$`
-     * subscription that overrides height with the skeleton's natural size),
-     * so we cannot clip against `this.width/height` — that would let tall
-     * content paint outside the box. Instead we capture the requested
-     * box size at construction and re-apply it whenever the parent rect
-     * resizes.
-     */
+    /** Box bounds captured at construction; see `transformForAngle` for why. */
     __publicField(this, "clipWidth");
     __publicField(this, "clipHeight");
     const props = args[2];
@@ -3765,7 +3756,7 @@ var ShapeUpdateController = class extends Disposable {
           if (drawingParam.transform == null) return;
           const shapeKey = getDrawingShapeKeyByDrawingSearch({ unitId, subUnitId, drawingId });
           const overlay = renderObject.scene.getObject(`${shapeKey}${SHAPE_TEXT_OVERLAY_SUFFIX}`);
-          if (overlay == null) return;
+          if (!(overlay instanceof ClippedRichText)) return;
           const { left = 0, top = 0, width = 0, height = 0, angle = 0 } = drawingParam.transform;
           const bodyPr = (_a = drawingParam.shapeProperties) == null ? void 0 : _a.bodyPr;
           const lIns = (_b = bodyPr == null ? void 0 : bodyPr.lIns) != null ? _b : 0;
@@ -3774,26 +3765,18 @@ var ShapeUpdateController = class extends Disposable {
           const bIns = (_e = bodyPr == null ? void 0 : bodyPr.bIns) != null ? _e : 0;
           const innerW = Math.max(0, width - lIns - rIns);
           const innerH = Math.max(0, height - tIns - bIns);
-          let overlayLeft;
-          let overlayTop;
-          if (angle) {
-            const rad = angle * Math.PI / 180;
-            const cos = Math.cos(rad);
-            const sin = Math.sin(rad);
-            const cx = left + width / 2;
-            const cy = top + height / 2;
-            const ox = lIns + innerW / 2 - width / 2;
-            const oy = tIns + innerH / 2 - height / 2;
-            const innerCx = cx + ox * cos - oy * sin;
-            const innerCy = cy + ox * sin + oy * cos;
-            overlayLeft = innerCx - innerW / 2;
-            overlayTop = innerCy - innerH / 2;
-          } else {
-            overlayLeft = left + lIns;
-            overlayTop = top + tIns;
-          }
-          const setClip = overlay.setClipSize;
-          if (setClip) setClip.call(overlay, innerW, innerH);
+          const { left: overlayLeft, top: overlayTop } = rotateInsetToWorld(
+            left,
+            top,
+            width,
+            height,
+            lIns,
+            tIns,
+            innerW,
+            innerH,
+            angle
+          );
+          overlay.setClipSize(innerW, innerH);
           overlay.transformByState({
             left: overlayLeft,
             top: overlayTop,

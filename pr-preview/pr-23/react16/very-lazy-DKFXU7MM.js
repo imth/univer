@@ -22,12 +22,12 @@ import {
 import "./chunk-5SIMKMJF.js";
 import {
   UniverDebuggerPlugin
-} from "./chunk-7ENXE25C.js";
-import "./chunk-RLUY45VK.js";
+} from "./chunk-3LWL26WZ.js";
+import "./chunk-E6VAVGYR.js";
 import {
   UniverWatermarkPlugin
 } from "./chunk-YJYPSLQA.js";
-import "./chunk-GK4TELZP.js";
+import "./chunk-INBG5SZW.js";
 import "./chunk-32E5INCS.js";
 import "./chunk-CUW7VLLI.js";
 import "./chunk-ENGOP3NU.js";
@@ -42,7 +42,7 @@ import "./chunk-MR7DLPM2.js";
 import "./chunk-EQ2B2W73.js";
 import "./chunk-24OICD5T.js";
 
-// src/sheets-no-worker/very-lazy.ts
+// src/sheets/very-lazy.ts
 var IS_E2E = false;
 function getVeryLazyPlugins() {
   const plugins = [
