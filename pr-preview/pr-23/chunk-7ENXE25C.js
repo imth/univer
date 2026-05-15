@@ -1,6 +1,6 @@
 import {
   DocFloatDomController
-} from "./chunk-ZRQCPIKX.js";
+} from "./chunk-RLUY45VK.js";
 import {
   WATERMARK_IMAGE_ALLOW_IMAGE_LIST,
   WatermarkImageBaseConfig,
@@ -9,7 +9,7 @@ import {
 } from "./chunk-YJYPSLQA.js";
 import {
   SheetCanvasFloatDomManagerService
-} from "./chunk-ILW6OEOM.js";
+} from "./chunk-GK4TELZP.js";
 import {
   DEFAULT_WORKBOOK_DATA_DEMO,
   DEFAULT_WORKBOOK_DATA_DEMO_DEFAULT_STYLE
@@ -865,9 +865,9 @@ function useSnapshot() {
       const doc = univerInstanceService.getCurrentUnitOfType(1 /* UNIVER_DOC */);
       const snapshot2 = resourceLoaderService.saveUnit(doc.getUnitId());
       if (true) {
-        const gitHash = "a5c12df";
+        const gitHash = "92b9a5b";
         const gitBranch = "feat/docx-floating-text-box-interactivity";
-        const buildTime = "2026-05-14T07:07:50.497Z";
+        const buildTime = "2026-05-15T00:55:03.366Z";
         snapshot2.__env__ = { gitHash, gitBranch, buildTime };
       }
       const text = JSON.stringify(snapshot2, null, 2);
@@ -880,9 +880,9 @@ function useSnapshot() {
     }
     const snapshot = resourceLoaderService.saveUnit(workbook.getUnitId());
     if (true) {
-      const gitHash = "a5c12df";
+      const gitHash = "92b9a5b";
       const gitBranch = "feat/docx-floating-text-box-interactivity";
-      const buildTime = "2026-05-14T07:07:50.497Z";
+      const buildTime = "2026-05-15T00:55:03.366Z";
       snapshot.__env__ = { gitHash, gitBranch, buildTime };
     }
     if (value === "sheet") {

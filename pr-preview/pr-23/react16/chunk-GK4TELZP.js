@@ -3122,6 +3122,27 @@ var ClippedRichText = class extends RichText {
     this.clipWidth = width;
     this.clipHeight = height;
   }
+  /**
+   * `BaseObject.transformForAngle` rotates about the geometric center
+   * `(this.width/2, this.height/2)` — but RichText's `this.width/height`
+   * track the natural skeleton content size, NOT our intended box size.
+   * That makes the overlay rotate about a different center than its
+   * sibling rect (which uses the box size for its own rotation),
+   * producing a visible drift for any non-zero angle. Override the pivot
+   * to use the box size we captured at construction so the two rotation
+   * centers coincide.
+   */
+  transformForAngle(transform) {
+    if (this.angle !== 0) {
+      const cx = (this.clipWidth + this.strokeWidth) / 2;
+      const cy = (this.clipHeight + this.strokeWidth) / 2;
+      transform.rotate(-this.angle);
+      transform.translate(cx, cy);
+      transform.rotate(this.angle);
+      transform.translate(-cx, -cy);
+    }
+    return transform;
+  }
   _draw(ctx) {
     ctx.save();
     ctx.beginPath();
@@ -3139,6 +3160,19 @@ function resolveShapeFill(props) {
 function resolveShapeStroke(props) {
   if (!(props == null ? void 0 : props.stroke)) return void 0;
   return { color: props.stroke.rgb, width: Math.max(0.5, props.stroke.width) };
+}
+function rotateInsetToWorld(rectLeft, rectTop, rectW, rectH, lIns, tIns, innerW, innerH, angleDeg) {
+  if (!angleDeg) return { left: rectLeft + lIns, top: rectTop + tIns };
+  const rad = angleDeg * Math.PI / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const cx = rectLeft + rectW / 2;
+  const cy = rectTop + rectH / 2;
+  const ox = lIns + innerW / 2 - rectW / 2;
+  const oy = tIns + innerH / 2 - rectH / 2;
+  const innerCx = cx + ox * cos - oy * sin;
+  const innerCy = cy + ox * sin + oy * cos;
+  return { left: innerCx - innerW / 2, top: innerCy - innerH / 2 };
 }
 var SHAPE_TEXT_OVERLAY_SUFFIX = "_TEXT";
 var DrawingRenderService = class {
@@ -3370,10 +3404,11 @@ var DrawingRenderService = class {
         rect.onTransformChange$.subscribeEvent(() => {
           const w = Math.max(0, rect.width - lIns - rIns);
           const h = Math.max(0, rect.height - tIns - bIns);
+          const { left, top } = rotateInsetToWorld(rect.left, rect.top, rect.width, rect.height, lIns, tIns, w, h, rect.angle);
           text.setClipSize(w, h);
           text.transformByState({
-            left: rect.left + lIns,
-            top: rect.top + tIns,
+            left,
+            top,
             width: w,
             height: h,
             angle: rect.angle
@@ -3383,7 +3418,7 @@ var DrawingRenderService = class {
     }
   }
   _buildShapeTextOverlay(shapeKey, transform, shapeProperties, textBoxContent, baseZ) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e;
     const body = textBoxContent.body;
     if (!body || !body.dataStream) return null;
     const bodyPr = shapeProperties == null ? void 0 : shapeProperties.bodyPr;
@@ -3407,22 +3442,26 @@ var DrawingRenderService = class {
         marginRight: 0
       }
     };
+    const { left: overlayLeft, top: overlayTop } = rotateInsetToWorld(
+      transform.left,
+      transform.top,
+      transform.width,
+      transform.height,
+      lIns,
+      tIns,
+      innerW,
+      innerH,
+      (_e = transform.angle) != null ? _e : 0
+    );
     const overlay = new ClippedRichText(this._localeService, `${shapeKey}${SHAPE_TEXT_OVERLAY_SUFFIX}`, {
-      left: transform.left + lIns,
-      top: transform.top + tIns,
+      left: overlayLeft,
+      top: overlayTop,
       width: innerW,
       height: innerH,
       angle: transform.angle,
       zIndex: baseZ + 0.5,
       richText: docData,
       forceRender: true
-    });
-    overlay.transformByState({
-      left: transform.left + lIns,
-      top: transform.top + tIns,
-      width: innerW,
-      height: innerH,
-      angle: transform.angle
     });
     return overlay;
   }
@@ -3735,11 +3774,29 @@ var ShapeUpdateController = class extends Disposable {
           const bIns = (_e = bodyPr == null ? void 0 : bodyPr.bIns) != null ? _e : 0;
           const innerW = Math.max(0, width - lIns - rIns);
           const innerH = Math.max(0, height - tIns - bIns);
+          let overlayLeft;
+          let overlayTop;
+          if (angle) {
+            const rad = angle * Math.PI / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            const cx = left + width / 2;
+            const cy = top + height / 2;
+            const ox = lIns + innerW / 2 - width / 2;
+            const oy = tIns + innerH / 2 - height / 2;
+            const innerCx = cx + ox * cos - oy * sin;
+            const innerCy = cy + ox * sin + oy * cos;
+            overlayLeft = innerCx - innerW / 2;
+            overlayTop = innerCy - innerH / 2;
+          } else {
+            overlayLeft = left + lIns;
+            overlayTop = top + tIns;
+          }
           const setClip = overlay.setClipSize;
           if (setClip) setClip.call(overlay, innerW, innerH);
           overlay.transformByState({
-            left: left + lIns,
-            top: top + tIns,
+            left: overlayLeft,
+            top: overlayTop,
             width: innerW,
             height: innerH,
             angle
