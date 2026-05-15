@@ -33,7 +33,7 @@ import { DocumentEditArea } from '../view-model/document-view-model';
 import { dealWithSection } from './block/section';
 import { Hyphen } from './hyphenation/hyphen';
 import { LanguageDetector } from './hyphenation/language-detector';
-import { createSkeletonPage } from './model/page';
+import { createSkeletonPage, populateTextBoxBodies } from './model/page';
 import { balanceSectionColumns, createSkeletonSection } from './model/section';
 import { getLastPage, getNullSkeleton, getPageFromPath, prepareSectionBreakConfig, resetContext, setPageParent, updateBlockIndex, updateInlineDrawingCoordsAndBorder } from './tools';
 
@@ -1011,7 +1011,7 @@ export class DocumentSkeleton extends Skeleton {
     private _prepareLayoutContext(): ILayoutContext {
         const viewModel = this.getViewModel();
         const dataModel = viewModel.getDataModel();
-        const { headerTreeMap, footerTreeMap } = viewModel.getHeaderFooterTreeMap();
+        const { headerTreeMap, footerTreeMap, textBoxTreeMap } = viewModel.getSegmentTreeMaps();
         const { documentStyle, drawings, lists: customLists = {} } = dataModel;
         const lists = {
             ...PRESET_LIST_TYPE,
@@ -1026,6 +1026,7 @@ export class DocumentSkeleton extends Skeleton {
         const docsConfig: IDocsConfig = {
             headerTreeMap,
             footerTreeMap,
+            textBoxTreeMap,
             lists,
             drawings,
 
@@ -1204,6 +1205,14 @@ export class DocumentSkeleton extends Skeleton {
                 for (const page of fSkeMap.values()) {
                     updateInlineDrawingCoordsAndBorder(ctx, [page]);
                 }
+            }
+            // Stage C — lay out textbox bodies on every page that has
+            // textbox-bearing drawings. No-op when textBoxTreeMap is empty
+            // or no drawing has textBoxContent. Runs after
+            // updateInlineDrawingCoordsAndBorder so skeDrawings.aLeft / aTop
+            // are finalized before we read shape geometry.
+            for (const page of skeleton.pages) {
+                populateTextBoxBodies(ctx, page, ctx.docsConfig, ctx.skeletonResourceReference);
             }
             setPageParent(skeleton.pages, skeleton);
 

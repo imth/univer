@@ -96,6 +96,13 @@ export interface IDocsConfig extends IReferenceSource, IDocumentLayout {
     documentTextStyle?: ITextStyle;
     headerTreeMap: Map<string, DocumentViewModel>;
     footerTreeMap: Map<string, DocumentViewModel>;
+    /**
+     * Optional textbox sub-view-model map keyed by drawingId. Only populated
+     * by the docs render path (Stage C). Other consumers (test fixtures,
+     * sheet/slide layout) leave it undefined; layout paths read it
+     * defensively.
+     */
+    textBoxTreeMap?: Map<string, DocumentViewModel>;
 }
 
 export interface IHeaderIds {

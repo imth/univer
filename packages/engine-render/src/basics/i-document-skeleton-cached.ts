@@ -74,6 +74,7 @@ export enum DocumentSkeletonPageType {
     HEADER,
     FOOTER,
     CELL,
+    TEXT_BOX,
 };
 
 export interface IDocumentSkeletonPage {
@@ -286,6 +287,16 @@ export interface IDocumentSkeletonDrawing {
     lineTop: number;
     lineHeight: number;
     blockAnchorTop: number; // The paragraph top.
+    /**
+     * Sub-skeleton for the textbox body, present only when the drawing has
+     * `textBoxContent` AND was laid out in this pass (set by
+     * `_createSkeletonTextBox` in layout/model/page.ts). Reuses
+     * `IDocumentSkeletonHeaderFooter` (which is `IDocumentSkeletonPage`) — the
+     * same shape as header/footer sub-skeletons. Read by
+     * `Documents._drawTextBoxes`. Absent when (a) the drawing is image-only,
+     * or (b) the textbox feature flag is off.
+     */
+    bodySke?: IDocumentSkeletonHeaderFooter;
 }
 
 export interface IDocumentSkeletonFontStyle {

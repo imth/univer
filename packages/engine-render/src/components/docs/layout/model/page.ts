@@ -431,3 +431,107 @@ function _getVerticalMargin(
 
     return Math.min(maxMargin, Math.max(marginTB, HeaderFooterPageHeight));
 }
+
+/**
+ * Stage C — lay out a textbox body inside the drawing's content rect, mirroring
+ * the header/footer pattern in `_createSkeletonHeaderFooter` above. The
+ * difference is the layout area: `_createSkeletonHeaderFooter` uses page
+ * margins; this function uses the drawing's `width × height` minus `bodyPr`
+ * insets.
+ *
+ * `bodyPr` insets are pre-converted to px by the importer
+ * (parse-drawing.ts:266 with EMU_PER_PX = 9525). When the wire `<wps:bodyPr>`
+ * element is absent the importer leaves bodyPr undefined, so we apply Word's
+ * defaults here: 91440 EMU (0.1 in) lIns/rIns and 45720 EMU (0.05 in)
+ * tIns/bIns, both at 96 DPI.
+ *
+ * Reuses `DocumentSkeletonPageType.TEXT_BOX` (added in Stage C) so downstream
+ * layout / hit-test code that branches on `page.type === HEADER | FOOTER`
+ * doesn't accidentally process textbox sub-skeletons.
+ */
+function _createSkeletonTextBox(
+    ctx: ILayoutContext,
+    textBoxViewModel: DocumentViewModel,
+    sectionBreakConfig: ISectionBreakConfig,
+    skeletonResourceReference: ISkeletonResourceReference,
+    drawingId: string,
+    textBoxWidth: number,
+    textBoxHeight: number,
+    bodyPr: { lIns?: number; tIns?: number; rIns?: number; bIns?: number } | undefined
+): IDocumentSkeletonHeaderFooter {
+    const { lists, footerTreeMap, headerTreeMap, textBoxTreeMap, localeService, drawings } = sectionBreakConfig;
+
+    const lIns = bodyPr?.lIns ?? 9.6;
+    const rIns = bodyPr?.rIns ?? 9.6;
+    const tIns = bodyPr?.tIns ?? 4.8;
+    const bIns = bodyPr?.bIns ?? 4.8;
+
+    const innerWidth = Math.max(0, textBoxWidth - lIns - rIns);
+    const innerHeight = Math.max(0, textBoxHeight - tIns - bIns);
+
+    const textBoxConfig: ISectionBreakConfig = {
+        lists,
+        footerTreeMap,
+        headerTreeMap,
+        textBoxTreeMap,
+        pageSize: { width: innerWidth, height: innerHeight },
+        localeService,
+        drawings,
+    };
+
+    const areaPage = createSkeletonPage(ctx, textBoxConfig, skeletonResourceReference);
+    areaPage.type = DocumentSkeletonPageType.TEXT_BOX;
+    areaPage.segmentId = drawingId;
+
+    ctx.layoutStartPointer[drawingId] = ctx.layoutStartPointer[drawingId] ?? null;
+    const layoutAnchor = ctx.layoutStartPointer[drawingId];
+    ctx.layoutStartPointer[drawingId] = null;
+
+    const page = dealWithSection(
+        ctx,
+        textBoxViewModel,
+        textBoxViewModel.getChildren()[0],
+        areaPage,
+        textBoxConfig,
+        layoutAnchor
+    ).pages[0];
+
+    updateBlockIndex([page]);
+    Object.assign(page, { marginTop: tIns, marginBottom: bIns, marginLeft: lIns, marginRight: rIns });
+
+    return page;
+}
+
+/**
+ * Stage C — populate `bodySke` on every textbox drawing in `parentPage.skeDrawings`.
+ * Idempotent: skips drawings without `textBoxContent` (image-only) and skips
+ * drawings whose sub-view-model isn't in `textBoxTreeMap` (feature off).
+ *
+ * Called from the post-layout finalisation step in `doc-skeleton.ts` after
+ * `page.skeDrawings` has been populated by linebreaking.
+ */
+export function populateTextBoxBodies(
+    ctx: ILayoutContext,
+    parentPage: IDocumentSkeletonPage,
+    sectionBreakConfig: ISectionBreakConfig,
+    skeletonResourceReference: ISkeletonResourceReference
+): void {
+    const { textBoxTreeMap } = sectionBreakConfig;
+    if (!textBoxTreeMap || !parentPage.skeDrawings || parentPage.skeDrawings.size === 0) return;
+
+    for (const [drawingId, skeDrawing] of parentPage.skeDrawings) {
+        const textBoxVm = textBoxTreeMap.get(drawingId);
+        if (!textBoxVm) continue;
+
+        skeDrawing.bodySke = _createSkeletonTextBox(
+            ctx,
+            textBoxVm,
+            sectionBreakConfig,
+            skeletonResourceReference,
+            drawingId,
+            skeDrawing.width,
+            skeDrawing.height,
+            skeDrawing.drawingOrigin.shapeProperties?.bodyPr
+        );
+    }
+}

@@ -258,6 +258,19 @@ export class DocumentViewModel implements IDisposable {
         };
     }
 
+    /**
+     * Stage C — exposes all three segment tree maps so layout can flow
+     * textbox sub-view-models through ISectionBreakConfig. Header/footer
+     * callers that don't need textboxes keep using getHeaderFooterTreeMap.
+     */
+    getSegmentTreeMaps() {
+        return {
+            headerTreeMap: this._headerTreeMap,
+            footerTreeMap: this._footerTreeMap,
+            textBoxTreeMap: this._textBoxTreeMap,
+        };
+    }
+
     getEditArea() {
         return this._editArea;
     }
