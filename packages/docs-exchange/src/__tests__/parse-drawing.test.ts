@@ -165,4 +165,48 @@ describe('parseDrawingFromRunXml — shape (wps:wsp text box)', () => {
         expect(built?.docTransform?.positionH.relativeFrom).toBe(2); // COLUMN
         expect(built?.docTransform?.positionV.relativeFrom).toBe(2); // PARAGRAPH
     });
+
+    // Stage C verification — confirms that an imported textbox drawing,
+    // when fed into a real DocumentDataModel, produces a populated
+    // textBoxModelMap entry whose body matches the importer output. This
+    // is the assumption Phase 3 of the textbox-text-editing plan relies on
+    // before any layout/render work begins.
+    it('Stage C: textbox drawing populates DocumentDataModel.textBoxModelMap', async () => {
+        const { DocumentDataModel } = await import('@univerjs/core');
+
+        const info = parseDrawingFromRunXml(txtBoxXml());
+        expect(info?.kind).toBe('shape');
+        if (info?.kind !== 'shape') return;
+
+        const built = buildDrawing('shape-1', info, new Map(), new Map());
+        expect(built).toBeDefined();
+
+        // Plug the importer-built drawing into a synthetic IDocumentData
+        // (matching the shape an actual DOCX import would produce).
+        const model = new DocumentDataModel({
+            id: 'verify-doc',
+            body: { dataStream: '\r\n', textRuns: [], paragraphs: [{ startIndex: 1 }] },
+            drawings: { 'shape-1': built! as any },
+            drawingsOrder: ['shape-1'],
+            documentStyle: { pageSize: { width: 595, height: 842 } },
+        });
+
+        // 1. textBoxModelMap is populated.
+        expect(model.textBoxModelMap.has('shape-1')).toBe(true);
+
+        // 2. Sub-model body matches the imported textBoxContent body.
+        const subBody = model.textBoxModelMap.get('shape-1')!.getBody();
+        expect(subBody?.dataStream).toBe('Hello box\r');
+
+        // 3. Sub-model shares the parent unitId.
+        expect(model.textBoxModelMap.get('shape-1')!.getUnitId()).toBe(model.getUnitId());
+
+        // 4. shapeProperties.bodyPr is preserved on the IDocDrawingBase so the
+        //    renderer (Phase 3) can read it for inset / wrap / anchor.
+        expect(model.getSnapshot().drawings?.['shape-1']?.shapeProperties?.bodyPr).toBeDefined();
+        expect(model.getSnapshot().drawings?.['shape-1']?.shapeProperties?.bodyPr?.lIns).toBeCloseTo(91440 / 9525, 3);
+
+        // 5. getSelfOrSegmentModel resolves the textbox segmentId.
+        expect(model.getSelfOrSegmentModel('shape-1').getBody()?.dataStream).toBe('Hello box\r');
+    });
 });
