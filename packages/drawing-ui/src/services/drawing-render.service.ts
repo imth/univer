@@ -40,6 +40,20 @@ export class ClippedRichText extends RichText {
     clipWidth: number;
     clipHeight: number;
 
+    /**
+     * Stage C — when true, `_draw` skips the inner text render. The shape
+     * background / border are drawn by a sibling Rect (DrawingRenderService),
+     * not by RichText, so this overlay's job in edit mode is just to be
+     * absent: main `Documents` paints the textbox body via `_drawTextBoxes`.
+     *
+     * Without this flag, edit mode would have BOTH the overlay AND main
+     * Documents painting the same characters at the same coordinates —
+     * harmless visually (perfect overlap = same pixels) but the cursor /
+     * selection from main Documents would be drawn UNDER the overlay's
+     * text rendering, hiding the caret.
+     */
+    private _editMode: boolean = false;
+
     constructor(...args: ConstructorParameters<typeof RichText>) {
         super(...args);
         const props = args[2];
@@ -50,6 +64,16 @@ export class ClippedRichText extends RichText {
     setClipSize(width: number, height: number): void {
         this.clipWidth = width;
         this.clipHeight = height;
+    }
+
+    setEditMode(on: boolean): void {
+        if (this._editMode === on) return;
+        this._editMode = on;
+        this.makeDirty(true);
+    }
+
+    isEditMode(): boolean {
+        return this._editMode;
     }
 
     /**
@@ -75,6 +99,13 @@ export class ClippedRichText extends RichText {
     }
 
     protected override _draw(ctx: UniverRenderingContext): void {
+        if (this._editMode) {
+            // Edit mode: text rendering is owned by main Documents
+            // (`_drawTextBoxes`). Suppress the overlay's text pass entirely.
+            // The shape background / border are drawn by a sibling Rect, so
+            // they remain unaffected.
+            return;
+        }
         ctx.save();
         ctx.beginPath();
         ctx.rect(0, 0, this.clipWidth, this.clipHeight);
