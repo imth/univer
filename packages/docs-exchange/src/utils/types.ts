@@ -39,6 +39,8 @@ export interface IDrawingTransform {
     top: number;
     width: number;
     height: number;
+    /** Rotation in degrees (clockwise). Optional — defaults to 0 downstream. */
+    angle?: number;
 }
 
 export interface IDocTransform {

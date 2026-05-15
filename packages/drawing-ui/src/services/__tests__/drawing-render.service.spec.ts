@@ -17,7 +17,7 @@
 import { DrawingTypeEnum, UniverInstanceType } from '@univerjs/core';
 import { getDrawingShapeKeyByDrawingSearch, ImageSourceType } from '@univerjs/drawing';
 import { describe, expect, it, vi } from 'vitest';
-import { DrawingRenderService } from '../drawing-render.service';
+import { DrawingRenderService, rotateInsetToWorld } from '../drawing-render.service';
 
 vi.mock('@univerjs/drawing', async (importActual) => {
     const actual = await importActual<typeof import('@univerjs/drawing')>();
@@ -128,5 +128,57 @@ describe('DrawingRenderService', () => {
         });
         expect(scene.addObject).not.toHaveBeenCalled();
         expect(result).toEqual([]);
+    });
+});
+
+describe('rotateInsetToWorld', () => {
+    // For zero-angle, asymmetric, and symmetric-inset cases the inner-area
+    // top-left in world space is just (rectLeft + lIns, rectTop + tIns) —
+    // rotation is a no-op. The non-trivial cases are non-zero angle with
+    // BOTH symmetric AND asymmetric insets, since asymmetric insets shift
+    // the inner-area center off the rect center, so rotation translates
+    // that offset before re-anchoring the overlay's top-left.
+
+    it('zero angle short-circuits to (rectL+lIns, rectT+tIns)', () => {
+        const r = rotateInsetToWorld(100, 200, 80, 40, 5, 3, 70, 30, 0);
+        expect(r).toEqual({ left: 105, top: 203 });
+    });
+
+    it('symmetric insets, non-zero angle: overlay center coincides with rect center', () => {
+        // Symmetric insets put the inner-area center exactly at the rect
+        // center, so the offset (ox, oy) is (0, 0) and rotation doesn't
+        // move it. Overlay top-left = rect top-left + (lIns, tIns).
+        const angle = 26.32;
+        const r = rotateInsetToWorld(120, 100, 288, 96, 9.6, 4.8, 268.8, 86.4, angle);
+        expect(r.left).toBeCloseTo(129.6, 5);
+        expect(r.top).toBeCloseTo(104.8, 5);
+    });
+
+    it('asymmetric insets at 90°: rotated offset becomes (-oy, ox) about rect center', () => {
+        // rect 100×60 at (0, 0); insets lIns=20, rIns=10, tIns=10, bIns=20.
+        // innerW=70, innerH=30, inner-center = (20+35, 10+15) = (55, 25).
+        // rect center = (50, 30); offset (ox, oy) = (5, -5).
+        // At 90° (cos=0, sin=1): rotated offset = (5*0 - (-5)*1, 5*1 + (-5)*0) = (5, 5).
+        // innerCenter world = (50+5, 30+5) = (55, 35).
+        // overlay top-left = (55 - 35, 35 - 15) = (20, 20).
+        const r = rotateInsetToWorld(0, 0, 100, 60, 20, 10, 70, 30, 90);
+        expect(r.left).toBeCloseTo(20, 5);
+        expect(r.top).toBeCloseTo(20, 5);
+    });
+
+    it('asymmetric insets at 180°: offset is negated about rect center', () => {
+        // Same rect/insets as above. ox=5, oy=-5.
+        // At 180°: rotated offset = (-5, 5). innerCenter world = (45, 35).
+        // overlay top-left = (45 - 35, 35 - 15) = (10, 20).
+        const r = rotateInsetToWorld(0, 0, 100, 60, 20, 10, 70, 30, 180);
+        expect(r.left).toBeCloseTo(10, 5);
+        expect(r.top).toBeCloseTo(20, 5);
+    });
+
+    it('asymmetric insets at 360° equal zero-angle result', () => {
+        const a = rotateInsetToWorld(0, 0, 100, 60, 20, 10, 70, 30, 0);
+        const b = rotateInsetToWorld(0, 0, 100, 60, 20, 10, 70, 30, 360);
+        expect(b.left).toBeCloseTo(a.left, 5);
+        expect(b.top).toBeCloseTo(a.top, 5);
     });
 });

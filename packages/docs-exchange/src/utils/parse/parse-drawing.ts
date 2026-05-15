@@ -59,6 +59,8 @@ export interface ShapeDrawingInfo {
      * DocumentSkeleton inside the shape.
      */
     textBoxBody?: IDocumentBody;
+    /** `<a:xfrm rot>` resolved to degrees (OOXML stores 60000ths of a degree). */
+    rotationDegrees?: number;
 }
 
 export type DrawingInfo = ImageDrawingInfo | ShapeDrawingInfo;
@@ -195,9 +197,18 @@ function parseShape(
         }
     }
 
-    // wps:spPr → preset / fill / stroke
+    // wps:spPr → preset / fill / stroke / xfrm
     const spPr = findChild(wsp, 'wps:spPr');
     if (spPr) {
+        const xfrm = findChild(spPr, 'a:xfrm');
+        if (xfrm) {
+            const rotAttr = nodeAttrs(xfrm)['@_rot'] as string | undefined;
+            const rotRaw = rotAttr !== undefined ? Number(rotAttr) : 0;
+            if (!Number.isNaN(rotRaw) && rotRaw !== 0) {
+                // OOXML rot is 60000ths of a degree, range [0, 21600000).
+                out.rotationDegrees = (rotRaw / 60000) % 360;
+            }
+        }
         const prstGeom = findChild(spPr, 'a:prstGeom');
         if (prstGeom) {
             const prst = nodeAttrs(prstGeom)['@_prst'] as string | undefined;
@@ -415,12 +426,12 @@ function buildShapeDrawing(drawingId: string, info: ShapeDrawingInfo): ISimpleDr
         // PositionedObjectLayoutType.WRAP_NONE = 1 — Word text boxes draw on top
         // of body text; we don't yet support real flow-around for wrapSquare etc.
         layoutType: 1,
-        transform: { left: info.posXPx ?? 0, top: info.posYPx ?? 0, width, height },
+        transform: { left: info.posXPx ?? 0, top: info.posYPx ?? 0, width, height, angle: info.rotationDegrees ?? 0 },
         docTransform: {
             size: { width, height },
             positionH: { relativeFrom: relH, posOffset: info.posXPx ?? 0 },
             positionV: { relativeFrom: relV, posOffset: info.posYPx ?? 0 },
-            angle: 0,
+            angle: info.rotationDegrees ?? 0,
         },
         shapeProperties: info.shapeProps,
         textBoxContent: info.textBoxBody ? { body: info.textBoxBody } : undefined,

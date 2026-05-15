@@ -19,7 +19,7 @@ import { Disposable, DrawingTypeEnum, Inject, IUniverInstanceService } from '@un
 import { getDrawingShapeKeyByDrawingSearch, IDrawingManagerService } from '@univerjs/drawing';
 import { IRenderManagerService } from '@univerjs/engine-render';
 import { bufferTime, filter, map } from 'rxjs';
-import { DrawingRenderService, SHAPE_TEXT_OVERLAY_SUFFIX } from '../services/drawing-render.service';
+import { ClippedRichText, DrawingRenderService, rotateInsetToWorld, SHAPE_TEXT_OVERLAY_SUFFIX } from '../services/drawing-render.service';
 import { getCurrentUnitInfo } from './utils';
 
 /**
@@ -101,7 +101,7 @@ export class ShapeUpdateController extends Disposable {
 
                     const drawingParam = this._drawingManagerService.getDrawingByParam(param) as {
                         drawingType?: DrawingTypeEnum;
-                        transform?: { left?: number; top?: number; width?: number; height?: number };
+                        transform?: { left?: number; top?: number; width?: number; height?: number; angle?: number };
                         shapeProperties?: { bodyPr?: { lIns?: number; tIns?: number; rIns?: number; bIns?: number } };
                     } | null;
                     if (drawingParam == null) return;
@@ -112,19 +112,34 @@ export class ShapeUpdateController extends Disposable {
 
                     const shapeKey = getDrawingShapeKeyByDrawingSearch({ unitId, subUnitId, drawingId });
                     const overlay = renderObject.scene.getObject(`${shapeKey}${SHAPE_TEXT_OVERLAY_SUFFIX}`);
-                    if (overlay == null) return;
+                    if (!(overlay instanceof ClippedRichText)) return;
 
-                    const { left = 0, top = 0, width = 0, height = 0 } = drawingParam.transform;
+                    const { left = 0, top = 0, width = 0, height = 0, angle = 0 } = drawingParam.transform;
                     const bodyPr = drawingParam.shapeProperties?.bodyPr;
                     const lIns = bodyPr?.lIns ?? 0;
                     const tIns = bodyPr?.tIns ?? 0;
                     const rIns = bodyPr?.rIns ?? 0;
                     const bIns = bodyPr?.bIns ?? 0;
+                    const innerW = Math.max(0, width - lIns - rIns);
+                    const innerH = Math.max(0, height - tIns - bIns);
+                    const { left: overlayLeft, top: overlayTop } = rotateInsetToWorld(
+                        left,
+                        top,
+                        width,
+                        height,
+                        lIns,
+                        tIns,
+                        innerW,
+                        innerH,
+                        angle
+                    );
+                    overlay.setClipSize(innerW, innerH);
                     overlay.transformByState({
-                        left: left + lIns,
-                        top: top + tIns,
-                        width: Math.max(0, width - lIns - rIns),
-                        height: Math.max(0, height - tIns - bIns),
+                        left: overlayLeft,
+                        top: overlayTop,
+                        width: innerW,
+                        height: innerH,
+                        angle,
                     });
                 });
             })

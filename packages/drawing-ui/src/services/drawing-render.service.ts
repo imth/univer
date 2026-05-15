@@ -16,13 +16,72 @@
 
 import type { IDocShapeProperties, IDocumentData, IDrawingSearch, ITextBoxContent, Workbook } from '@univerjs/core';
 import type { IDocFloatDomData, IImageData } from '@univerjs/drawing';
-import type { IImageProps, IRectProps, Scene } from '@univerjs/engine-render';
+import type { IImageProps, IRectProps, Scene, Transform, UniverRenderingContext } from '@univerjs/engine-render';
 import { DrawingTypeEnum, Inject, IUniverInstanceService, IURLImageService, LocaleService, UniverInstanceType } from '@univerjs/core';
 import { getDrawingShapeKeyByDrawingSearch, IDrawingManagerService, IImageIoService, ImageSourceType } from '@univerjs/drawing';
 import { DRAWING_OBJECT_LAYER_INDEX, Image, Rect, RichText } from '@univerjs/engine-render';
 import { IGalleryService } from '@univerjs/ui';
 import { insertGroupObject } from '../controllers/utils';
 import { DrawingImageClipService } from './drawing-image-clip.service';
+
+/**
+ * RichText subclass that clips its content to its own (pre-transform) bounding
+ * box. Used for floating text-box overlays so that text overflowing the shape's
+ * inner content area is visually cut off — matching Word's default behavior
+ * (no `<a:spAutoFit/>`).
+ *
+ * The clip path is applied in local coordinates; canvas's current matrix
+ * already includes the parent's transform (incl. angle), so the clip rotates
+ * with the box automatically.
+ */
+export class ClippedRichText extends RichText {
+    /** Box bounds captured at construction; see `transformForAngle` for why. */
+    clipWidth: number;
+    clipHeight: number;
+
+    constructor(...args: ConstructorParameters<typeof RichText>) {
+        super(...args);
+        const props = args[2];
+        this.clipWidth = props?.width ?? this.width;
+        this.clipHeight = props?.height ?? this.height;
+    }
+
+    setClipSize(width: number, height: number): void {
+        this.clipWidth = width;
+        this.clipHeight = height;
+    }
+
+    /**
+     * `BaseObject.transformForAngle` rotates about the geometric center
+     * `(this.width/2, this.height/2)` — but RichText's `this.width/height`
+     * track the natural skeleton content size, NOT our intended box size.
+     * That makes the overlay rotate about a different center than its
+     * sibling rect (which uses the box size for its own rotation),
+     * producing a visible drift for any non-zero angle. Override the pivot
+     * to use the box size we captured at construction so the two rotation
+     * centers coincide.
+     */
+    override transformForAngle(transform: Transform) {
+        if (this.angle !== 0) {
+            const cx = (this.clipWidth + this.strokeWidth) / 2;
+            const cy = (this.clipHeight + this.strokeWidth) / 2;
+            transform.rotate(-this.angle);
+            transform.translate(cx, cy);
+            transform.rotate(this.angle);
+            transform.translate(-cx, -cy);
+        }
+        return transform;
+    }
+
+    protected override _draw(ctx: UniverRenderingContext): void {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, this.clipWidth, this.clipHeight);
+        ctx.clip();
+        super._draw(ctx);
+        ctx.restore();
+    }
+}
 
 interface IShapeRenderTransform {
     left: number;
@@ -51,6 +110,42 @@ function resolveShapeFill(props: IDocShapeProperties | undefined): string | unde
 function resolveShapeStroke(props: IDocShapeProperties | undefined): { color: string; width: number } | undefined {
     if (!props?.stroke) return undefined;
     return { color: props.stroke.rgb, width: Math.max(0.5, props.stroke.width) };
+}
+
+/**
+ * Both the rect and the text overlay rotate about their **own center**
+ * (see `BaseObject.transformForAngle` — it remaps `composeMatrix`'s
+ * top-left pivot back to the geometric center). To keep the overlay
+ * pinned to the rect's inner content area under rotation, we align
+ * the two centers: compute where the inner-rect's center lands in
+ * world space after the rect rotates about its own center, then back
+ * out the overlay's top-left by subtracting half the overlay's size.
+ */
+export function rotateInsetToWorld(
+    rectLeft: number,
+    rectTop: number,
+    rectW: number,
+    rectH: number,
+    lIns: number,
+    tIns: number,
+    innerW: number,
+    innerH: number,
+    angleDeg: number
+): { left: number; top: number } {
+    if (!angleDeg) return { left: rectLeft + lIns, top: rectTop + tIns };
+    const rad = (angleDeg * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const cx = rectLeft + rectW / 2;
+    const cy = rectTop + rectH / 2;
+    // Inner-rect center expressed relative to rect center (local frame).
+    const ox = lIns + innerW / 2 - rectW / 2;
+    const oy = tIns + innerH / 2 - rectH / 2;
+    // Rotate the offset and add back to world center → world-space inner center.
+    const innerCx = cx + ox * cos - oy * sin;
+    const innerCy = cy + ox * sin + oy * cos;
+    // Overlay also rotates about its own center, so its top-left = inner center − half size.
+    return { left: innerCx - innerW / 2, top: innerCy - innerH / 2 };
 }
 
 /**
@@ -318,10 +413,38 @@ export class DrawingRenderService {
 
         const rect = new Rect(shapeKey, rectConfig);
         scene.addObject(rect, DRAWING_OBJECT_LAYER_INDEX);
+        if (this._drawingManagerService.getDrawingEditable()) {
+            scene.attachTransformerTo(rect);
+        }
 
         if (textBoxContent) {
             const text = this._buildShapeTextOverlay(shapeKey, transform, shapeProperties, textBoxContent, baseZ);
-            if (text) scene.addObject(text, DRAWING_OBJECT_LAYER_INDEX);
+            if (text) {
+                scene.addObject(text, DRAWING_OBJECT_LAYER_INDEX);
+                // Live-follow the rect during interactive drag/resize/rotate.
+                // refreshTransform$ only fires on layout-driven recompute; the
+                // scene transformer mutates the rect directly without round-
+                // tripping through the model, so we hook the rect's per-mutation
+                // observable to keep the text overlay glued to the box.
+                const bodyPr = shapeProperties?.bodyPr;
+                const lIns = bodyPr?.lIns ?? 0;
+                const tIns = bodyPr?.tIns ?? 0;
+                const rIns = bodyPr?.rIns ?? 0;
+                const bIns = bodyPr?.bIns ?? 0;
+                rect.onTransformChange$.subscribeEvent(() => {
+                    const w = Math.max(0, rect.width - lIns - rIns);
+                    const h = Math.max(0, rect.height - tIns - bIns);
+                    const { left, top } = rotateInsetToWorld(rect.left, rect.top, rect.width, rect.height, lIns, tIns, w, h, rect.angle);
+                    text.setClipSize(w, h);
+                    text.transformByState({
+                        left,
+                        top,
+                        width: w,
+                        height: h,
+                        angle: rect.angle,
+                    });
+                });
+            }
         }
     }
 
@@ -331,7 +454,7 @@ export class DrawingRenderService {
         shapeProperties: IDocShapeProperties | undefined,
         textBoxContent: ITextBoxContent,
         baseZ: number
-    ): RichText | null {
+    ): ClippedRichText | null {
         const body = textBoxContent.body;
         if (!body || !body.dataStream) return null;
 
@@ -367,11 +490,23 @@ export class DrawingRenderService {
             },
         };
 
-        const overlay = new RichText(this._localeService, `${shapeKey}${SHAPE_TEXT_OVERLAY_SUFFIX}`, {
-            left: transform.left + lIns,
-            top: transform.top + tIns,
+        const { left: overlayLeft, top: overlayTop } = rotateInsetToWorld(
+            transform.left,
+            transform.top,
+            transform.width,
+            transform.height,
+            lIns,
+            tIns,
+            innerW,
+            innerH,
+            transform.angle ?? 0
+        );
+        const overlay = new ClippedRichText(this._localeService, `${shapeKey}${SHAPE_TEXT_OVERLAY_SUFFIX}`, {
+            left: overlayLeft,
+            top: overlayTop,
             width: innerW,
             height: innerH,
+            angle: transform.angle,
             zIndex: baseZ + 0.5,
             richText: docData,
             forceRender: true,
