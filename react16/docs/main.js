@@ -10,11 +10,11 @@ import {
 import "../chunk-IQUVNM4H.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-2IOR4GAA.js";
+} from "../chunk-ZCKUESCR.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-Z2S6O4AA.js";
+} from "../chunk-E6VAVGYR.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
@@ -25,7 +25,7 @@ import "../chunk-YJYPSLQA.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-G6UAX7N3.js";
+} from "../chunk-INBG5SZW.js";
 import {
   FUniver
 } from "../chunk-32E5INCS.js";
@@ -7357,6 +7357,14 @@ function parseShape(drawingNode, wsp, styles, themeFonts) {
   }
   const spPr = findChild(wsp, "wps:spPr");
   if (spPr) {
+    const xfrm = findChild(spPr, "a:xfrm");
+    if (xfrm) {
+      const rotAttr = nodeAttrs(xfrm)["@_rot"];
+      const rotRaw = rotAttr !== void 0 ? Number(rotAttr) : 0;
+      if (!Number.isNaN(rotRaw) && rotRaw !== 0) {
+        out.rotationDegrees = rotRaw / 6e4 % 360;
+      }
+    }
     const prstGeom = findChild(spPr, "a:prstGeom");
     if (prstGeom) {
       const prst = nodeAttrs(prstGeom)["@_prst"];
@@ -7506,7 +7514,7 @@ var REL_FROM_V_MAP = {
   outsideMargin: 7
 };
 function buildShapeDrawing(drawingId, info) {
-  var _a, _b, _c, _d, _e, _f;
+  var _a, _b, _c, _d, _e, _f, _g, _h;
   const width = info.widthPx;
   const height = info.heightPx;
   const relH = info.relativeFromH ? (_a = REL_FROM_H_MAP[info.relativeFromH]) != null ? _a : 2 : 2;
@@ -7518,12 +7526,12 @@ function buildShapeDrawing(drawingId, info) {
     // PositionedObjectLayoutType.WRAP_NONE = 1 — Word text boxes draw on top
     // of body text; we don't yet support real flow-around for wrapSquare etc.
     layoutType: 1,
-    transform: { left: (_c = info.posXPx) != null ? _c : 0, top: (_d = info.posYPx) != null ? _d : 0, width, height },
+    transform: { left: (_c = info.posXPx) != null ? _c : 0, top: (_d = info.posYPx) != null ? _d : 0, width, height, angle: (_e = info.rotationDegrees) != null ? _e : 0 },
     docTransform: {
       size: { width, height },
-      positionH: { relativeFrom: relH, posOffset: (_e = info.posXPx) != null ? _e : 0 },
-      positionV: { relativeFrom: relV, posOffset: (_f = info.posYPx) != null ? _f : 0 },
-      angle: 0
+      positionH: { relativeFrom: relH, posOffset: (_f = info.posXPx) != null ? _f : 0 },
+      positionV: { relativeFrom: relV, posOffset: (_g = info.posYPx) != null ? _g : 0 },
+      angle: (_h = info.rotationDegrees) != null ? _h : 0
     },
     shapeProperties: info.shapeProps,
     textBoxContent: info.textBoxBody ? { body: info.textBoxBody } : void 0,

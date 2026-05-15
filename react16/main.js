@@ -225,11 +225,11 @@ if (true) {
     // eslint-disable-next-line node/prefer-global/process
     NODE_ENV: "production",
     // eslint-disable-next-line node/prefer-global/process
-    GIT_COMMIT_HASH: "e5a1835",
+    GIT_COMMIT_HASH: "d52fc84",
     // eslint-disable-next-line node/prefer-global/process
     GIT_REF_NAME: "dev",
     // eslint-disable-next-line node/prefer-global/process
-    BUILD_TIME: "2026-05-14T05:34:43.688Z"
+    BUILD_TIME: "2026-05-15T01:50:15.194Z"
   });
 }
 function DemoList({ items }) {
