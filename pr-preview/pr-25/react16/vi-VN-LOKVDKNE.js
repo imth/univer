@@ -1,0 +1,10 @@
+import {
+  vi_VN_default
+} from "./chunk-4SZKOODJ.js";
+import "./chunk-WT4JNZXZ.js";
+import "./chunk-HEVHAOJL.js";
+import "./chunk-M7PJGVD7.js";
+import "./chunk-24OICD5T.js";
+export {
+  vi_VN_default as default
+};
