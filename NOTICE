@@ -1,0 +1,16 @@
+Univer
+Copyright 2023-present DreamNum Co., Ltd.
+
+This product includes software developed by third parties under
+the Apache License 2.0:
+
+────────────────────────────────────────────────────────────────────────
+aiden0z/pptx-renderer
+https://github.com/aiden0z/pptx-renderer
+Copyright the aiden0z/pptx-renderer authors.
+Apache License 2.0
+
+Files vendored at upstream commit e6200e8:
+  packages/drawing-ui/src/shapes/preset/presets.ts   (with local additions)
+  packages/drawing-ui/src/shapes/preset/shapeArc.ts
+────────────────────────────────────────────────────────────────────────
