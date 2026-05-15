@@ -487,10 +487,19 @@ function _createSkeletonTextBox(
     const layoutAnchor = ctx.layoutStartPointer[drawingId];
     ctx.layoutStartPointer[drawingId] = null;
 
+    const firstSection = textBoxViewModel.getChildren()[0];
+    if (firstSection == null) {
+        areaPage.marginTop = tIns;
+        areaPage.marginBottom = bIns;
+        areaPage.marginLeft = lIns;
+        areaPage.marginRight = rIns;
+        return areaPage;
+    }
+
     const page = dealWithSection(
         ctx,
         textBoxViewModel,
-        textBoxViewModel.getChildren()[0],
+        firstSection,
         areaPage,
         textBoxConfig,
         layoutAnchor

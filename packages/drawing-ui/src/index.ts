@@ -35,7 +35,7 @@ export { getCurrentUnitInfo, insertGroupObject } from './controllers/utils';
 export { UniverDrawingUIPlugin } from './plugin';
 export { DrawingImageClipService, IMAGE_CLIP_SHAPE_PICKER_COMPONENT } from './services/drawing-image-clip.service';
 export type { ImageShapeClipDelegate } from './services/drawing-image-clip.service';
-export { DrawingRenderService } from './services/drawing-render.service';
+export { ClippedRichText, DrawingRenderService, SHAPE_TEXT_OVERLAY_SUFFIX } from './services/drawing-render.service';
 export { getUpdateParams } from './utils/get-update-params';
 export { ImageCropperObject } from './views/crop/image-cropper-object';
 export { COMPONENT_IMAGE_POPUP_MENU } from './views/image-popup-menu/component-name';

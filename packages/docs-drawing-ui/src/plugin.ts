@@ -31,6 +31,7 @@ import { DocDrawingUIController } from './controllers/doc-drawing.controller';
 import { DocFloatDomController } from './controllers/doc-float-dom.controller';
 import { DocDrawingTransformUpdateController } from './controllers/render-controllers/doc-drawing-transform-update.controller';
 import { DocDrawingUpdateRenderController } from './controllers/render-controllers/doc-drawing-update.render-controller';
+import { TextBoxEditController } from './controllers/text-box-edit.controller';
 import { DocDrawingPopupMenuController } from './menu/drawing-popup-menu.controller';
 import { DocRefreshDrawingsService } from './services/doc-refresh-drawings.service';
 
@@ -67,6 +68,7 @@ export class UniverDocsDrawingUIPlugin extends Plugin {
             [DocRefreshDrawingsService],
             [DocFloatDomController],
             [DocDrawingPrintingController],
+            [TextBoxEditController],
         ];
 
         dependencies.forEach((dependency) => this._injector.add(dependency));
@@ -87,5 +89,9 @@ export class UniverDocsDrawingUIPlugin extends Plugin {
     override onRendered(): void {
         this._injector.get(DocDrawingPopupMenuController);
         this._injector.get(DocFloatDomController);
+        // Stage C — TextBoxEditController must instantiate after the
+        // drawing scene objects exist (post-render), so it can attach
+        // dblclick handlers to the rect for each existing textbox.
+        this._injector.get(TextBoxEditController);
     }
 }
