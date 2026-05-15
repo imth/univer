@@ -392,10 +392,23 @@ export class DocumentDataModel extends DocumentDataModelSimple {
                     // Mirrors the header/footer initialisation pattern above.
                     // documentStyle is forwarded so default font / locale resolve
                     // inside the textbox the same way they do in the parent body.
+                    //
+                    // OOXML <w:txbxContent> bodies typically end with a single
+                    // PARAGRAPH ('\r') and no SECTION_BREAK ('\n'). Univer's
+                    // parseDataStreamToTree only emits a section node on
+                    // SECTION_BREAK, so without one the view-model has no
+                    // children and dealWithSection crashes during layout.
+                    // Normalise by appending a section terminator if missing
+                    // — same shape the importer's header/footer paths produce.
+                    const srcBody = drawing.textBoxContent.body;
+                    const ds = srcBody.dataStream ?? '';
+                    const normalisedBody = ds.endsWith('\n')
+                        ? srcBody
+                        : { ...srcBody, dataStream: `${ds.endsWith('\r') ? ds : `${ds}\r`}\n` };
                     this.textBoxModelMap.set(
                         drawingId,
                         new DocumentDataModel({
-                            body: drawing.textBoxContent.body,
+                            body: normalisedBody,
                             documentStyle: this.snapshot.documentStyle,
                         })
                     );

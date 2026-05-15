@@ -274,6 +274,31 @@ describe('getSelfOrSegmentModel', () => {
         const m = buildDocWithTextbox();
         expect(m.getSelfOrSegmentModel('does-not-exist')).toBe(m);
     });
+
+    it('normalises a textbox body without SECTION_BREAK terminator (real OOXML shape)', () => {
+        // OOXML <w:txbxContent> bodies typically end with just '\r' (PARAGRAPH),
+        // no '\n' (SECTION_BREAK). Without normalisation, the view-model has
+        // no children and layout (dealWithSection) crashes. Verify the sub-
+        // model's dataStream ends with '\n' so parseDataStreamToTree emits a
+        // section node.
+        const m = new DocumentDataModel({
+            id: 'tb-only',
+            body: { dataStream: '\r\n', textRuns: [], paragraphs: [{ startIndex: 1 }] },
+            drawings: {
+                rawTb: {
+                    drawingId: 'rawTb',
+                    drawingType: DrawingTypeEnum.DRAWING_SHAPE,
+                    // dataStream ends with '\r' (PARAGRAPH) only, no '\n'.
+                    textBoxContent: { body: { dataStream: 'Hello box\r', textRuns: [], paragraphs: [{ startIndex: 9 }] } },
+                } as any,
+            },
+            drawingsOrder: ['rawTb'],
+            documentStyle: {},
+        });
+        const sub = m.textBoxModelMap.get('rawTb');
+        expect(sub).toBeDefined();
+        expect(sub!.getBody()?.dataStream).toMatch(/\n$/);
+    });
 });
 
 describe('getSelfOrHeaderFooterModel — legacy contract preserved', () => {
