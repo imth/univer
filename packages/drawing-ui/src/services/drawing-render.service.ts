@@ -22,6 +22,7 @@ import { getDrawingShapeKeyByDrawingSearch, IDrawingManagerService, IImageIoServ
 import { DRAWING_OBJECT_LAYER_INDEX, Image, Rect, RichText } from '@univerjs/engine-render';
 import { IGalleryService } from '@univerjs/ui';
 import { insertGroupObject } from '../controllers/utils';
+import { PresetGeometryRect } from '../shapes/preset/preset-geometry-rect';
 import { DrawingImageClipService } from './drawing-image-clip.service';
 
 /**
@@ -109,7 +110,18 @@ function resolveShapeFill(props: IDocShapeProperties | undefined): string | unde
 
 function resolveShapeStroke(props: IDocShapeProperties | undefined): { color: string; width: number } | undefined {
     if (!props?.stroke) return undefined;
-    return { color: props.stroke.rgb, width: Math.max(0.5, props.stroke.width) };
+    // OOXML lets shapes specify sub-pixel stroke widths (Word stores
+    // half-points, so a 0.5pt outline like the default action button
+    // becomes ~0.667 px). Canvas anti-aliases sub-pixel strokes into
+    // near-transparent ghosts, which collapses preset detail lines
+    // (action button icons, cylinder lid edges, chart markers) into
+    // invisible smears, leaving the user with a flat-color silhouette.
+    // Round up to a full pixel so detail lines stay visible. Word does
+    // the same — it never renders an outline thinner than the device
+    // hairline. Trade-off: a hand-authored 0.25pt accent line will
+    // render slightly bolder than the source, which is preferable to
+    // disappearing entirely.
+    return { color: props.stroke.rgb, width: Math.max(1, props.stroke.width) };
 }
 
 /**
@@ -411,7 +423,18 @@ export class DrawingRenderService {
             printable: true,
         };
 
-        const rect = new Rect(shapeKey, rectConfig);
+        // Use PresetGeometryRect for non-rect/roundRect presets so the
+        // shape is painted with its actual outline (ellipse, diamond,
+        // star, etc.) instead of a plain rectangle. rect/roundRect stay
+        // on the base Rect path because that path already supports the
+        // `radius` corner-rounding for roundRect, while our preset
+        // generators require an `<a:avLst>` adjust value the importer
+        // doesn't yet parse.
+        const presetGeometry = shapeProperties?.presetGeometry;
+        const isCustomGeom = presetGeometry != null && presetGeometry !== 'rect' && presetGeometry !== 'roundRect';
+        const rect = isCustomGeom
+            ? new PresetGeometryRect(shapeKey, { ...rectConfig, presetGeometry })
+            : new Rect(shapeKey, rectConfig);
         scene.addObject(rect, DRAWING_OBJECT_LAYER_INDEX);
         if (this._drawingManagerService.getDrawingEditable()) {
             scene.attachTransformerTo(rect);

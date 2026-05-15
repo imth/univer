@@ -283,17 +283,134 @@ body via a custom-block `\b` token in the same way images are.
   command stack, IME). Shipping a partial canvas-only editor would
   diverge from the rest of the docs editing UX.
 - Non-rect preset geometries (`<a:prstGeom prst>` values other than
-  `rect` / `roundRect` — e.g. `ellipse`, `triangle`, `rightArrow`, the
-  full Autoshapes catalog) are parsed correctly onto
-  `shapeProperties.presetGeometry` but rendered as a plain `Rect` with
-  the shape's fill / stroke. The `Image` class already implements preset
-  → path conversion via `setPrstGeom`; lifting that to a shape-side
-  helper is the planned follow-up after interactivity.
-- Custom geometries (`<a:custGeom>`), gradient fills, shadow / 3D
-  effects, VML fallback (`<mc:Fallback>`), and `<w:wrap*>` text
-  wrapping (we render every shape as `WRAP_NONE`, "in front of text" —
-  so WordArt frames using `wrapSquare` will visually overlap surrounding
-  body text instead of pushing it aside).
+  `rect` / `roundRect`): supported via `PresetGeometryRect` which paints
+  the OOXML preset outline using path data from a vendored copy of
+  `aiden0z/pptx-renderer`'s `presets.ts` (Apache-2.0). The vendored
+  library ships two registries — `presetShapes` (single-path, ~157
+  generators) and `multiPathPresets` (multi-`<a:path>` with per-path
+  fill/stroke metadata, ~40 generators) — that together cover the
+  full ECMA-376 catalog of 187 presets. See "Preset geometry coverage
+  audit" below for verification details.
+- Implementation notes for preset geometries:
+  - **`evenodd` fill rule for multi-subpath presets**: applied
+    unconditionally via `PresetGeometryRect`'s constructor (`super(key,
+    { ...props, fillRule: 'evenodd' })`). The vendored generators emit
+    interior cutouts (donut hole, smiley eyes/mouth, home-button door,
+    info "i" glyph) as additional subpaths whose winding direction
+    matches the outer outline; Canvas's default `nonzero` rule fills
+    those overlaps solid instead of as holes. About 25% of presets
+    emit ≥2 subpaths and benefit from even-odd; the other 75% are
+    single-outline and unaffected by the rule choice, so applying it
+    unconditionally avoids a fragile per-preset whitelist.
+  - **Multi-fill / 3D-shaded presets** (~27 of OOXML's 187 presets):
+    the OOXML reference defines `actionButton*`, `bevel`, `can`,
+    `cube`, `curved*Arrow`, `ribbon*`, `*Scroll`, `foldedCorner`,
+    `smileyFace`, `ellipseRibbon*` as **multiple paths each with its
+    own `fill="darken" | "lighten" | "none"`** — the renderer derives
+    2-3 shaded variants of the base color and fills each sub-path
+    accordingly to produce Word's 3D button look. The vendored
+    `multiPathPresets` registry preserves the per-`<a:path>` flag and
+    `PresetGeometryRect.drawWith` paints each fillable sub-path with
+    the base color blended toward black or white per the declared
+    mode (`tintHex` in `preset-geometry-rect.ts`):
+    `darken`/`darkenLess` blend toward 0 by 40%/20%,
+    `lighten`/`lightenLess` blend toward 255 by 60%/40% — the
+    constants Office uses when flattening `<a:lumMod>`/`<a:lumOff>`
+    for preview. `actionButtonInformation` thus renders with the
+    expected lighter ring around the "i" head and darker stem.
+    Stroke-only sub-paths (`fill: 'none'`) paint last as detail lines.
+  - **Stroke-only "lines and connectors"** (`STROKE_ONLY_PRESETS` in
+    `presets.ts`): OOXML declares `line`, `lineInv`,
+    `straightConnector1`, `bent/curvedConnector2-5` as
+    `<a:pathLst><a:path stroke="true" fill="none">`. Their generators
+    emit open polylines/curves that should be stroked, not filled —
+    Canvas's `fill()` would auto-close the open subpath and paint a
+    bent connector as a filled triangle. The renderer queries this
+    set and skips the fill pass for matching presets.
+  - **Inline vs floating** (`<wp:inline>` vs `<wp:anchor>`):
+    `parseShape` records `isInline` and `buildShapeDrawing` maps it
+    to `PositionedObjectLayoutType.INLINE` (occupies a glyph slot;
+    following text shifts right) or `WRAP_NONE` (floats above body).
+    Floating wrap modes other than `wrapNone` (`wrapSquare`,
+    `wrapTight`, `wrapPolygon`, `wrapTopAndBottom`) all currently
+    render as `WRAP_NONE` — the shape draws in front of body text
+    instead of pushing it aside.
+  - **Sub-pixel stroke widths**: OOXML lets shapes specify half-point
+    outlines (Word's default 0.5pt action-button stroke comes through
+    as ~0.667 px). Canvas anti-aliases sub-pixel strokes into near-
+    transparent ghosts, which collapses preset detail lines (icon
+    outlines, cylinder lid edges, chart markers) into invisible
+    smears. `resolveShapeStroke` rounds the stroke up to a full pixel
+    floor — Word does the same — so detail lines stay visible. A
+    hand-authored 0.25pt accent line will render slightly bolder than
+    the source, which is preferable to disappearing entirely.
+- Out-of-scope follow-ups for preset geometries:
+  - **`<a:avLst>` adjustment values**: `parseShape` ignores the
+    adjust-value list, so every preset uses its OOXML-defined default.
+    Most fixtures are unaffected (no overrides), but a `roundRect`
+    with a non-default `adj1` would currently render with the default
+    corner radius instead of the authored one.
+  - **Custom geometries** (`<a:custGeom>` with `<a:pathLst>`),
+    gradient fills, shadow / 3D effects, and VML fallback
+    (`<mc:Fallback>`).
+  - **Real text wrapping** for `wrapSquare` / `wrapTight` /
+    `wrapPolygon` / `wrapTopAndBottom` (currently flattened to
+    `WRAP_NONE`, see implementation note above).
 - Position `relativeFrom` values other than `page` and `column`
   fall back to the OOXML default.
+
+### Preset geometry coverage audit
+
+Fixture: [`packages/docs-exchange/src/__tests__/fixtures/preset-shapes-fixture.docx`](src/__tests__/fixtures/preset-shapes-fixture.docx),
+generated by [`scripts/preset-fixture/generate-preset-fixture.py`](../../scripts/preset-fixture/generate-preset-fixture.py)
+— one inline 60×60 px shape per paragraph, solid Office Accent-1 blue
+fill, 1pt darker-blue stroke, covering all 187 ECMA-376 preset
+geometries in 9 categories (basic 70, arrows 22, stars 11, banners 5,
+callouts 23, math 6, flowchart 29, action buttons 12, connectors 9).
+
+Import result: **187 / 187** drawings parsed, laid out, and rendered
+with their authored outline. Coverage is reached via two registries
+in the vendored `aiden0z/pptx-renderer` library:
+
+  - `presetShapes` — single-path generators (≈157 entries). Used for
+    plain shapes whose OOXML `<a:pathLst>` is one `<a:path>`.
+  - `multiPathPresets` — multi-`<a:path>` generators (≈40 entries) for
+    callouts, action buttons, chart markers, ribbons, scrolls, can,
+    cube, bevel, foldedCorner, etc. Each returns
+    `[{ d, fill: 'norm'|'darken'|'lighten'|'none', stroke }]`.
+
+`PresetGeometryRect.drawWith` queries `multiPathPresets` first; on hit
+it does a two-pass render — fillable sub-paths get fill+stroke,
+`fill: 'none'` sub-paths get stroke-only — so detail lines (chart `+`
+/ `×` glyph, action-button speaker grill, magnetic-disk lid edge) stay
+as lines instead of being closed by `fill()` into spurious filled
+regions. On miss it falls back to single-path rendering via
+`getPresetShapePath`.
+
+Stroke-only families (open polylines that should never be filled) are
+flagged separately in `STROKE_ONLY_PRESETS` so connectors / lines
+register with `presetShapes` but the renderer skips fill for them.
+That covers `line`, `lineInv`, `straightConnector1`, `bent/curved
+Connector2-5` — the ECMA-376 §20.1.10.55 "lines and connectors"
+family whose `<a:pathLst>` declares `stroke="true" fill="none"`.
+
+Local generator additions (not in upstream at vendored revision
+e6200e8): `smileyFace`, `actionButtonHome`, `actionButtonInformation`
+(single-path), `flowchartmagneticdisk`, `flowchartmagneticdrum`
+(multi-path overrides splitting body from front-edge detail).
+
+Known visual gap (already documented under "Multi-fill / 3D-shaded
+presets" above): `multiPathPresets` carries per-sub-path
+`fill: 'darken' | 'lighten' | 'lightenLess'` shading modes that we
+ignore — every fillable sub-path uses the shape's single base fill.
+Silhouette and cutouts match Word; the inner light/dark layers don't.
+Affects ~27 presets (`actionButton*`, `bevel`, `cube`, `curved*Arrow`,
+`ribbon*`, `*Scroll`, `foldedCorner`, `smileyFace`, `ellipseRibbon*`).
+
+To extend coverage, register a generator in
+[`packages/drawing-ui/src/shapes/preset/presets.ts`](../../drawing-ui/src/shapes/preset/presets.ts).
+The fixture is re-runnable
+(`python3 scripts/preset-fixture/generate-preset-fixture.py`); after
+import, anything still unsupported logs `Unknown preset shape:
+"<name>"` once in the console.
 

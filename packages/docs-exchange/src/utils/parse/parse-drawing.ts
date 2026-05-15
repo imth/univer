@@ -61,6 +61,13 @@ export interface ShapeDrawingInfo {
     textBoxBody?: IDocumentBody;
     /** `<a:xfrm rot>` resolved to degrees (OOXML stores 60000ths of a degree). */
     rotationDegrees?: number;
+    /**
+     * True when the source was `<wp:inline>` rather than `<wp:anchor>` —
+     * the shape sits in the line as if it were a glyph (text wraps
+     * around it horizontally on the same baseline). Anchor drawings
+     * float over / under the body and don't displace text.
+     */
+    isInline?: boolean;
 }
 
 export type DrawingInfo = ImageDrawingInfo | ShapeDrawingInfo;
@@ -157,6 +164,11 @@ function parseShape(
     themeFonts: ThemeFonts | undefined
 ): ShapeDrawingInfo | undefined {
     // wp:anchor or wp:inline carries position + extent at the drawing level.
+    // OOXML guarantees these are mutually exclusive within one <w:drawing>,
+    // and findFirstByName is depth-first, so anchor wins when both somehow
+    // appear. `isInline` is set from whichever node we actually used —
+    // explicit so a malformed anchor (anchor element present but parsing
+    // fails downstream) can't silently misclassify the drawing as inline.
     const anchor = findFirstByName(drawingNode, 'wp:anchor');
     const inline = findFirstByName(drawingNode, 'wp:inline');
     const positioning = anchor ?? inline;
@@ -172,6 +184,7 @@ function parseShape(
         widthPx: Math.round(widthPx),
         heightPx: Math.round(heightPx),
         shapeProps: {},
+        isInline: positioning === inline,
     };
 
     if (anchor) {
@@ -423,9 +436,13 @@ function buildShapeDrawing(drawingId: string, info: ShapeDrawingInfo): ISimpleDr
         drawingId,
         // DrawingTypeEnum.DRAWING_SHAPE = 1
         drawingType: 1,
-        // PositionedObjectLayoutType.WRAP_NONE = 1 — Word text boxes draw on top
-        // of body text; we don't yet support real flow-around for wrapSquare etc.
-        layoutType: 1,
+        // PositionedObjectLayoutType: INLINE = 0 (occupies a glyph slot
+        // in the line and pushes following text right), WRAP_NONE = 1
+        // (floats over body text, doesn't displace it). `<wp:inline>`
+        // shapes need INLINE so they don't draw on top of the next
+        // run; `<wp:anchor>` shapes use WRAP_NONE because we don't
+        // yet implement actual flow-around for wrapSquare etc.
+        layoutType: info.isInline ? 0 : 1,
         transform: { left: info.posXPx ?? 0, top: info.posYPx ?? 0, width, height, angle: info.rotationDegrees ?? 0 },
         docTransform: {
             size: { width, height },
