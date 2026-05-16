@@ -10,11 +10,11 @@ import {
 import "../chunk-WYOGTORH.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-52ENKI5M.js";
+} from "../chunk-55PLZ5JX.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-OCBE4YMH.js";
+} from "../chunk-BPU722AN.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,

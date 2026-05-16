@@ -3948,6 +3948,7 @@ var TextBoxEditController = class extends Disposable {
     __publicField(this, "_outsideClickSub", null);
     /** Esc-key listener, only active during edit mode. */
     __publicField(this, "_escListener", null);
+    __publicField(this, "_documentsGuardWired", /* @__PURE__ */ new Set());
     this._wireExisting();
     this._wireFuture();
   }
@@ -4022,6 +4023,53 @@ var TextBoxEditController = class extends Disposable {
     });
     this._rectDblclickSubs.set(shapeKey, sub);
     console.info("[TextBoxEdit] wired rect", { shapeKey });
+    this._maybeWireDocumentsGuard(render2, search.unitId);
+  }
+  _maybeWireDocumentsGuard(render2, unitId) {
+    if (this._documentsGuardWired.has(unitId)) return;
+    this._documentsGuardWired.add(unitId);
+    const docObject = render2.mainComponent;
+    if (!(docObject == null ? void 0 : docObject.onDblclick$)) return;
+    console.info("[TextBoxEdit] wiring documents guard", { unitId });
+    const sub = docObject.onDblclick$.subscribeEvent((evt, state) => {
+      const e = evt;
+      const hit = this._findTextBoxAt(unitId, render2, e.offsetX, e.offsetY);
+      console.info("[TextBoxEdit] documents dblclick", { x: e.offsetX, y: e.offsetY, hit });
+      if (!hit) return;
+      this._enterEdit(hit);
+      state.stopPropagation();
+    });
+    this.disposeWithMe(sub);
+  }
+  /**
+   * Bbox-test viewport-coord (x, y) against every textbox Rect's actual
+   * scene-space rectangle. Used by the documents guard.
+   */
+  _findTextBoxAt(unitId, render2, x, y) {
+    var _a, _b, _c, _d, _e, _f, _g;
+    const group = this._drawingManagerService.drawingManagerData[unitId];
+    if (!group) return null;
+    for (const subUnitId in group) {
+      const sub = group[subUnitId];
+      const drawings = (_a = sub == null ? void 0 : sub.data) != null ? _a : {};
+      const order = (_b = sub == null ? void 0 : sub.order) != null ? _b : Object.keys(drawings);
+      for (let i = order.length - 1; i >= 0; i--) {
+        const drawingId = order[i];
+        const d = drawings[drawingId];
+        if (!((_c = d == null ? void 0 : d.textBoxContent) == null ? void 0 : _c.body)) continue;
+        const shapeKey = getDrawingShapeKeyByDrawingSearch({ unitId, subUnitId, drawingId });
+        const rect = render2.scene.getObject(shapeKey);
+        if (!rect) continue;
+        const left = (_d = rect.left) != null ? _d : 0;
+        const top = (_e = rect.top) != null ? _e : 0;
+        const width = (_f = rect.width) != null ? _f : 0;
+        const height = (_g = rect.height) != null ? _g : 0;
+        if (x >= left && x <= left + width && y >= top && y <= top + height) {
+          return { unitId, subUnitId, drawingId };
+        }
+      }
+    }
+    return null;
   }
   _findSearchById(unitId, drawingId) {
     var _a, _b;

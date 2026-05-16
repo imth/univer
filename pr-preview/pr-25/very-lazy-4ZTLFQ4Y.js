@@ -22,8 +22,8 @@ import {
 import "./chunk-ACJBG5D6.js";
 import {
   UniverDebuggerPlugin
-} from "./chunk-6YBHEJRX.js";
-import "./chunk-OCBE4YMH.js";
+} from "./chunk-55PLZ5JX.js";
+import "./chunk-BPU722AN.js";
 import {
   UniverWatermarkPlugin
 } from "./chunk-KNAG33MK.js";
