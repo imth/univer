@@ -135,27 +135,22 @@ export class TextBoxEditController extends Disposable {
         if (!rect?.onDblclick$) return;
 
         const sub = rect.onDblclick$.subscribeEvent((_evt, state) => {
-            // eslint-disable-next-line no-console
-            console.info('[TextBoxEdit] rect dblclick', search);
             this._enterEdit(search);
             state.stopPropagation();
         });
         this._rectDblclickSubs.set(shapeKey, sub);
-        // eslint-disable-next-line no-console
-        console.info('[TextBoxEdit] wired rect', { shapeKey });
 
-        // Also subscribe to the body Documents object's dblclick stream on
-        // first wire so we can suppress header/footer routing for clicks
-        // that landed on a textbox area but were picked as the body (e.g.
-        // edge cases where the Rect is on a lower layer than the text
-        // overlay). This subscription runs AFTER DocHeaderFooterController
-        // subscribed first; its stopPropagation will block remaining
-        // subscribers in the same stream.
         this._maybeWireDocumentsGuard(render, search.unitId);
     }
 
     private _documentsGuardWired: Set<string> = new Set();
 
+    /**
+     * Belt-and-suspenders: also subscribe to the body Documents object's
+     * dblclick stream so clicks landing on the text overlay (which sits on
+     * a higher layer than the Rect) still enter textbox edit instead of
+     * falling through to other Documents-level dblclick subscribers.
+     */
     private _maybeWireDocumentsGuard(render: IRender, unitId: string): void {
         if (this._documentsGuardWired.has(unitId)) return;
         this._documentsGuardWired.add(unitId);
@@ -163,13 +158,9 @@ export class TextBoxEditController extends Disposable {
         const docObject = render.mainComponent as Nullable<IRectWithDblclick>;
         if (!docObject?.onDblclick$) return;
 
-        // eslint-disable-next-line no-console
-        console.info('[TextBoxEdit] wiring documents guard', { unitId });
         const sub = docObject.onDblclick$.subscribeEvent((evt, state) => {
             const e = evt as { offsetX: number; offsetY: number };
             const hit = this._findTextBoxAt(unitId, render, e.offsetX, e.offsetY);
-            // eslint-disable-next-line no-console
-            console.info('[TextBoxEdit] documents dblclick', { x: e.offsetX, y: e.offsetY, hit });
             if (!hit) return;
             this._enterEdit(hit);
             state.stopPropagation();
@@ -225,31 +216,17 @@ export class TextBoxEditController extends Disposable {
         if (this._activeSegment) this._exitEdit();
 
         const drawing = this._drawingManagerService.getDrawingByParam(search) as IDocDrawingBase | null;
-        if (!drawing?.textBoxContent?.body) {
-            // eslint-disable-next-line no-console
-            console.info('[TextBoxEdit] _enterEdit ABORT: no body', { search, hasDrawing: !!drawing, hasTextBox: !!drawing?.textBoxContent });
-            return;
-        }
+        if (!drawing?.textBoxContent?.body) return;
 
         const angle = drawing.transform?.angle ?? 0;
-        if (angle !== 0) {
-            // eslint-disable-next-line no-console
-            console.info('[TextBoxEdit] _enterEdit ABORT: rotated', { search, angle });
-            return;
-        }
+        if (angle !== 0) return;
 
         const render = this._renderManagerService.getRenderById(search.unitId);
-        if (!render) {
-            // eslint-disable-next-line no-console
-            console.info('[TextBoxEdit] _enterEdit ABORT: no render', search);
-            return;
-        }
+        if (!render) return;
 
         this._applyEditState(render, search.drawingId, true);
         this._activeSegment = search;
         this._wireExitListeners();
-        // eslint-disable-next-line no-console
-        console.info('[TextBoxEdit] _enterEdit OK', { drawingId: search.drawingId });
     }
 
     private _exitEdit(): void {
