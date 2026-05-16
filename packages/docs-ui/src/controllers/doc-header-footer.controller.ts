@@ -341,7 +341,15 @@ export class DocHeaderFooterController extends Disposable implements IRenderModu
 
                         const viewModel = this._docSkeletonManagerService.getViewModel();
                         const editArea = viewModel.getEditArea();
-                        const isEditBody = editArea === DocumentEditArea.BODY;
+                        // Treat anything that isn't HEADER or FOOTER as "body"
+                        // for the purpose of the header/footer overlay. The
+                        // overlay (blue rule + page-area scrim + "header/footer"
+                        // bubbles) only makes sense while editing those regions
+                        // — TEXT_BOX editing is a separate edit area that
+                        // happens to render inside the body's coordinate space,
+                        // and surfacing this overlay made textbox edits look
+                        // like the user had jumped into the header/footer.
+                        const isEditBody = editArea !== DocumentEditArea.HEADER && editArea !== DocumentEditArea.FOOTER;
                         const { page, pageLeft, pageTop, ctx } = config;
                         const { pageWidth, pageHeight, marginTop, marginBottom } = page;
 
