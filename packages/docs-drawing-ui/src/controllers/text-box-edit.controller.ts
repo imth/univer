@@ -115,11 +115,15 @@ export class TextBoxEditController extends Disposable {
             const sceneCoord = viewport
                 ? viewport.transformVector2SceneCoord(canvasCoord)
                 : canvasCoord;
+            // eslint-disable-next-line no-console
+            console.info('[TextBoxEdit] dblclick', { offsetX: e.offsetX, offsetY: e.offsetY, sceneX: sceneCoord.x, sceneY: sceneCoord.y, hasVp: !!viewport });
             const hit = this._findTextBoxAt(unitId, render, sceneCoord.x, sceneCoord.y);
+            // eslint-disable-next-line no-console
+            console.info('[TextBoxEdit] hit?', hit);
             if (!hit) return;
             this._enterEdit(hit);
-            // Stop the header/footer controller from also processing this
-            // click and pulling the cursor into a header/footer segment.
+            // eslint-disable-next-line no-console
+            console.info('[TextBoxEdit] entered edit, activeSegment=', this._activeSegment);
             state.stopPropagation();
         });
         this._sceneDblclickSubs.set(unitId, sub);
@@ -136,6 +140,7 @@ export class TextBoxEditController extends Disposable {
     private _findTextBoxAt(unitId: string, render: IRender, x: number, y: number): Nullable<IDrawingSearch> {
         const group = this._drawingManagerService.drawingManagerData[unitId];
         if (!group) return null;
+        const debug: Array<Record<string, unknown>> = [];
         for (const subUnitId in group) {
             const sub = group[subUnitId];
             const drawings = sub?.data ?? {};
@@ -143,19 +148,28 @@ export class TextBoxEditController extends Disposable {
             for (let i = order.length - 1; i >= 0; i--) {
                 const drawingId = order[i];
                 const d = drawings[drawingId] as IDocDrawingBase | undefined;
-                if (!d?.textBoxContent?.body) continue;
+                if (!d?.textBoxContent?.body) {
+                    debug.push({ drawingId, skip: 'no-body', drawingType: (d as { drawingType?: number } | undefined)?.drawingType });
+                    continue;
+                }
                 const shapeKey = getDrawingShapeKeyByDrawingSearch({ unitId, subUnitId, drawingId });
                 const rect = render.scene.getObject(shapeKey) as Nullable<BaseObject>;
-                if (!rect) continue;
+                if (!rect) {
+                    debug.push({ drawingId, skip: 'no-rect', shapeKey });
+                    continue;
+                }
                 const left = rect.left ?? 0;
                 const top = rect.top ?? 0;
                 const width = rect.width ?? 0;
                 const height = rect.height ?? 0;
+                debug.push({ drawingId, left, top, width, height });
                 if (x >= left && x <= left + width && y >= top && y <= top + height) {
                     return { unitId, subUnitId, drawingId };
                 }
             }
         }
+        // eslint-disable-next-line no-console
+        console.info('[TextBoxEdit] _findTextBoxAt MISS', { x, y, candidates: debug });
         return null;
     }
 
