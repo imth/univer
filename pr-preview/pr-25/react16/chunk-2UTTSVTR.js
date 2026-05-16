@@ -3942,122 +3942,86 @@ var TextBoxEditController = class extends Disposable {
     __publicField(this, "_drawingManagerService", _drawingManagerService);
     /** Currently-edited drawing's segment, if any. */
     __publicField(this, "_activeSegment", null);
-    /** Per-render scene-level dblclick subscription. */
-    __publicField(this, "_sceneDblclickSubs", /* @__PURE__ */ new Map());
+    /** Per-rect dblclick subscription, keyed by shapeKey. */
+    __publicField(this, "_rectDblclickSubs", /* @__PURE__ */ new Map());
     /** Outside-click subscription, only active during edit mode. */
     __publicField(this, "_outsideClickSub", null);
     /** Esc-key listener, only active during edit mode. */
     __publicField(this, "_escListener", null);
-    this._wireExistingScenes();
-    this._wireFutureRemovals();
+    this._wireExisting();
+    this._wireFuture();
   }
   dispose() {
     this._exitEdit();
-    for (const sub of this._sceneDblclickSubs.values()) sub.unsubscribe();
-    this._sceneDblclickSubs.clear();
+    for (const sub of this._rectDblclickSubs.values()) sub.unsubscribe();
+    this._rectDblclickSubs.clear();
     super.dispose();
   }
   // ---------------------------------------------------------------------
   // Wiring
   // ---------------------------------------------------------------------
-  _wireExistingScenes() {
+  _wireExisting() {
     var _a, _b;
     const groups = this._drawingManagerService.drawingManagerData;
-    console.info("[TextBoxEdit] _wireExistingScenes", { unitIds: Object.keys(groups) });
     for (const unitId in groups) {
-      this._wireScene(unitId);
-    }
-    const allRenders = (_b = (_a = this._renderManagerService).getRenderAll) == null ? void 0 : _b.call(_a);
-    if (allRenders) {
-      for (const unitId of allRenders.keys()) this._wireScene(unitId);
+      const sub = groups[unitId];
+      for (const subUnitId in sub) {
+        const drawings = (_b = (_a = sub[subUnitId]) == null ? void 0 : _a.data) != null ? _b : {};
+        for (const drawingId in drawings) {
+          this._tryWireRect({ unitId, subUnitId, drawingId });
+        }
+      }
     }
   }
-  _wireFutureRemovals() {
+  _wireFuture() {
     this.disposeWithMe(
       this._drawingManagerService.add$.subscribe((params) => {
-        for (const p of params) this._wireScene(p.unitId);
+        for (const p of params) {
+          setTimeout(() => this._tryWireRect(p), 50);
+          setTimeout(() => this._tryWireRect(p), 200);
+        }
       })
     );
     this.disposeWithMe(
       this._drawingManagerService.remove$.subscribe((params) => {
         for (const p of params) {
+          const shapeKey = getDrawingShapeKeyByDrawingSearch(p);
+          const sub = this._rectDblclickSubs.get(shapeKey);
+          if (sub) {
+            sub.unsubscribe();
+            this._rectDblclickSubs.delete(shapeKey);
+          }
           if (this._activeSegment && this._activeSegment.drawingId === p.drawingId) {
             this._exitEdit();
           }
         }
       })
     );
-    this.disposeWithMe(
-      this._renderManagerService.created$.subscribe((render2) => {
-        this._wireScene(render2.unitId);
-      })
-    );
-  }
-  _wireScene(unitId) {
-    var _a, _b;
-    if (this._sceneDblclickSubs.has(unitId)) return;
-    const render2 = this._renderManagerService.getRenderById(unitId);
-    if (!render2) return;
-    const docObject = render2.mainComponent;
-    console.info("[TextBoxEdit] _wireScene", { unitId, hasMain: !!render2.mainComponent, mainCtor: (_b = (_a = render2.mainComponent) == null ? void 0 : _a.constructor) == null ? void 0 : _b.name, hasDblclick: !!(docObject == null ? void 0 : docObject.onDblclick$) });
-    if (!(docObject == null ? void 0 : docObject.onDblclick$)) return;
-    const sub = docObject.onDblclick$.subscribeEvent((evt, state) => {
-      const e = evt;
-      const canvasCoord = Vector2.FromArray([e.offsetX, e.offsetY]);
-      const viewport = render2.scene.getActiveViewportByCoord(canvasCoord);
-      const sceneCoord = viewport ? viewport.transformVector2SceneCoord(canvasCoord) : canvasCoord;
-      console.info("[TextBoxEdit] dblclick", { offsetX: e.offsetX, offsetY: e.offsetY, sceneX: sceneCoord.x, sceneY: sceneCoord.y, hasVp: !!viewport });
-      const hit = this._findTextBoxAt(unitId, render2, sceneCoord.x, sceneCoord.y);
-      console.info("[TextBoxEdit] hit?", hit);
-      if (!hit) return;
-      this._enterEdit(hit);
-      console.info("[TextBoxEdit] entered edit, activeSegment=", this._activeSegment);
-      state.stopPropagation();
-    });
-    this._sceneDblclickSubs.set(unitId, sub);
   }
   /**
-   * Bbox-test scene-space (x, y) against every textbox Rect's actual
-   * scene-space rectangle. We read `left/top/width/height` off the live
-   * Rect object (looked up via its shapeKey) rather than `drawing.transform`
-   * because `transform` is in document-space (cumulative across pages),
-   * while the Rect's own coordinates are post-layout scene-space — the
-   * same space `transformVector2SceneCoord` produces for the click point.
+   * Look up the Rect for a drawing and subscribe to its dblclick.
+   * Idempotent (subs keyed by shapeKey). Skips drawings without
+   * `textBoxContent.body` (image-only) and silently no-ops if the Rect
+   * doesn't exist yet — `_wireFuture` retries with two timeouts to
+   * catch the lazy shape creation in ShapeUpdateController.
    */
-  _findTextBoxAt(unitId, render2, x, y) {
-    var _a, _b, _c, _d, _e, _f, _g;
-    const group = this._drawingManagerService.drawingManagerData[unitId];
-    if (!group) return null;
-    const debug = [];
-    for (const subUnitId in group) {
-      const sub = group[subUnitId];
-      const drawings = (_a = sub == null ? void 0 : sub.data) != null ? _a : {};
-      const order = (_b = sub == null ? void 0 : sub.order) != null ? _b : Object.keys(drawings);
-      for (let i = order.length - 1; i >= 0; i--) {
-        const drawingId = order[i];
-        const d = drawings[drawingId];
-        if (!((_c = d == null ? void 0 : d.textBoxContent) == null ? void 0 : _c.body)) {
-          debug.push({ drawingId, skip: "no-body", drawingType: d == null ? void 0 : d.drawingType });
-          continue;
-        }
-        const shapeKey = getDrawingShapeKeyByDrawingSearch({ unitId, subUnitId, drawingId });
-        const rect = render2.scene.getObject(shapeKey);
-        if (!rect) {
-          debug.push({ drawingId, skip: "no-rect", shapeKey });
-          continue;
-        }
-        const left = (_d = rect.left) != null ? _d : 0;
-        const top = (_e = rect.top) != null ? _e : 0;
-        const width = (_f = rect.width) != null ? _f : 0;
-        const height = (_g = rect.height) != null ? _g : 0;
-        debug.push({ drawingId, left, top, width, height });
-        if (x >= left && x <= left + width && y >= top && y <= top + height) {
-          return { unitId, subUnitId, drawingId };
-        }
-      }
-    }
-    console.info("[TextBoxEdit] _findTextBoxAt MISS", { x, y, candidates: debug });
-    return null;
+  _tryWireRect(search) {
+    var _a;
+    const shapeKey = getDrawingShapeKeyByDrawingSearch(search);
+    if (this._rectDblclickSubs.has(shapeKey)) return;
+    const drawing = this._drawingManagerService.getDrawingByParam(search);
+    if (!((_a = drawing == null ? void 0 : drawing.textBoxContent) == null ? void 0 : _a.body)) return;
+    const render2 = this._renderManagerService.getRenderById(search.unitId);
+    if (!render2) return;
+    const rect = render2.scene.getObject(shapeKey);
+    if (!(rect == null ? void 0 : rect.onDblclick$)) return;
+    const sub = rect.onDblclick$.subscribeEvent((_evt, state) => {
+      console.info("[TextBoxEdit] rect dblclick", search);
+      this._enterEdit(search);
+      state.stopPropagation();
+    });
+    this._rectDblclickSubs.set(shapeKey, sub);
+    console.info("[TextBoxEdit] wired rect", { shapeKey });
   }
   _findSearchById(unitId, drawingId) {
     var _a, _b;

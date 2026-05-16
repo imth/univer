@@ -16,7 +16,7 @@ import "./chunk-EYMO5IX2.js";
 import "./chunk-ACJBG5D6.js";
 import {
   UniverDocsDrawingUIPlugin
-} from "./chunk-YXFMABLU.js";
+} from "./chunk-2UTTSVTR.js";
 import "./chunk-DZ6TA4PJ.js";
 import {
   UniverSheetsDrawingUIPlugin
@@ -45,7 +45,7 @@ import "./chunk-M7PJGVD7.js";
 import "./chunk-EQ2B2W73.js";
 import "./chunk-24OICD5T.js";
 
-// src/sheets-no-worker/lazy.ts
+// src/sheets/lazy.ts
 function getLazyPlugins() {
   return [
     [UniverDocsDrawingUIPlugin],
