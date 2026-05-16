@@ -4040,14 +4040,24 @@ var TextBoxEditController = class extends Disposable {
     var _a, _b, _c;
     if (this._activeSegment) this._exitEdit();
     const drawing = this._drawingManagerService.getDrawingByParam(search);
-    if (!((_a = drawing == null ? void 0 : drawing.textBoxContent) == null ? void 0 : _a.body)) return;
+    if (!((_a = drawing == null ? void 0 : drawing.textBoxContent) == null ? void 0 : _a.body)) {
+      console.info("[TextBoxEdit] _enterEdit ABORT: no body", { search, hasDrawing: !!drawing, hasTextBox: !!(drawing == null ? void 0 : drawing.textBoxContent) });
+      return;
+    }
     const angle = (_c = (_b = drawing.transform) == null ? void 0 : _b.angle) != null ? _c : 0;
-    if (angle !== 0) return;
+    if (angle !== 0) {
+      console.info("[TextBoxEdit] _enterEdit ABORT: rotated", { search, angle });
+      return;
+    }
     const render2 = this._renderManagerService.getRenderById(search.unitId);
-    if (!render2) return;
+    if (!render2) {
+      console.info("[TextBoxEdit] _enterEdit ABORT: no render", search);
+      return;
+    }
     this._applyEditState(render2, search.drawingId, true);
     this._activeSegment = search;
     this._wireExitListeners();
+    console.info("[TextBoxEdit] _enterEdit OK", { drawingId: search.drawingId });
   }
   _exitEdit() {
     if (!this._activeSegment) return;

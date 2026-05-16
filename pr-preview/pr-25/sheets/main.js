@@ -65,8 +65,8 @@ import {
 import "../chunk-WYOGTORH.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-XRGZ3J65.js";
-import "../chunk-2UTTSVTR.js";
+} from "../chunk-52ENKI5M.js";
+import "../chunk-OCBE4YMH.js";
 import "../chunk-DZ6TA4PJ.js";
 import "../chunk-KNAG33MK.js";
 import "../chunk-H5KKX4CO.js";
@@ -633,13 +633,13 @@ function createNewInstance() {
     univer.createUnit(2 /* UNIVER_SHEET */, DEFAULT_WORKBOOK_DATA_DEMO);
   }
   setTimeout(() => {
-    import("../lazy-SVYPXV3Z.js").then((lazy) => {
+    import("../lazy-4LZ55URI.js").then((lazy) => {
       const plugins = lazy.default();
       univer.registerPlugins(plugins);
     });
   }, LOAD_LAZY_PLUGINS_TIMEOUT);
   setTimeout(() => {
-    import("../very-lazy-CD4FBVJV.js").then((lazy) => {
+    import("../very-lazy-R3JSWKDJ.js").then((lazy) => {
       const plugins = lazy.default();
       univer.registerPlugins(plugins);
     });
