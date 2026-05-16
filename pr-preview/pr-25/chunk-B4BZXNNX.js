@@ -1,6 +1,6 @@
 import {
   DocFloatDomController
-} from "./chunk-R5Q556K3.js";
+} from "./chunk-N5ODMFBU.js";
 import {
   WATERMARK_IMAGE_ALLOW_IMAGE_LIST,
   WatermarkImageBaseConfig,
@@ -865,9 +865,9 @@ function useSnapshot() {
       const doc = univerInstanceService.getCurrentUnitOfType(1 /* UNIVER_DOC */);
       const snapshot2 = resourceLoaderService.saveUnit(doc.getUnitId());
       if (true) {
-        const gitHash = "e3ff6f0";
+        const gitHash = "f68ca48";
         const gitBranch = "feat/docx-textbox-text-editing";
-        const buildTime = "2026-05-16T00:40:06.365Z";
+        const buildTime = "2026-05-16T01:45:59.793Z";
         snapshot2.__env__ = { gitHash, gitBranch, buildTime };
       }
       const text = JSON.stringify(snapshot2, null, 2);
@@ -880,9 +880,9 @@ function useSnapshot() {
     }
     const snapshot = resourceLoaderService.saveUnit(workbook.getUnitId());
     if (true) {
-      const gitHash = "e3ff6f0";
+      const gitHash = "f68ca48";
       const gitBranch = "feat/docx-textbox-text-editing";
-      const buildTime = "2026-05-16T00:40:06.365Z";
+      const buildTime = "2026-05-16T01:45:59.793Z";
       snapshot.__env__ = { gitHash, gitBranch, buildTime };
     }
     if (value === "sheet") {

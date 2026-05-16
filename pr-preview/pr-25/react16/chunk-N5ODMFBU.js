@@ -3993,9 +3993,12 @@ var TextBoxEditController = class extends Disposable {
       const canvasCoord = Vector2.FromArray([e.offsetX, e.offsetY]);
       const viewport = render2.scene.getActiveViewportByCoord(canvasCoord);
       const sceneCoord = viewport ? viewport.transformVector2SceneCoord(canvasCoord) : canvasCoord;
+      console.info("[TextBoxEdit] dblclick", { offsetX: e.offsetX, offsetY: e.offsetY, sceneX: sceneCoord.x, sceneY: sceneCoord.y, hasVp: !!viewport });
       const hit = this._findTextBoxAt(unitId, render2, sceneCoord.x, sceneCoord.y);
+      console.info("[TextBoxEdit] hit?", hit);
       if (!hit) return;
       this._enterEdit(hit);
+      console.info("[TextBoxEdit] entered edit, activeSegment=", this._activeSegment);
       state.stopPropagation();
     });
     this._sceneDblclickSubs.set(unitId, sub);
@@ -4012,6 +4015,7 @@ var TextBoxEditController = class extends Disposable {
     var _a, _b, _c, _d, _e, _f, _g;
     const group = this._drawingManagerService.drawingManagerData[unitId];
     if (!group) return null;
+    const debug = [];
     for (const subUnitId in group) {
       const sub = group[subUnitId];
       const drawings = (_a = sub == null ? void 0 : sub.data) != null ? _a : {};
@@ -4019,19 +4023,27 @@ var TextBoxEditController = class extends Disposable {
       for (let i = order.length - 1; i >= 0; i--) {
         const drawingId = order[i];
         const d = drawings[drawingId];
-        if (!((_c = d == null ? void 0 : d.textBoxContent) == null ? void 0 : _c.body)) continue;
+        if (!((_c = d == null ? void 0 : d.textBoxContent) == null ? void 0 : _c.body)) {
+          debug.push({ drawingId, skip: "no-body", drawingType: d == null ? void 0 : d.drawingType });
+          continue;
+        }
         const shapeKey = getDrawingShapeKeyByDrawingSearch({ unitId, subUnitId, drawingId });
         const rect = render2.scene.getObject(shapeKey);
-        if (!rect) continue;
+        if (!rect) {
+          debug.push({ drawingId, skip: "no-rect", shapeKey });
+          continue;
+        }
         const left = (_d = rect.left) != null ? _d : 0;
         const top = (_e = rect.top) != null ? _e : 0;
         const width = (_f = rect.width) != null ? _f : 0;
         const height = (_g = rect.height) != null ? _g : 0;
+        debug.push({ drawingId, left, top, width, height });
         if (x >= left && x <= left + width && y >= top && y <= top + height) {
           return { unitId, subUnitId, drawingId };
         }
       }
     }
+    console.info("[TextBoxEdit] _findTextBoxAt MISS", { x, y, candidates: debug });
     return null;
   }
   _findSearchById(unitId, drawingId) {
