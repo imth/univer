@@ -163,17 +163,31 @@ export class TextBoxEditController extends Disposable {
         if (this._activeSegment) this._exitEdit();
 
         const drawing = this._drawingManagerService.getDrawingByParam(search) as IDocDrawingBase | null;
-        if (!drawing?.textBoxContent?.body) return;
+        if (!drawing?.textBoxContent?.body) {
+            // eslint-disable-next-line no-console
+            console.info('[TextBoxEdit] _enterEdit ABORT: no body', { search, hasDrawing: !!drawing, hasTextBox: !!drawing?.textBoxContent });
+            return;
+        }
 
         const angle = drawing.transform?.angle ?? 0;
-        if (angle !== 0) return;
+        if (angle !== 0) {
+            // eslint-disable-next-line no-console
+            console.info('[TextBoxEdit] _enterEdit ABORT: rotated', { search, angle });
+            return;
+        }
 
         const render = this._renderManagerService.getRenderById(search.unitId);
-        if (!render) return;
+        if (!render) {
+            // eslint-disable-next-line no-console
+            console.info('[TextBoxEdit] _enterEdit ABORT: no render', search);
+            return;
+        }
 
         this._applyEditState(render, search.drawingId, true);
         this._activeSegment = search;
         this._wireExitListeners();
+        // eslint-disable-next-line no-console
+        console.info('[TextBoxEdit] _enterEdit OK', { drawingId: search.drawingId });
     }
 
     private _exitEdit(): void {
