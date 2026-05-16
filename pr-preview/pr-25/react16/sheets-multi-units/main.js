@@ -25,7 +25,7 @@ import {
 import "../chunk-WYOGTORH.js";
 import {
   UniverDocsDrawingUIPlugin
-} from "../chunk-N5ODMFBU.js";
+} from "../chunk-YXFMABLU.js";
 import "../chunk-DZ6TA4PJ.js";
 import "../chunk-H5KKX4CO.js";
 import {
@@ -193,7 +193,7 @@ setTimeout(() => {
   });
 }, LOAD_LAZY_PLUGINS_TIMEOUT);
 setTimeout(() => {
-  import("../very-lazy-EQIUWSDW.js").then((lazy) => {
+  import("../very-lazy-SV6YPKKL.js").then((lazy) => {
     const plugins = lazy.default();
     plugins.forEach((p) => univer.registerPlugin(p[0], p[1]));
   });

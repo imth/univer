@@ -3961,9 +3961,15 @@ var TextBoxEditController = class extends Disposable {
   // Wiring
   // ---------------------------------------------------------------------
   _wireExistingScenes() {
+    var _a, _b;
     const groups = this._drawingManagerService.drawingManagerData;
+    console.info("[TextBoxEdit] _wireExistingScenes", { unitIds: Object.keys(groups) });
     for (const unitId in groups) {
       this._wireScene(unitId);
+    }
+    const allRenders = (_b = (_a = this._renderManagerService).getRenderAll) == null ? void 0 : _b.call(_a);
+    if (allRenders) {
+      for (const unitId of allRenders.keys()) this._wireScene(unitId);
     }
   }
   _wireFutureRemovals() {
@@ -3981,12 +3987,19 @@ var TextBoxEditController = class extends Disposable {
         }
       })
     );
+    this.disposeWithMe(
+      this._renderManagerService.created$.subscribe((render2) => {
+        this._wireScene(render2.unitId);
+      })
+    );
   }
   _wireScene(unitId) {
+    var _a, _b;
     if (this._sceneDblclickSubs.has(unitId)) return;
     const render2 = this._renderManagerService.getRenderById(unitId);
     if (!render2) return;
     const docObject = render2.mainComponent;
+    console.info("[TextBoxEdit] _wireScene", { unitId, hasMain: !!render2.mainComponent, mainCtor: (_b = (_a = render2.mainComponent) == null ? void 0 : _a.constructor) == null ? void 0 : _b.name, hasDblclick: !!(docObject == null ? void 0 : docObject.onDblclick$) });
     if (!(docObject == null ? void 0 : docObject.onDblclick$)) return;
     const sub = docObject.onDblclick$.subscribeEvent((evt, state) => {
       const e = evt;
