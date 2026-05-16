@@ -73,8 +73,18 @@ export class TextBoxEditController extends Disposable {
 
     private _wireExistingScenes(): void {
         const groups = this._drawingManagerService.drawingManagerData;
+        // eslint-disable-next-line no-console
+        console.info('[TextBoxEdit] _wireExistingScenes', { unitIds: Object.keys(groups) });
         for (const unitId in groups) {
             this._wireScene(unitId);
+        }
+        // Also wire any unit that the render manager already knows about,
+        // even if drawingManagerData hasn't been populated for it yet.
+        // _wireScene is idempotent (sceneDblclickSubs guard), so duplicates
+        // are safe.
+        const allRenders = this._renderManagerService.getRenderAll?.() as Map<string, unknown> | undefined;
+        if (allRenders) {
+            for (const unitId of allRenders.keys()) this._wireScene(unitId);
         }
     }
 
@@ -93,6 +103,14 @@ export class TextBoxEditController extends Disposable {
                 }
             })
         );
+        // Wire any future render that the manager creates — the controller's
+        // construction can race ahead of new doc imports, so we need to
+        // catch them when their IRender is registered.
+        this.disposeWithMe(
+            this._renderManagerService.created$.subscribe((render) => {
+                this._wireScene(render.unitId);
+            })
+        );
     }
 
     private _wireScene(unitId: string): void {
@@ -106,6 +124,8 @@ export class TextBoxEditController extends Disposable {
         // this, both controllers fire and a dblclick on a textbox enters
         // header/footer edit mode.
         const docObject = render.mainComponent as { onDblclick$?: { subscribeEvent: (cb: (evt: unknown, state: { stopPropagation: () => void }) => void) => Subscription } } | undefined;
+        // eslint-disable-next-line no-console
+        console.info('[TextBoxEdit] _wireScene', { unitId, hasMain: !!render.mainComponent, mainCtor: render.mainComponent?.constructor?.name, hasDblclick: !!docObject?.onDblclick$ });
         if (!docObject?.onDblclick$) return;
 
         const sub = docObject.onDblclick$.subscribeEvent((evt, state) => {
