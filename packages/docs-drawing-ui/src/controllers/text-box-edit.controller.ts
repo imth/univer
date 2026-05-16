@@ -15,35 +15,39 @@
  */
 
 import type { IDocDrawingBase, IDrawingSearch, Nullable } from '@univerjs/core';
-import type { BaseObject, IRender } from '@univerjs/engine-render';
+import type { IRender } from '@univerjs/engine-render';
 import type { Subscription } from 'rxjs';
 import { Disposable, Inject, IUniverInstanceService } from '@univerjs/core';
 import { DocSkeletonManagerService } from '@univerjs/docs';
 import { DocSelectionRenderService } from '@univerjs/docs-ui';
 import { getDrawingShapeKeyByDrawingSearch, IDrawingManagerService } from '@univerjs/drawing';
 import { ClippedRichText, SHAPE_TEXT_OVERLAY_SUFFIX } from '@univerjs/drawing-ui';
-import { DocumentEditArea, IRenderManagerService, Vector2 } from '@univerjs/engine-render';
+import { DocumentEditArea, IRenderManagerService } from '@univerjs/engine-render';
+
+interface IRectWithDblclick {
+    onDblclick$?: { subscribeEvent: (cb: (evt: unknown, state: { stopPropagation: () => void }) => void) => Subscription };
+}
 
 /**
  * Stage C — manage the lifecycle of "edit text inside a textbox".
  *
- * Subscribes to the body Documents object's `onDblclick$` (the same stream
- * DocHeaderFooterController uses) so we share the event queue and can
- * `state.stopPropagation()` after we've consumed a click — without that,
- * a dblclick on a textbox both enters textbox edit AND falls through to
- * header/footer edit.
+ * Subscribes to each textbox Rect's `onDblclick$` directly. The Rect is
+ * attached to the scene transformer (`scene.attachTransformerTo`), which
+ * makes it the topmost picked object at its bounds — so the body Documents
+ * object's dblclick stream NEVER fires for clicks landing on a textbox,
+ * and we have to listen on the Rect itself.
  *
- * On dblclick we convert the canvas-pixel coordinate to scene-space via
- * the active viewport, then bbox-test against every textbox Rect's live
- * `left/top/width/height`. We can't use `scene.pick()` because the body
- * Documents object sits on a higher z-layer than DRAWING_OBJECT — picks
- * at the textbox always return the body.
+ * Rects are created lazily by ShapeUpdateController after this controller
+ * mounts (the controller bufferTimes add$ for ~33ms before painting), so
+ * we wire on three signals: existing rects at construction, future render
+ * units via `renderManagerService.created$`, and per-drawing add$ events
+ * with two retry timeouts (50ms + 200ms) to ride past the buffer window.
  */
 export class TextBoxEditController extends Disposable {
     /** Currently-edited drawing's segment, if any. */
     private _activeSegment: Nullable<IDrawingSearch> = null;
-    /** Per-render scene-level dblclick subscription. */
-    private readonly _sceneDblclickSubs: Map<string, Subscription> = new Map();
+    /** Per-rect dblclick subscription, keyed by shapeKey. */
+    private readonly _rectDblclickSubs: Map<string, Subscription> = new Map();
     /** Outside-click subscription, only active during edit mode. */
     private _outsideClickSub: Nullable<Subscription> = null;
     /** Esc-key listener, only active during edit mode. */
@@ -56,14 +60,14 @@ export class TextBoxEditController extends Disposable {
         @IDrawingManagerService private readonly _drawingManagerService: IDrawingManagerService
     ) {
         super();
-        this._wireExistingScenes();
-        this._wireFutureRemovals();
+        this._wireExisting();
+        this._wireFuture();
     }
 
     override dispose(): void {
         this._exitEdit();
-        for (const sub of this._sceneDblclickSubs.values()) sub.unsubscribe();
-        this._sceneDblclickSubs.clear();
+        for (const sub of this._rectDblclickSubs.values()) sub.unsubscribe();
+        this._rectDblclickSubs.clear();
         super.dispose();
     }
 
@@ -71,126 +75,74 @@ export class TextBoxEditController extends Disposable {
     // Wiring
     // ---------------------------------------------------------------------
 
-    private _wireExistingScenes(): void {
+    private _wireExisting(): void {
         const groups = this._drawingManagerService.drawingManagerData;
-        // eslint-disable-next-line no-console
-        console.info('[TextBoxEdit] _wireExistingScenes', { unitIds: Object.keys(groups) });
         for (const unitId in groups) {
-            this._wireScene(unitId);
-        }
-        // Also wire any unit that the render manager already knows about,
-        // even if drawingManagerData hasn't been populated for it yet.
-        // _wireScene is idempotent (sceneDblclickSubs guard), so duplicates
-        // are safe.
-        const allRenders = this._renderManagerService.getRenderAll?.() as Map<string, unknown> | undefined;
-        if (allRenders) {
-            for (const unitId of allRenders.keys()) this._wireScene(unitId);
+            const sub = groups[unitId];
+            for (const subUnitId in sub) {
+                const drawings = sub[subUnitId]?.data ?? {};
+                for (const drawingId in drawings) {
+                    this._tryWireRect({ unitId, subUnitId, drawingId });
+                }
+            }
         }
     }
 
-    private _wireFutureRemovals(): void {
+    private _wireFuture(): void {
         this.disposeWithMe(
             this._drawingManagerService.add$.subscribe((params: IDrawingSearch[]) => {
-                for (const p of params) this._wireScene(p.unitId);
+                for (const p of params) {
+                    setTimeout(() => this._tryWireRect(p), 50);
+                    setTimeout(() => this._tryWireRect(p), 200);
+                }
             })
         );
         this.disposeWithMe(
             this._drawingManagerService.remove$.subscribe((params: IDrawingSearch[]) => {
                 for (const p of params) {
+                    const shapeKey = getDrawingShapeKeyByDrawingSearch(p);
+                    const sub = this._rectDblclickSubs.get(shapeKey);
+                    if (sub) {
+                        sub.unsubscribe();
+                        this._rectDblclickSubs.delete(shapeKey);
+                    }
                     if (this._activeSegment && this._activeSegment.drawingId === p.drawingId) {
                         this._exitEdit();
                     }
                 }
             })
         );
-        // Wire any future render that the manager creates — the controller's
-        // construction can race ahead of new doc imports, so we need to
-        // catch them when their IRender is registered.
-        this.disposeWithMe(
-            this._renderManagerService.created$.subscribe((render) => {
-                this._wireScene(render.unitId);
-            })
-        );
-    }
-
-    private _wireScene(unitId: string): void {
-        if (this._sceneDblclickSubs.has(unitId)) return;
-        const render = this._renderManagerService.getRenderById(unitId);
-        if (!render) return;
-
-        // Subscribe to the body Documents object's dblclick stream — not the
-        // scene's — so we share the event queue with DocHeaderFooterController
-        // and can stop propagation when we've consumed the click. Without
-        // this, both controllers fire and a dblclick on a textbox enters
-        // header/footer edit mode.
-        const docObject = render.mainComponent as { onDblclick$?: { subscribeEvent: (cb: (evt: unknown, state: { stopPropagation: () => void }) => void) => Subscription } } | undefined;
-        // eslint-disable-next-line no-console
-        console.info('[TextBoxEdit] _wireScene', { unitId, hasMain: !!render.mainComponent, mainCtor: render.mainComponent?.constructor?.name, hasDblclick: !!docObject?.onDblclick$ });
-        if (!docObject?.onDblclick$) return;
-
-        const sub = docObject.onDblclick$.subscribeEvent((evt, state) => {
-            const e = evt as { offsetX: number; offsetY: number };
-            const canvasCoord = Vector2.FromArray([e.offsetX, e.offsetY]);
-            const viewport = render.scene.getActiveViewportByCoord(canvasCoord);
-            const sceneCoord = viewport
-                ? viewport.transformVector2SceneCoord(canvasCoord)
-                : canvasCoord;
-            // eslint-disable-next-line no-console
-            console.info('[TextBoxEdit] dblclick', { offsetX: e.offsetX, offsetY: e.offsetY, sceneX: sceneCoord.x, sceneY: sceneCoord.y, hasVp: !!viewport });
-            const hit = this._findTextBoxAt(unitId, render, sceneCoord.x, sceneCoord.y);
-            // eslint-disable-next-line no-console
-            console.info('[TextBoxEdit] hit?', hit);
-            if (!hit) return;
-            this._enterEdit(hit);
-            // eslint-disable-next-line no-console
-            console.info('[TextBoxEdit] entered edit, activeSegment=', this._activeSegment);
-            state.stopPropagation();
-        });
-        this._sceneDblclickSubs.set(unitId, sub);
     }
 
     /**
-     * Bbox-test scene-space (x, y) against every textbox Rect's actual
-     * scene-space rectangle. We read `left/top/width/height` off the live
-     * Rect object (looked up via its shapeKey) rather than `drawing.transform`
-     * because `transform` is in document-space (cumulative across pages),
-     * while the Rect's own coordinates are post-layout scene-space — the
-     * same space `transformVector2SceneCoord` produces for the click point.
+     * Look up the Rect for a drawing and subscribe to its dblclick.
+     * Idempotent (subs keyed by shapeKey). Skips drawings without
+     * `textBoxContent.body` (image-only) and silently no-ops if the Rect
+     * doesn't exist yet — `_wireFuture` retries with two timeouts to
+     * catch the lazy shape creation in ShapeUpdateController.
      */
-    private _findTextBoxAt(unitId: string, render: IRender, x: number, y: number): Nullable<IDrawingSearch> {
-        const group = this._drawingManagerService.drawingManagerData[unitId];
-        if (!group) return null;
-        const debug: Array<Record<string, unknown>> = [];
-        for (const subUnitId in group) {
-            const sub = group[subUnitId];
-            const drawings = sub?.data ?? {};
-            const order = sub?.order ?? Object.keys(drawings);
-            for (let i = order.length - 1; i >= 0; i--) {
-                const drawingId = order[i];
-                const d = drawings[drawingId] as IDocDrawingBase | undefined;
-                if (!d?.textBoxContent?.body) {
-                    debug.push({ drawingId, skip: 'no-body', drawingType: (d as { drawingType?: number } | undefined)?.drawingType });
-                    continue;
-                }
-                const shapeKey = getDrawingShapeKeyByDrawingSearch({ unitId, subUnitId, drawingId });
-                const rect = render.scene.getObject(shapeKey) as Nullable<BaseObject>;
-                if (!rect) {
-                    debug.push({ drawingId, skip: 'no-rect', shapeKey });
-                    continue;
-                }
-                const left = rect.left ?? 0;
-                const top = rect.top ?? 0;
-                const width = rect.width ?? 0;
-                const height = rect.height ?? 0;
-                debug.push({ drawingId, left, top, width, height });
-                if (x >= left && x <= left + width && y >= top && y <= top + height) {
-                    return { unitId, subUnitId, drawingId };
-                }
-            }
-        }
+    private _tryWireRect(search: IDrawingSearch): void {
+        const shapeKey = getDrawingShapeKeyByDrawingSearch(search);
+        if (this._rectDblclickSubs.has(shapeKey)) return;
+
+        const drawing = this._drawingManagerService.getDrawingByParam(search) as IDocDrawingBase | null;
+        if (!drawing?.textBoxContent?.body) return;
+
+        const render = this._renderManagerService.getRenderById(search.unitId);
+        if (!render) return;
+
+        const rect = render.scene.getObject(shapeKey) as Nullable<IRectWithDblclick>;
+        if (!rect?.onDblclick$) return;
+
+        const sub = rect.onDblclick$.subscribeEvent((_evt, state) => {
+            // eslint-disable-next-line no-console
+            console.info('[TextBoxEdit] rect dblclick', search);
+            this._enterEdit(search);
+            state.stopPropagation();
+        });
+        this._rectDblclickSubs.set(shapeKey, sub);
         // eslint-disable-next-line no-console
-        console.info('[TextBoxEdit] _findTextBoxAt MISS', { x, y, candidates: debug });
-        return null;
+        console.info('[TextBoxEdit] wired rect', { shapeKey });
     }
 
     private _findSearchById(unitId: string, drawingId: string): Nullable<IDrawingSearch> {
@@ -242,7 +194,6 @@ export class TextBoxEditController extends Disposable {
         viewModel.setEditArea(on ? DocumentEditArea.TEXT_BOX : DocumentEditArea.BODY);
         docSelectionRenderService.setSegment(on ? drawingId : '');
 
-        // We need a search shape key — reconstruct from active segment.
         const search = this._findSearchById(render.unitId, drawingId);
         if (!search) return;
         const shapeKey = getDrawingShapeKeyByDrawingSearch(search);
