@@ -27,16 +27,17 @@ import { DocumentEditArea, IRenderManagerService, Vector2 } from '@univerjs/engi
 /**
  * Stage C — manage the lifecycle of "edit text inside a textbox".
  *
- * Wires scene-level dblclick rather than per-rect: shape objects are created
- * lazily by the renderer after this controller mounts, so per-rect
- * subscriptions miss the initial wave of imported drawings, and scene-level
- * routing also survives shape replacement during transform/refresh cycles.
+ * Subscribes to the body Documents object's `onDblclick$` (the same stream
+ * DocHeaderFooterController uses) so we share the event queue and can
+ * `state.stopPropagation()` after we've consumed a click — without that,
+ * a dblclick on a textbox both enters textbox edit AND falls through to
+ * header/footer edit.
  *
- * On dblclick: converts the canvas-pixel coordinate to scene-space via the
- * active viewport, then bbox-tests against every textbox Rect's live
- * `left/top/width/height`. `scene.pick()` is intentionally avoided because
- * the body Documents object sits on a higher z-layer than DRAWING_OBJECT,
- * so picks at the textbox always return the body.
+ * On dblclick we convert the canvas-pixel coordinate to scene-space via
+ * the active viewport, then bbox-test against every textbox Rect's live
+ * `left/top/width/height`. We can't use `scene.pick()` because the body
+ * Documents object sits on a higher z-layer than DRAWING_OBJECT — picks
+ * at the textbox always return the body.
  */
 export class TextBoxEditController extends Disposable {
     /** Currently-edited drawing's segment, if any. */
@@ -99,14 +100,16 @@ export class TextBoxEditController extends Disposable {
         const render = this._renderManagerService.getRenderById(unitId);
         if (!render) return;
 
-        const sub = render.scene.onDblclick$.subscribeEvent((evt: unknown) => {
+        // Subscribe to the body Documents object's dblclick stream — not the
+        // scene's — so we share the event queue with DocHeaderFooterController
+        // and can stop propagation when we've consumed the click. Without
+        // this, both controllers fire and a dblclick on a textbox enters
+        // header/footer edit mode.
+        const docObject = render.mainComponent as { onDblclick$?: { subscribeEvent: (cb: (evt: unknown, state: { stopPropagation: () => void }) => void) => Subscription } } | undefined;
+        if (!docObject?.onDblclick$) return;
+
+        const sub = docObject.onDblclick$.subscribeEvent((evt, state) => {
             const e = evt as { offsetX: number; offsetY: number };
-            // The body Documents object sits on a higher z-layer than the
-            // textbox Rect (added at DRAWING_OBJECT_LAYER_INDEX), so
-            // `scene.pick()` returns __Document_Render_Main__ and never
-            // surfaces a textbox. Convert to scene-space and bbox-test
-            // against each textbox Rect object directly — the Rect's
-            // `left/top/width/height` are already in scene-space.
             const canvasCoord = Vector2.FromArray([e.offsetX, e.offsetY]);
             const viewport = render.scene.getActiveViewportByCoord(canvasCoord);
             const sceneCoord = viewport
@@ -115,6 +118,9 @@ export class TextBoxEditController extends Disposable {
             const hit = this._findTextBoxAt(unitId, render, sceneCoord.x, sceneCoord.y);
             if (!hit) return;
             this._enterEdit(hit);
+            // Stop the header/footer controller from also processing this
+            // click and pulling the cursor into a header/footer segment.
+            state.stopPropagation();
         });
         this._sceneDblclickSubs.set(unitId, sub);
     }
