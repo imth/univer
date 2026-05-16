@@ -3986,7 +3986,9 @@ var TextBoxEditController = class extends Disposable {
     if (this._sceneDblclickSubs.has(unitId)) return;
     const render2 = this._renderManagerService.getRenderById(unitId);
     if (!render2) return;
-    const sub = render2.scene.onDblclick$.subscribeEvent((evt) => {
+    const docObject = render2.mainComponent;
+    if (!(docObject == null ? void 0 : docObject.onDblclick$)) return;
+    const sub = docObject.onDblclick$.subscribeEvent((evt, state) => {
       const e = evt;
       const canvasCoord = Vector2.FromArray([e.offsetX, e.offsetY]);
       const viewport = render2.scene.getActiveViewportByCoord(canvasCoord);
@@ -3994,6 +3996,7 @@ var TextBoxEditController = class extends Disposable {
       const hit = this._findTextBoxAt(unitId, render2, sceneCoord.x, sceneCoord.y);
       if (!hit) return;
       this._enterEdit(hit);
+      state.stopPropagation();
     });
     this._sceneDblclickSubs.set(unitId, sub);
   }
