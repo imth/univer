@@ -33,14 +33,16 @@ export const DocHeaderFooterPanel = () => {
     const [isEditHeaderFooter, setIsEditHeaderFooter] = useState(true);
 
     useEffect(() => {
+        const isHeaderFooter = (area: DocumentEditArea | undefined | null) =>
+            area === DocumentEditArea.HEADER || area === DocumentEditArea.FOOTER;
         const editArea = viewModel.getEditArea();
-        setIsEditHeaderFooter(editArea !== DocumentEditArea.BODY);
+        setIsEditHeaderFooter(isHeaderFooter(editArea));
 
         const subscription = viewModel.editAreaChange$.subscribe((editArea) => {
             if (editArea == null) {
                 return;
             }
-            setIsEditHeaderFooter(editArea !== DocumentEditArea.BODY);
+            setIsEditHeaderFooter(isHeaderFooter(editArea));
         });
 
         return () => {
