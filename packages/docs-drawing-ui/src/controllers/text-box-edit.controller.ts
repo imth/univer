@@ -143,6 +143,68 @@ export class TextBoxEditController extends Disposable {
         this._rectDblclickSubs.set(shapeKey, sub);
         // eslint-disable-next-line no-console
         console.info('[TextBoxEdit] wired rect', { shapeKey });
+
+        // Also subscribe to the body Documents object's dblclick stream on
+        // first wire so we can suppress header/footer routing for clicks
+        // that landed on a textbox area but were picked as the body (e.g.
+        // edge cases where the Rect is on a lower layer than the text
+        // overlay). This subscription runs AFTER DocHeaderFooterController
+        // subscribed first; its stopPropagation will block remaining
+        // subscribers in the same stream.
+        this._maybeWireDocumentsGuard(render, search.unitId);
+    }
+
+    private _documentsGuardWired: Set<string> = new Set();
+
+    private _maybeWireDocumentsGuard(render: IRender, unitId: string): void {
+        if (this._documentsGuardWired.has(unitId)) return;
+        this._documentsGuardWired.add(unitId);
+
+        const docObject = render.mainComponent as Nullable<IRectWithDblclick>;
+        if (!docObject?.onDblclick$) return;
+
+        // eslint-disable-next-line no-console
+        console.info('[TextBoxEdit] wiring documents guard', { unitId });
+        const sub = docObject.onDblclick$.subscribeEvent((evt, state) => {
+            const e = evt as { offsetX: number; offsetY: number };
+            const hit = this._findTextBoxAt(unitId, render, e.offsetX, e.offsetY);
+            // eslint-disable-next-line no-console
+            console.info('[TextBoxEdit] documents dblclick', { x: e.offsetX, y: e.offsetY, hit });
+            if (!hit) return;
+            this._enterEdit(hit);
+            state.stopPropagation();
+        });
+        this.disposeWithMe(sub);
+    }
+
+    /**
+     * Bbox-test viewport-coord (x, y) against every textbox Rect's actual
+     * scene-space rectangle. Used by the documents guard.
+     */
+    private _findTextBoxAt(unitId: string, render: IRender, x: number, y: number): Nullable<IDrawingSearch> {
+        const group = this._drawingManagerService.drawingManagerData[unitId];
+        if (!group) return null;
+        for (const subUnitId in group) {
+            const sub = group[subUnitId];
+            const drawings = sub?.data ?? {};
+            const order = sub?.order ?? Object.keys(drawings);
+            for (let i = order.length - 1; i >= 0; i--) {
+                const drawingId = order[i];
+                const d = drawings[drawingId] as IDocDrawingBase | undefined;
+                if (!d?.textBoxContent?.body) continue;
+                const shapeKey = getDrawingShapeKeyByDrawingSearch({ unitId, subUnitId, drawingId });
+                const rect = render.scene.getObject(shapeKey) as Nullable<{ left?: number; top?: number; width?: number; height?: number }>;
+                if (!rect) continue;
+                const left = rect.left ?? 0;
+                const top = rect.top ?? 0;
+                const width = rect.width ?? 0;
+                const height = rect.height ?? 0;
+                if (x >= left && x <= left + width && y >= top && y <= top + height) {
+                    return { unitId, subUnitId, drawingId };
+                }
+            }
+        }
+        return null;
     }
 
     private _findSearchById(unitId: string, drawingId: string): Nullable<IDrawingSearch> {
