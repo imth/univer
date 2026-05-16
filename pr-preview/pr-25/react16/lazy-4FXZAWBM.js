@@ -16,7 +16,7 @@ import "./chunk-EYMO5IX2.js";
 import "./chunk-ACJBG5D6.js";
 import {
   UniverDocsDrawingUIPlugin
-} from "./chunk-BIX6BSKM.js";
+} from "./chunk-AYVV7WSE.js";
 import "./chunk-DZ6TA4PJ.js";
 import {
   UniverSheetsDrawingUIPlugin

@@ -4017,24 +4017,26 @@ var TextBoxEditController = class extends Disposable {
     const rect = render2.scene.getObject(shapeKey);
     if (!(rect == null ? void 0 : rect.onDblclick$)) return;
     const sub = rect.onDblclick$.subscribeEvent((_evt, state) => {
-      console.info("[TextBoxEdit] rect dblclick", search);
       this._enterEdit(search);
       state.stopPropagation();
     });
     this._rectDblclickSubs.set(shapeKey, sub);
-    console.info("[TextBoxEdit] wired rect", { shapeKey });
     this._maybeWireDocumentsGuard(render2, search.unitId);
   }
+  /**
+   * Belt-and-suspenders: also subscribe to the body Documents object's
+   * dblclick stream so clicks landing on the text overlay (which sits on
+   * a higher layer than the Rect) still enter textbox edit instead of
+   * falling through to other Documents-level dblclick subscribers.
+   */
   _maybeWireDocumentsGuard(render2, unitId) {
     if (this._documentsGuardWired.has(unitId)) return;
     this._documentsGuardWired.add(unitId);
     const docObject = render2.mainComponent;
     if (!(docObject == null ? void 0 : docObject.onDblclick$)) return;
-    console.info("[TextBoxEdit] wiring documents guard", { unitId });
     const sub = docObject.onDblclick$.subscribeEvent((evt, state) => {
       const e = evt;
       const hit = this._findTextBoxAt(unitId, render2, e.offsetX, e.offsetY);
-      console.info("[TextBoxEdit] documents dblclick", { x: e.offsetX, y: e.offsetY, hit });
       if (!hit) return;
       this._enterEdit(hit);
       state.stopPropagation();
@@ -4088,24 +4090,14 @@ var TextBoxEditController = class extends Disposable {
     var _a, _b, _c;
     if (this._activeSegment) this._exitEdit();
     const drawing = this._drawingManagerService.getDrawingByParam(search);
-    if (!((_a = drawing == null ? void 0 : drawing.textBoxContent) == null ? void 0 : _a.body)) {
-      console.info("[TextBoxEdit] _enterEdit ABORT: no body", { search, hasDrawing: !!drawing, hasTextBox: !!(drawing == null ? void 0 : drawing.textBoxContent) });
-      return;
-    }
+    if (!((_a = drawing == null ? void 0 : drawing.textBoxContent) == null ? void 0 : _a.body)) return;
     const angle = (_c = (_b = drawing.transform) == null ? void 0 : _b.angle) != null ? _c : 0;
-    if (angle !== 0) {
-      console.info("[TextBoxEdit] _enterEdit ABORT: rotated", { search, angle });
-      return;
-    }
+    if (angle !== 0) return;
     const render2 = this._renderManagerService.getRenderById(search.unitId);
-    if (!render2) {
-      console.info("[TextBoxEdit] _enterEdit ABORT: no render", search);
-      return;
-    }
+    if (!render2) return;
     this._applyEditState(render2, search.drawingId, true);
     this._activeSegment = search;
     this._wireExitListeners();
-    console.info("[TextBoxEdit] _enterEdit OK", { drawingId: search.drawingId });
   }
   _exitEdit() {
     if (!this._activeSegment) return;
