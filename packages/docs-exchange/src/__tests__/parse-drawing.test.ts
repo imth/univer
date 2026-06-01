@@ -113,13 +113,17 @@ describe('parseDrawingFromRunXml — shape (wps:wsp text box)', () => {
         if (info?.kind !== 'shape') return;
 
         // 2743200 EMU / 9525 = 288 px;  914400 / 9525 = 96 px.
-        expect(info.widthPx).toBe(288);
-        expect(info.heightPx).toBe(96);
-        expect(info.relativeFromH).toBe('column');
-        expect(info.relativeFromV).toBe('paragraph');
-        expect(info.posXPx).toBeCloseTo(10, 0); // 95250/9525
-        expect(info.posYPx).toBeCloseTo(20, 0); // 190500/9525
-        expect(info.behindDoc).toBe(undefined);
+        expect(info.positioning.widthPx).toBe(288);
+        expect(info.positioning.heightPx).toBe(96);
+        expect(info.positioning.relativeFromH).toBe('column');
+        expect(info.positioning.relativeFromV).toBe('paragraph');
+        expect(info.positioning.posXPx).toBeCloseTo(10, 0); // 95250/9525
+        expect(info.positioning.posYPx).toBeCloseTo(20, 0); // 190500/9525
+        expect(info.positioning.behindDoc).toBe(undefined);
+        // distL/distR from anchor attributes (114300 EMU = 12 px).
+        expect(info.positioning.distLPx).toBeCloseTo(12, 0);
+        expect(info.positioning.distRPx).toBeCloseTo(12, 0);
+        expect(info.positioning.wrapMode).toBe('none');
 
         expect(info.shapeProps.presetGeometry).toBe('rect');
         expect(info.shapeProps.fill).toEqual({ rgb: '#FFFFFF' });

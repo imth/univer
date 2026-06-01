@@ -15,7 +15,7 @@
  */
 
 import type { IDocShapeProperties, IDocumentBody } from '@univerjs/core';
-import type { ISimpleDrawing } from '../types';
+import type { IDocPositionAxis, ISimpleDrawing } from '../types';
 import type { StylesIndex } from './parse-styles';
 import type { ThemeFonts } from './parse-theme';
 import type { ParsedRelationship } from './types';
@@ -30,6 +30,123 @@ import { findChild, nodeAttrs, nodeChildren, nodeName, textOf, xmlParser } from 
 
 const EMU_PER_PX = 9525;
 
+export type WrapMode = 'none' | 'square' | 'tight' | 'through' | 'topAndBottom';
+
+export interface PositioningInfo {
+    isInline: boolean;
+    widthPx?: number;
+    heightPx?: number;
+    posXPx?: number;
+    posYPx?: number;
+    relativeFromH?: string;
+    relativeFromV?: string;
+    /** <wp:align> text for H axis (left/center/right/inside/outside). */
+    alignH?: string;
+    alignV?: string;
+    wrapMode?: WrapMode;
+    /** <wp:wrapSquare/Tight/Through wrapText> (bothSides/left/right/largest). */
+    wrapText?: string;
+    distLPx?: number;
+    distTPx?: number;
+    distRPx?: number;
+    distBPx?: number;
+    behindDoc?: boolean;
+    polygon?: { start: [number, number]; lineTo: [number, number][] };
+}
+
+function emuStrToPx(v: unknown): number | undefined {
+    if (v === undefined || v === null) return undefined;
+    const n = Number(v);
+    return Number.isNaN(n) ? undefined : n / EMU_PER_PX;
+}
+
+function emuTextToPx(node: XmlNode | undefined): number | undefined {
+    if (!node) return undefined;
+    return emuStrToPx(textOf(node));
+}
+
+function parseWrapPolygon(
+    polygon: XmlNode
+): { start: [number, number]; lineTo: [number, number][] } | undefined {
+    const startNode = findChild(polygon, 'wp:start');
+    if (!startNode) return undefined;
+    const sx = emuAttrToPx(startNode, '@_x');
+    const sy = emuAttrToPx(startNode, '@_y');
+    if (sx === undefined || sy === undefined) return undefined;
+    const lineTo: [number, number][] = [];
+    for (const child of nodeChildren(polygon)) {
+        if (nodeName(child) !== 'wp:lineTo') continue;
+        const x = emuAttrToPx(child, '@_x');
+        const y = emuAttrToPx(child, '@_y');
+        if (x !== undefined && y !== undefined) lineTo.push([x, y]);
+    }
+    return { start: [sx, sy], lineTo };
+}
+
+const WRAP_TAGS: Array<[string, WrapMode]> = [
+    ['wp:wrapNone', 'none'],
+    ['wp:wrapSquare', 'square'],
+    ['wp:wrapTight', 'tight'],
+    ['wp:wrapThrough', 'through'],
+    ['wp:wrapTopAndBottom', 'topAndBottom'],
+];
+
+/**
+ * Parse the <wp:anchor>/<wp:inline> positioning shared by image and shape
+ * drawings: extent, position (posOffset or align), wrap mode, dist margins,
+ * behindDoc, and wrapPolygon points. Inline drawings carry only extent.
+ */
+export function parseAnchorPositioning(drawingNode: XmlNode): PositioningInfo {
+    const anchor = findFirstByName(drawingNode, 'wp:anchor');
+    const inline = findFirstByName(drawingNode, 'wp:inline');
+    const positioning = anchor ?? inline;
+    const out: PositioningInfo = { isInline: !anchor && !!inline };
+    if (!positioning) return out;
+
+    const extent = findChild(positioning, 'wp:extent');
+    out.widthPx = emuAttrToPx(extent, '@_cx');
+    out.heightPx = emuAttrToPx(extent, '@_cy');
+
+    if (!anchor) return out;
+
+    const aAttrs = nodeAttrs(anchor);
+    if (aAttrs['@_behindDoc'] === '1') out.behindDoc = true;
+    out.distLPx = emuStrToPx(aAttrs['@_distL']);
+    out.distTPx = emuStrToPx(aAttrs['@_distT']);
+    out.distRPx = emuStrToPx(aAttrs['@_distR']);
+    out.distBPx = emuStrToPx(aAttrs['@_distB']);
+
+    const positionH = findChild(anchor, 'wp:positionH');
+    if (positionH) {
+        out.relativeFromH = nodeAttrs(positionH)['@_relativeFrom'] as string | undefined;
+        const offset = findChild(positionH, 'wp:posOffset');
+        const align = findChild(positionH, 'wp:align');
+        if (offset) out.posXPx = emuTextToPx(offset);
+        else if (align) out.alignH = textOf(align);
+    }
+    const positionV = findChild(anchor, 'wp:positionV');
+    if (positionV) {
+        out.relativeFromV = nodeAttrs(positionV)['@_relativeFrom'] as string | undefined;
+        const offset = findChild(positionV, 'wp:posOffset');
+        const align = findChild(positionV, 'wp:align');
+        if (offset) out.posYPx = emuTextToPx(offset);
+        else if (align) out.alignV = textOf(align);
+    }
+
+    for (const [tag, mode] of WRAP_TAGS) {
+        const el = findChild(anchor, tag);
+        if (!el) continue;
+        out.wrapMode = mode;
+        const wt = nodeAttrs(el)['@_wrapText'] as string | undefined;
+        if (wt) out.wrapText = wt;
+        const polygon = findChild(el, 'wp:wrapPolygon');
+        if (polygon) out.polygon = parseWrapPolygon(polygon);
+        break;
+    }
+
+    return out;
+}
+
 export interface ImageDrawingInfo {
     kind: 'image';
     rId: string;
@@ -39,35 +156,10 @@ export interface ImageDrawingInfo {
 
 export interface ShapeDrawingInfo {
     kind: 'shape';
-    widthPx: number;
-    heightPx: number;
-    /** EMU posOffset from `<wp:positionH>` resolved to px. */
-    posXPx?: number;
-    posYPx?: number;
-    /**
-     * `relativeFrom` value as written in OOXML — `column`, `paragraph`, `page`,
-     * `margin`, `character`, `leftMargin`, etc. Renderer maps this into the
-     * Univer `relativeFrom` enum; unknown values fall back to column/paragraph.
-     */
-    relativeFromH?: string;
-    relativeFromV?: string;
-    behindDoc?: boolean;
+    positioning: PositioningInfo;
     shapeProps: IDocShapeProperties;
-    /**
-     * Pre-assembled body for the embedded text box (parsed from
-     * `<w:txbxContent>`). When present, the renderer overlays a mini
-     * DocumentSkeleton inside the shape.
-     */
     textBoxBody?: IDocumentBody;
-    /** `<a:xfrm rot>` resolved to degrees (OOXML stores 60000ths of a degree). */
     rotationDegrees?: number;
-    /**
-     * True when the source was `<wp:inline>` rather than `<wp:anchor>` —
-     * the shape sits in the line as if it were a glyph (text wraps
-     * around it horizontally on the same baseline). Anchor drawings
-     * float over / under the body and don't displace text.
-     */
-    isInline?: boolean;
 }
 
 export type DrawingInfo = ImageDrawingInfo | ShapeDrawingInfo;
@@ -163,52 +255,14 @@ function parseShape(
     styles: StylesIndex | undefined,
     themeFonts: ThemeFonts | undefined
 ): ShapeDrawingInfo | undefined {
-    // wp:anchor or wp:inline carries position + extent at the drawing level.
-    // OOXML guarantees these are mutually exclusive within one <w:drawing>,
-    // and findFirstByName is depth-first, so anchor wins when both somehow
-    // appear. `isInline` is set from whichever node we actually used —
-    // explicit so a malformed anchor (anchor element present but parsing
-    // fails downstream) can't silently misclassify the drawing as inline.
-    const anchor = findFirstByName(drawingNode, 'wp:anchor');
-    const inline = findFirstByName(drawingNode, 'wp:inline');
-    const positioning = anchor ?? inline;
-    if (!positioning) return undefined;
-
-    const extent = findChild(positioning, 'wp:extent');
-    const widthPx = emuAttrToPx(extent, '@_cx');
-    const heightPx = emuAttrToPx(extent, '@_cy');
-    if (widthPx === undefined || heightPx === undefined) return undefined;
+    const positioning = parseAnchorPositioning(drawingNode);
+    if (positioning.widthPx === undefined || positioning.heightPx === undefined) return undefined;
 
     const out: ShapeDrawingInfo = {
         kind: 'shape',
-        widthPx: Math.round(widthPx),
-        heightPx: Math.round(heightPx),
+        positioning,
         shapeProps: {},
-        isInline: positioning === inline,
     };
-
-    if (anchor) {
-        const behindDocAttr = nodeAttrs(anchor)['@_behindDoc'] as string | undefined;
-        if (behindDocAttr === '1') out.behindDoc = true;
-        const positionH = findChild(anchor, 'wp:positionH');
-        const positionV = findChild(anchor, 'wp:positionV');
-        if (positionH) {
-            out.relativeFromH = nodeAttrs(positionH)['@_relativeFrom'] as string | undefined;
-            const offset = findChild(positionH, 'wp:posOffset');
-            if (offset) {
-                const n = Number(textOf(offset));
-                if (!Number.isNaN(n)) out.posXPx = n / EMU_PER_PX;
-            }
-        }
-        if (positionV) {
-            out.relativeFromV = nodeAttrs(positionV)['@_relativeFrom'] as string | undefined;
-            const offset = findChild(positionV, 'wp:posOffset');
-            if (offset) {
-                const n = Number(textOf(offset));
-                if (!Number.isNaN(n)) out.posYPx = n / EMU_PER_PX;
-            }
-        }
-    }
 
     // wps:spPr → preset / fill / stroke / xfrm
     const spPr = findChild(wsp, 'wps:spPr');
@@ -427,31 +481,91 @@ const REL_FROM_V_MAP: Record<string, number> = {
     outsideMargin: 7,
 };
 
+const ALIGN_H_MAP: Record<string, number> = { left: 2, center: 0, right: 4, inside: 1, outside: 3 };
+const ALIGN_V_MAP: Record<string, number> = { top: 4, center: 1, bottom: 0, inside: 2, outside: 3 };
+
+// PositionedObjectLayoutType numeric values (see @univerjs/core).
+function mapWrapToLayoutType(p: PositioningInfo): number {
+    if (p.isInline) return 0; // INLINE
+    switch (p.wrapMode) {
+        case 'square': return 3; // WRAP_SQUARE
+        case 'through': return 4; // WRAP_THROUGH
+        case 'tight': return 5; // WRAP_TIGHT
+        case 'topAndBottom': return 6; // WRAP_TOP_AND_BOTTOM
+        case 'none':
+        default: return 1; // WRAP_NONE
+    }
+}
+
+// WrapTextType numeric values (see @univerjs/core).
+function mapWrapText(wrapText: string | undefined): number | undefined {
+    switch (wrapText) {
+        case 'bothSides': return 0;
+        case 'left': return 1;
+        case 'right': return 2;
+        case 'largest': return 3;
+        default: return undefined;
+    }
+}
+
+function buildAxis(
+    relFrom: number,
+    offsetPx: number | undefined,
+    align: string | undefined,
+    alignMap: Record<string, number>
+): IDocPositionAxis {
+    const axis: IDocPositionAxis = { relativeFrom: relFrom };
+    if (align && alignMap[align] !== undefined) axis.align = alignMap[align];
+    else axis.posOffset = offsetPx ?? 0;
+    return axis;
+}
+
+/**
+ * Write layoutType + wrap fields + position onto a drawing from PositioningInfo.
+ * Shared by image and shape builders.
+ */
+function applyPositioning(
+    drawing: ISimpleDrawing,
+    p: PositioningInfo,
+    width: number,
+    height: number,
+    angle: number
+): void {
+    drawing.layoutType = mapWrapToLayoutType(p);
+    if (p.behindDoc) drawing.behindDoc = 1;
+
+    const wrapText = mapWrapText(p.wrapText);
+    if (wrapText !== undefined) drawing.wrapText = wrapText;
+    if (p.distLPx !== undefined) drawing.distL = p.distLPx;
+    if (p.distTPx !== undefined) drawing.distT = p.distTPx;
+    if (p.distRPx !== undefined) drawing.distR = p.distRPx;
+    if (p.distBPx !== undefined) drawing.distB = p.distBPx;
+    if (p.polygon) {
+        drawing.start = p.polygon.start;
+        drawing.lineTo = p.polygon.lineTo;
+    }
+
+    const relH = p.relativeFromH ? REL_FROM_H_MAP[p.relativeFromH] ?? 2 : 2;
+    const relV = p.relativeFromV ? REL_FROM_V_MAP[p.relativeFromV] ?? 2 : 2;
+    drawing.transform = { left: p.posXPx ?? 0, top: p.posYPx ?? 0, width, height, angle };
+    drawing.docTransform = {
+        size: { width, height },
+        positionH: buildAxis(relH, p.posXPx, p.alignH, ALIGN_H_MAP),
+        positionV: buildAxis(relV, p.posYPx, p.alignV, ALIGN_V_MAP),
+        angle,
+    };
+}
+
 function buildShapeDrawing(drawingId: string, info: ShapeDrawingInfo): ISimpleDrawing {
-    const width = info.widthPx;
-    const height = info.heightPx;
-    const relH = info.relativeFromH ? REL_FROM_H_MAP[info.relativeFromH] ?? 2 : 2;
-    const relV = info.relativeFromV ? REL_FROM_V_MAP[info.relativeFromV] ?? 2 : 2;
-    return {
+    const width = info.positioning.widthPx ?? 0;
+    const height = info.positioning.heightPx ?? 0;
+    const angle = info.rotationDegrees ?? 0;
+    const drawing: ISimpleDrawing = {
         drawingId,
-        // DrawingTypeEnum.DRAWING_SHAPE = 1
-        drawingType: 1,
-        // PositionedObjectLayoutType: INLINE = 0 (occupies a glyph slot
-        // in the line and pushes following text right), WRAP_NONE = 1
-        // (floats over body text, doesn't displace it). `<wp:inline>`
-        // shapes need INLINE so they don't draw on top of the next
-        // run; `<wp:anchor>` shapes use WRAP_NONE because we don't
-        // yet implement actual flow-around for wrapSquare etc.
-        layoutType: info.isInline ? 0 : 1,
-        transform: { left: info.posXPx ?? 0, top: info.posYPx ?? 0, width, height, angle: info.rotationDegrees ?? 0 },
-        docTransform: {
-            size: { width, height },
-            positionH: { relativeFrom: relH, posOffset: info.posXPx ?? 0 },
-            positionV: { relativeFrom: relV, posOffset: info.posYPx ?? 0 },
-            angle: info.rotationDegrees ?? 0,
-        },
+        drawingType: 1, // DrawingTypeEnum.DRAWING_SHAPE
         shapeProperties: info.shapeProps,
         textBoxContent: info.textBoxBody ? { body: info.textBoxBody } : undefined,
-        behindDoc: info.behindDoc ? 1 : 0,
     };
+    applyPositioning(drawing, info.positioning, width, height, angle);
+    return drawing;
 }
