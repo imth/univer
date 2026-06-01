@@ -31,6 +31,10 @@ export interface ParsedRun {
    * page number / total pages at paint time.
    */
     fieldType?: 'PAGE' | 'NUMPAGES';
+    /** OOXML <w:commentRangeStart w:id> marker — carries the comment wId. */
+    commentRangeStart?: string;
+    /** OOXML <w:commentRangeEnd w:id> marker. */
+    commentRangeEnd?: string;
 }
 
 export interface ParsedBullet {
