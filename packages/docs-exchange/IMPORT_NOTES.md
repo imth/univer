@@ -191,8 +191,7 @@ Update this file when you add a TODO that crosses the importer/renderer boundary
   threading replies via `commentsExtended.xml` (`w15:commentEx`
   `paraIdParent` links by each comment's last `w14:paraId`; `done="1"`
   → `resolved`). Author is the `w:author` display name (used as
-  `personId`; `people.xml` is read but only a fallback). Comment body
-  reuses `parseParagraph` for rich text.
+  `personId`). Comment body reuses `parseParagraph` for rich text.
 - **Anchoring:** `<w:commentRangeStart/End w:id>` in `document.xml` are
   emitted by `parse-run` as zero-width marker runs; `assemble` records
   their dataStream indices and emits a `CustomDecorationType.COMMENT`
@@ -219,8 +218,13 @@ Update this file when you add a TODO that crosses the importer/renderer boundary
 - Reply-to-reply keeps the **thread root** as `parentId` (flattened one
   level), not the immediate parent — Univer's docs threads render flat
   under the root anyway.
+- A **zero-width** comment anchor (`commentRangeStart` immediately
+  followed by `commentRangeEnd` with no text between) emits no
+  customDecoration — the comment still appears in the panel but has no
+  in-text highlight.
 - `@mention` / attachments inside comments, `people.xml` `durableId`
   identity mapping, and export (Univer → DOCX comments) are not done.
+  `people.xml` is not read (the `w:author` display name suffices).
 
 ## Paragraph borders
 

@@ -253,6 +253,4 @@ export interface OoxmlBundle {
     commentsXml?: string;
   /** word/commentsExtended.xml — for extended comment metadata (replies, done state). */
     commentsExtendedXml?: string;
-  /** word/people.xml — for comment author identity. */
-    peopleXml?: string;
 }
