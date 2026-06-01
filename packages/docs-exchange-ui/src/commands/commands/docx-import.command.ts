@@ -14,9 +14,43 @@
  * limitations under the License.
  */
 
-import type { DocumentDataModel, IAccessor } from '@univerjs/core';
-import { CommandType, ILogService, IUniverInstanceService, UniverInstanceType } from '@univerjs/core';
+import type { DocumentDataModel, IAccessor, IDocumentData } from '@univerjs/core';
+import { CommandType, ILogService, IUniverInstanceService, UniverInstanceType, UserManagerService } from '@univerjs/core';
 import { docxToUniverData } from '@univerjs/docs-exchange';
+
+// Must match the resource name docx-to-univer emits for thread comments
+// (inlined there to avoid a @univerjs/thread-comment dependency).
+const THREAD_COMMENT_RESOURCE = 'SHEET_UNIVER_THREAD_COMMENT_PLUGIN';
+
+interface IImportedComment { personId?: string; children?: IImportedComment[] }
+
+// Imported comments carry the author display name as `personId`. The thread-
+// comment UI resolves author names via UserManagerService.getUser(personId), so
+// register each distinct author as a user (id = name) — otherwise the panel
+// shows no author. Runtime-only: the importer snapshot can't touch services.
+function registerCommentAuthors(accessor: IAccessor, data: IDocumentData): void {
+    const res = (data.resources ?? []).find((r) => r.name === THREAD_COMMENT_RESOURCE);
+    if (!res) return;
+    let parsed: Record<string, IImportedComment[]>;
+    try {
+        parsed = JSON.parse(res.data);
+    } catch {
+        return;
+    }
+    const authors = new Set<string>();
+    const collect = (c: IImportedComment) => {
+        if (c.personId) authors.add(c.personId);
+        c.children?.forEach(collect);
+    };
+    Object.values(parsed).forEach((list) => list.forEach(collect));
+    if (authors.size === 0) return;
+    const userManager = accessor.get(UserManagerService);
+    authors.forEach((name) => {
+        if (!userManager.getUser(name)) {
+            userManager.addUser({ userID: name, name, avatar: '', anonymous: false });
+        }
+    });
+}
 
 export interface IDocxImportCommandParams {
     /**
@@ -62,6 +96,9 @@ export const DocxImportOperation = {
 
         try {
             const data = await docxToUniverData(bytes);
+            // Register comment authors as users before the unit renders so the
+            // thread-comment panel can resolve author display names.
+            registerCommentAuthors(accessor, data);
             const previous = instanceService.getCurrentUnitOfType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
             const unit = instanceService.createUnit<typeof data, DocumentDataModel>(
                 UniverInstanceType.UNIVER_DOC,

@@ -453,6 +453,12 @@ export function parseRunsFromPNode(
                     else runs.push(style ? { text, style } : { text });
                 }
             }
+        } else if (name === 'w:commentRangeStart') {
+            const id = nodeAttrs(child)['@_w:id'];
+            if (id != null) runs.push({ text: '', commentRangeStart: String(id) });
+        } else if (name === 'w:commentRangeEnd') {
+            const id = nodeAttrs(child)['@_w:id'];
+            if (id != null) runs.push({ text: '', commentRangeEnd: String(id) });
         }
     }
 

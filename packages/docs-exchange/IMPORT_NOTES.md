@@ -182,6 +182,66 @@ Update this file when you add a TODO that crosses the importer/renderer boundary
   LINE_BREAK to `\n` (or a `<br>` in HTML) when copying out of Univer; today
   the raw `\x07` would be pasted into external apps as the BEL control code.
 
+## Comments (review threads)
+
+### Status: supported (importer + existing thread-comment renderer)
+
+- **Importer:** `parse-comments.ts` parses `comments.xml` (`w:comment`
+  id / author / date / body paragraphs) into Univer `IThreadComment`s,
+  threading replies via `commentsExtended.xml` (`w15:commentEx`
+  `paraIdParent` links by each comment's last `w14:paraId`; `done="1"`
+  → `resolved`). Author is the `w:author` display name (used as
+  `personId`). Comment body reuses `parseParagraph` for rich text.
+- **Anchoring:** `<w:commentRangeStart/End w:id>` in `document.xml` are
+  emitted by `parse-run` as zero-width marker runs; `assemble` records
+  their dataStream indices and emits a `CustomDecorationType.COMMENT`
+  `customDecoration` (`id` = thread root id) over the range. Cross-
+  paragraph and multi-run ranges work (global range map keyed by wId).
+- **Persistence:** `docx-to-univer` pushes a
+  `SHEET_UNIVER_THREAD_COMMENT_PLUGIN` resource
+  (`{ default_doc: rootComments }`, replies nested in `children`). The
+  resource name + `default_doc` subUnitId are inlined literals (matching
+  `@univerjs/thread-comment`) to avoid a dependency — same pattern as the
+  watermark resource. Rendering is the existing
+  `@univerjs/docs-thread-comment-ui` (highlights + panel); **zero
+  engine-render change**.
+- **Display wiring (two non-obvious requirements).** The thread-comment
+  panel does NOT just read the model — it re-fetches each comment by
+  `comment.unitId` and resolves the author via
+  `UserManagerService.getUser(personId)`. So:
+  1. **`comment.unitId` must equal the doc's runtime unitId.** The
+     importer can't know it at parse time, so `docx-to-univer` generates
+     the id up front, sets `docData.id` to it (DocumentDataModel uses
+     `snapshot.id` as the unitId), and threads the same id onto every
+     comment's `unitId`. A mismatch (e.g. `''`) makes the panel render
+     empty "placeholder" cards (no author, no text).
+  2. **Authors must be registered users.** `personId` is the `w:author`
+     name, which isn't a registered user, so the panel shows no author.
+     The import command (`docs-exchange-ui`'s `DocxImportOperation`)
+     registers each distinct author (`{ userID: name, name }`) in
+     `UserManagerService` before the unit renders. (Runtime-only — the
+     snapshot can't touch services.)
+- **Verified:** `demo.docx` (3 Reviewer/Editor/QA comments incl. a
+  multi-run and a full-paragraph range) imports with the resource + 3
+  COMMENT customDecorations in the live snapshot.
+- **OOXML quirk handled:** `xmlParser.parse()` emits the `<?xml?>`
+  declaration as a sibling node at index 0, so `parse-comments` scans the
+  whole parsed array for the root element (not `parsed[0]`) — same as
+  `parse-styles` / `parse-numbering`.
+
+### Out of scope follow-ups
+
+- Reply-to-reply keeps the **thread root** as `parentId` (flattened one
+  level), not the immediate parent — Univer's docs threads render flat
+  under the root anyway.
+- A **zero-width** comment anchor (`commentRangeStart` immediately
+  followed by `commentRangeEnd` with no text between) emits no
+  customDecoration — the comment still appears in the panel but has no
+  in-text highlight.
+- `@mention` / attachments inside comments, `people.xml` `durableId`
+  identity mapping, and export (Univer → DOCX comments) are not done.
+  `people.xml` is not read (the `w:author` display name suffices).
+
 ## Paragraph borders
 
 ### Status: 5 sides supported (top / bottom / left / right / between)

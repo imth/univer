@@ -17,6 +17,7 @@
 import type {
     IBullet,
     ICustomBlock,
+    ICustomDecoration,
     ICustomRange,
     ICustomTable,
     IDocumentBody,
@@ -30,7 +31,7 @@ import type {
 import type { DrawingInfo } from './parse-drawing';
 import type { ParsedSection } from './parse-section';
 import type { DocumentChild, ParsedBorder, ParsedCellBorders, ParsedCellMargin, ParsedNumberingDef, ParsedParagraph, ParsedRelationship, ParsedTable } from './types';
-import { BooleanNumber, CustomRangeType, DataStreamTreeTokenType, generateRandomId, SectionType } from '@univerjs/core';
+import { BooleanNumber, CustomDecorationType, CustomRangeType, DataStreamTreeTokenType, generateRandomId, SectionType } from '@univerjs/core';
 import { DOCX_BORDER_TO_UNIVER_DASH } from './border-dash';
 import { buildDrawing } from './parse-drawing';
 
@@ -53,6 +54,8 @@ export interface AssembleContext {
    * gets its own pgSz/orient/margins/headerIds.
    */
     bodyEndSection?: ParsedSection;
+  /** OOXML comment wId → thread root id (from parse-comments). */
+    commentIdToThreadId?: Map<string, string>;
 }
 
 interface Accumulator {
@@ -67,10 +70,26 @@ interface Accumulator {
     tableSource: Record<string, unknown>;
   /** Keyed by numId. */
     listsUsed: Map<string, ParsedNumberingDef>;
+    customDecorations: ICustomDecoration[];
+  /** Open comment ranges by wId: start/end dataStream indices. */
+    commentRanges: Map<string, { start?: number; end?: number }>;
 }
 
 function emitRun(run: ParsedParagraph['runs'][number], acc: Accumulator, ctx: AssembleContext) {
     const runStart = acc.data.length;
+
+    if (run.commentRangeStart != null) {
+        const r = acc.commentRanges.get(run.commentRangeStart) ?? {};
+        r.start = acc.data.length;
+        acc.commentRanges.set(run.commentRangeStart, r);
+        return;
+    }
+    if (run.commentRangeEnd != null) {
+        const r = acc.commentRanges.get(run.commentRangeEnd) ?? {};
+        r.end = acc.data.length;
+        acc.commentRanges.set(run.commentRangeEnd, r);
+        return;
+    }
 
     if (run.drawingId && ctx.drawingInfoMap) {
         const info = ctx.drawingInfoMap.get(run.drawingId);
@@ -545,6 +564,8 @@ export function assembleDocument(children: DocumentChild[], ctx: AssembleContext
         drawings: {},
         tableSource: {},
         listsUsed: new Map(),
+        customDecorations: [],
+        commentRanges: new Map(),
     };
 
     // Word's "Insert > Page Break" emits a paragraph that contains only
@@ -709,6 +730,18 @@ export function assembleDocument(children: DocumentChild[], ctx: AssembleContext
         };
     }
 
+    for (const [wId, range] of acc.commentRanges) {
+        if (range.start == null || range.end == null || range.end <= range.start) continue;
+        const threadId = ctx.commentIdToThreadId?.get(wId);
+        if (!threadId) continue;
+        acc.customDecorations.push({
+            startIndex: range.start,
+            endIndex: range.end - 1, // inclusive last covered char (matches customRanges)
+            id: threadId,
+            type: CustomDecorationType.COMMENT,
+        });
+    }
+
     const body: IDocumentBody = {
         dataStream: acc.data,
         textRuns: acc.textRuns,
@@ -751,6 +784,7 @@ export function assembleDocument(children: DocumentChild[], ctx: AssembleContext
     body.sectionBreaks = acc.sectionBreaks;
     if (acc.customRanges.length > 0) body.customRanges = acc.customRanges;
     if (acc.customBlocks.length > 0) body.customBlocks = acc.customBlocks;
+    if (acc.customDecorations.length > 0) body.customDecorations = acc.customDecorations;
 
     const docData: IDocumentData = {
         id: uuidv4(),

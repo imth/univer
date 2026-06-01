@@ -31,6 +31,10 @@ export interface ParsedRun {
    * page number / total pages at paint time.
    */
     fieldType?: 'PAGE' | 'NUMPAGES';
+    /** OOXML <w:commentRangeStart w:id> marker — carries the comment wId. */
+    commentRangeStart?: string;
+    /** OOXML <w:commentRangeEnd w:id> marker. */
+    commentRangeEnd?: string;
 }
 
 export interface ParsedBullet {
@@ -245,4 +249,8 @@ export interface OoxmlBundle {
     headerRels?: Map<string, string>;
   /** Per-footer rels xml content keyed by stem. */
     footerRels?: Map<string, string>;
+  /** word/comments.xml — for comment annotations. */
+    commentsXml?: string;
+  /** word/commentsExtended.xml — for extended comment metadata (replies, done state). */
+    commentsExtendedXml?: string;
 }
