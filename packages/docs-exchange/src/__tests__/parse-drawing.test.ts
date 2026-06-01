@@ -183,8 +183,8 @@ describe('parseDrawingFromRunXml — shape (wps:wsp text box)', () => {
         expect(built?.shapeProperties?.fill).toEqual({ rgb: '#FFFFFF' });
         expect(built?.textBoxContent?.body.dataStream).toBe('Hello box\r');
         // posOffset preserved on docTransform so the renderer can place the shape.
-        expect(built?.docTransform?.positionH.relativeFrom).toBe(2); // COLUMN
-        expect(built?.docTransform?.positionV.relativeFrom).toBe(2); // PARAGRAPH
+        expect(built?.docTransform?.positionH.relativeFrom).toBe(1); // ObjectRelativeFromH.COLUMN
+        expect(built?.docTransform?.positionV.relativeFrom).toBe(1); // ObjectRelativeFromV.PARAGRAPH
     });
 });
 
@@ -257,6 +257,26 @@ describe('image anchor wrap mapping', () => {
         const d = build('<wp:wrapThrough wrapText="largest"/>');
         expect(d?.layoutType).toBe(4);
         expect(d?.wrapText).toBe(3); // LARGEST
+    });
+
+    it('maps relativeFrom column→COLUMN(1) and paragraph→PARAGRAPH(1)', () => {
+        // ObjectRelativeFromH.COLUMN === 1, ObjectRelativeFromV.PARAGRAPH === 1.
+        // A right-positioned column-anchored image must resolve to COLUMN so the
+        // renderer's getPositionHorizon applies posOffset (otherwise it falls
+        // through to an unhandled branch and pins the image to the left edge).
+        const xml = `<w:drawing xmlns:w="x" xmlns:wp="y" xmlns:a="z" xmlns:r="r">
+          <wp:anchor distL="0" distR="0">
+            <wp:positionH relativeFrom="column"><wp:posOffset>952500</wp:posOffset></wp:positionH>
+            <wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset></wp:positionV>
+            <wp:extent cx="476250" cy="476250"/>
+            <wp:wrapSquare/>
+            <a:graphic><a:graphicData><pic:pic xmlns:pic="p"><pic:blipFill><a:blip r:embed="rId9"/></pic:blipFill></pic:pic></a:graphicData></a:graphic>
+          </wp:anchor>
+        </w:drawing>`;
+        const d = buildDrawing('img', parseDrawingFromRunXml(xml)!, rels, media);
+        expect(d?.docTransform?.positionH.relativeFrom).toBe(1); // COLUMN
+        expect(d?.docTransform?.positionH.posOffset).toBeCloseTo(100, 0); // 952500/9525
+        expect(d?.docTransform?.positionV.relativeFrom).toBe(1); // PARAGRAPH
     });
 
     it('maps <wp:align> to positionH/V.align instead of posOffset', () => {

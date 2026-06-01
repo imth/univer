@@ -465,25 +465,28 @@ function buildImageDrawing(
 }
 
 // OOXML wp:positionH/V `relativeFrom` → Univer ObjectRelativeFromH/V.
-// Univer enums (see core/src/types/interfaces/i-document-data.ts):
-//   ObjectRelativeFromH: PAGE=0, MARGIN=1, COLUMN=2, CHARACTER=3, LEFT_MARGIN=4, RIGHT_MARGIN=5, INSIDE_MARGIN=6, OUTSIDE_MARGIN=7
-//   ObjectRelativeFromV: PAGE=0, MARGIN=1, PARAGRAPH=2, LINE=3, TOP_MARGIN=4, BOTTOM_MARGIN=5, INSIDE_MARGIN=6, OUTSIDE_MARGIN=7
+// Values MUST match the enums in core/src/types/interfaces/i-document-data.ts —
+// the renderer's getPositionHorizon/Vertical switch on these exact numbers, and
+// a wrong value falls through to an unhandled branch that pins the float to the
+// top-left edge (posOffset silently dropped):
+//   ObjectRelativeFromH: PAGE=0, COLUMN=1, CHARACTER=2, MARGIN=3, INSIDE_MARGIN=4, OUTSIDE_MARGIN=5, LEFT_MARGIN=6, RIGHT_MARGIN=7
+//   ObjectRelativeFromV: PAGE=0, PARAGRAPH=1, LINE=2, MARGIN=3, TOP_MARGIN=4, BOTTOM_MARGIN=5, INSIDE_MARGIN=6, OUTSIDE_MARGIN=7
 // Anything we can't map cleanly → COLUMN/PARAGRAPH (Word's most common defaults).
 const REL_FROM_H_MAP: Record<string, number> = {
     page: 0,
-    margin: 1,
-    column: 2,
-    character: 3,
-    leftMargin: 4,
-    rightMargin: 5,
-    insideMargin: 6,
-    outsideMargin: 7,
+    column: 1,
+    character: 2,
+    margin: 3,
+    insideMargin: 4,
+    outsideMargin: 5,
+    leftMargin: 6,
+    rightMargin: 7,
 };
 const REL_FROM_V_MAP: Record<string, number> = {
     page: 0,
-    margin: 1,
-    paragraph: 2,
-    line: 3,
+    paragraph: 1,
+    line: 2,
+    margin: 3,
     topMargin: 4,
     bottomMargin: 5,
     insideMargin: 6,
@@ -564,8 +567,9 @@ function applyPositioning(
         drawing.lineTo = p.polygon.lineTo;
     }
 
-    const relH = p.relativeFromH ? REL_FROM_H_MAP[p.relativeFromH] ?? 2 : 2;
-    const relV = p.relativeFromV ? REL_FROM_V_MAP[p.relativeFromV] ?? 2 : 2;
+    // Default to COLUMN(1) / PARAGRAPH(1) — Word's most common anchor frames.
+    const relH = p.relativeFromH ? REL_FROM_H_MAP[p.relativeFromH] ?? 1 : 1;
+    const relV = p.relativeFromV ? REL_FROM_V_MAP[p.relativeFromV] ?? 1 : 1;
     // transform.left/top reflect posOffset only; <wp:align> intent lives on
     // docTransform.positionH/V.align (the anchored renderer reads docTransform).
     drawing.transform = { left: p.posXPx ?? 0, top: p.posYPx ?? 0, width, height, angle };
