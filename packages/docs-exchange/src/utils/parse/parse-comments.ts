@@ -106,7 +106,11 @@ export function parseComments(
     commentsXml: string | undefined,
     commentsExtendedXml: string | undefined,
     styles: StylesIndex | undefined,
-    themeFonts?: ThemeFonts
+    themeFonts?: ThemeFonts,
+    // The runtime doc unitId. The thread-comment panel re-fetches each comment
+    // by `comment.unitId`, so it MUST match the unit the doc is created under
+    // (docx-to-univer sets docData.id to the same value). Default '' for tests.
+    unitId: string = ''
 ): ParsedComments {
     if (!commentsXml) return EMPTY;
     let root: XmlNode[];
@@ -190,7 +194,7 @@ export function parseComments(
             dT: raw.date,
             personId: raw.author,
             text: raw.body,
-            unitId: '',
+            unitId,
             subUnitId: DOC_SUBUNIT_ID,
             children: isRoot ? [] : undefined,
         };

@@ -27,10 +27,15 @@ describe('demo.docx comments import', () => {
         const doc = await docxToUniverData(buf);
         const res = (doc.resources ?? []).find((r) => r.name === 'SHEET_UNIVER_THREAD_COMMENT_PLUGIN');
         expect(res).toBeDefined();
-        const data = JSON.parse(res!.data) as { default_doc: Array<{ id: string; personId: string; threadId: string }> };
+        const data = JSON.parse(res!.data) as { default_doc: Array<{ id: string; personId: string; threadId: string; unitId: string }> };
         // demo.docx has 3 top-level comments by Reviewer / Editor / QA.
         expect(data.default_doc.length).toBe(3);
         expect(new Set(data.default_doc.map((c) => c.personId))).toEqual(new Set(['Reviewer', 'Editor', 'QA']));
+        // The doc carries an explicit id, and every comment's unitId matches it —
+        // the thread-comment panel re-fetches comments by `comment.unitId`, so a
+        // mismatch (e.g. '') makes the panel show empty placeholder comments.
+        expect(doc.id).toBeTruthy();
+        expect(data.default_doc.every((c) => c.unitId === doc.id)).toBe(true);
         // Each comment anchors a COMMENT customDecoration in the body.
         const decos = (doc.body?.customDecorations ?? []).filter((d) => d.type === 0);
         expect(decos.length).toBe(3);

@@ -19,6 +19,7 @@ import type { DocxInput, XmlNode } from './utils/parse/index';
 import type { DrawingInfo } from './utils/parse/parse-drawing';
 import type { ParsedSection } from './utils/parse/parse-section';
 import type { DocumentChild } from './utils/parse/types';
+import { generateRandomId } from '@univerjs/core';
 import {
     assembleDocument,
 
@@ -61,7 +62,12 @@ export async function docxToUniverData(input: DocxInput): Promise<IDocumentData>
     const rels = parseRelationships(bundle.relsXml);
     const styles = parseStyles(bundle.stylesXml);
     const themeFonts = parseTheme(bundle.themeXml);
-    const parsedComments = parseComments(bundle.commentsXml, bundle.commentsExtendedXml, styles, themeFonts);
+    // Fix the unit id up front so imported comments can carry it: the
+    // thread-comment panel re-fetches each comment by `comment.unitId`, so it
+    // must equal the unit the doc is created under. createUnit uses docData.id
+    // as the unitId (DocumentDataModel: `snapshot.id ?? generateRandomId()`).
+    const unitId = generateRandomId();
+    const parsedComments = parseComments(bundle.commentsXml, bundle.commentsExtendedXml, styles, themeFonts, unitId);
 
     const docTree = xmlParser.parse(bundle.documentXml) as XmlNode[];
     const docRoot = docTree.find((n) => nodeName(n) === 'w:document');
@@ -234,6 +240,10 @@ export async function docxToUniverData(input: DocxInput): Promise<IDocumentData>
         bodyEndSection,
         commentIdToThreadId: parsedComments.commentIdToThreadId,
     });
+
+    // The unit is created under this id (see `unitId` above); imported comments
+    // carry the same value so the thread-comment panel resolves them.
+    docData.id = unitId;
 
     if (Object.keys(headers).length > 0) docData.headers = headers;
     if (Object.keys(footers).length > 0) docData.footers = footers;
