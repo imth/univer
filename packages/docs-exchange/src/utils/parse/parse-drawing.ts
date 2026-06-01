@@ -26,12 +26,14 @@ import { findChild, nodeAttrs, nodeChildren, nodeName, textOf, xmlParser } from 
 
 // Wrap modes (wrapNone/Square/Tight/Through/TopAndBottom) and inline vs anchor
 // are mapped to real Univer layoutTypes for both images and shapes — see
-// parseAnchorPositioning / mapWrapToLayoutType / applyPositioning below.
-// TODO(unsupported): a:xfrm rot for images, image cropping (a:srcRect), VML
-// fallback (mc:Fallback path), custGeom, gradFill, shadows. wrapPolygon points
-// are parsed onto start/lineTo but only consumed by engine-render for
-// layoutType WRAP_POLYGON; promoting tight/through to WRAP_POLYGON + the
-// absolute-coordinate offset is a layer-2 follow-up (calibrate in e2e).
+// parseAnchorPositioning / mapWrapToLayoutType / applyPositioning below. Image
+// rotation/flip (<pic> a:xfrm rot/flipH/flipV) and crop (<a:srcRect>) are also
+// mapped — see parsePicTransform / parsePicSrcRect / convertSrcRect.
+// TODO(unsupported): VML fallback (mc:Fallback path), custGeom, gradFill,
+// shadows, negative (outset) <a:srcRect>. wrapPolygon points are parsed onto
+// start/lineTo but only consumed by engine-render for layoutType WRAP_POLYGON;
+// promoting tight/through to WRAP_POLYGON + the absolute-coordinate offset is a
+// layer-2 follow-up (calibrate in e2e).
 
 const EMU_PER_PX = 9525;
 
