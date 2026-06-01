@@ -54,7 +54,7 @@ describe('parseRunsFromPNode – drawing extraction', () => {
         expect(info?.kind).toBe('image');
         if (info?.kind === 'image') {
             expect(info.rId).toBe('rId9');
-            expect(info.widthPx).toBe(100);
+            expect(info.positioning.widthPx).toBe(100);
         }
     });
 

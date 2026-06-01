@@ -428,8 +428,8 @@ function parseDrawingMlAnchorAsImage(
                     : 'image/png';
     const dataUrl = `data:${mime};base64,${bytesToBase64(bytes)}`;
 
-    const width = info.widthPx ?? 468;
-    const height = info.heightPx ?? 351;
+    const width = info.positioning.widthPx ?? 468;
+    const height = info.positioning.heightPx ?? 351;
     const originRatio = height > 0 ? width / height : 1;
 
     // a:xfrm rot is in 60000ths of a degree; negative = CCW.

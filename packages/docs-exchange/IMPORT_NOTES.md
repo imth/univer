@@ -327,14 +327,19 @@ body via a custom-block `\b` token in the same way images are.
     Canvas's `fill()` would auto-close the open subpath and paint a
     bent connector as a filled triangle. The renderer queries this
     set and skips the fill pass for matching presets.
-  - **Inline vs floating** (`<wp:inline>` vs `<wp:anchor>`):
-    `parseShape` records `isInline` and `buildShapeDrawing` maps it
-    to `PositionedObjectLayoutType.INLINE` (occupies a glyph slot;
-    following text shifts right) or `WRAP_NONE` (floats above body).
-    Floating wrap modes other than `wrapNone` (`wrapSquare`,
-    `wrapTight`, `wrapPolygon`, `wrapTopAndBottom`) all currently
-    render as `WRAP_NONE` — the shape draws in front of body text
-    instead of pushing it aside.
+  - **Inline vs floating + wrap mode** (`<wp:inline>` vs `<wp:anchor>`):
+    a shared `parseAnchorPositioning` (used by **both** images and
+    shapes) records `isInline`, the wrap mode, `distL/T/R/B`,
+    `behindDoc`, the `<wp:positionH/V>` `posOffset`/`align`, and
+    `<wp:wrapPolygon>` points. `mapWrapToLayoutType` then maps to the
+    real `PositionedObjectLayoutType`: `inline → INLINE` (glyph slot),
+    `wrapNone → WRAP_NONE` (floats above body), `wrapSquare →
+    WRAP_SQUARE`, `wrapTight → WRAP_TIGHT`, `wrapThrough →
+    WRAP_THROUGH`, `wrapTopAndBottom → WRAP_TOP_AND_BOTTOM`. engine-
+    render's `line.ts` already implements the flow-around split for
+    these, so body text now wraps around floating images/shapes
+    instead of drawing behind them. `wrapText` (bothSides/left/right/
+    largest) maps onto the drawing's `WrapTextType`.
   - **Sub-pixel stroke widths**: OOXML lets shapes specify half-point
     outlines (Word's default 0.5pt action-button stroke comes through
     as ~0.667 px). Canvas anti-aliases sub-pixel strokes into near-
@@ -353,11 +358,28 @@ body via a custom-block `\b` token in the same way images are.
   - **Custom geometries** (`<a:custGeom>` with `<a:pathLst>`),
     gradient fills, shadow / 3D effects, and VML fallback
     (`<mc:Fallback>`).
-  - **Real text wrapping** for `wrapSquare` / `wrapTight` /
-    `wrapPolygon` / `wrapTopAndBottom` (currently flattened to
-    `WRAP_NONE`, see implementation note above).
-- Position `relativeFrom` values other than `page` and `column`
-  fall back to the OOXML default.
+  - **wrapPolygon flow-around**: the `<wp:wrapPolygon>` `start`/`lineTo`
+    points are parsed and emitted, but `wrapTight`/`wrapThrough` map to
+    `WRAP_TIGHT`/`WRAP_THROUGH` (rectangular bounding-box flow-around),
+    not `WRAP_POLYGON` (=2), so the precise polygon outline isn't used.
+    engine-render only consumes `start`/`lineTo` for `WRAP_POLYGON`, and
+    those points need absolute-coordinate offsetting in the skeleton;
+    promoting polygon-bearing wraps to `WRAP_POLYGON` is a layer-2
+    follow-up (calibrate visually in e2e).
+- **Position `relativeFrom`.** `REL_FROM_H_MAP` / `REL_FROM_V_MAP` map
+  the OOXML `relativeFrom` to the **exact** `ObjectRelativeFromH/V` enum
+  value (`column → COLUMN(1)`, `paragraph → PARAGRAPH(1)`, `margin →
+  MARGIN(3)`, `page → PAGE(0)`, …). These numbers MUST match
+  core's enums — the renderer's `getPositionHorizon`/`getPositionVertical`
+  switch on the literal value, and a mismatched number falls through to
+  an unhandled branch that pins the float to the top-left edge with
+  `posOffset` silently dropped. The renderer currently implements the
+  `PAGE` / `COLUMN` / `MARGIN` frames; other frames (`character`, `line`,
+  the `*Margin` variants) are emitted with the correct enum but have no
+  renderer branch yet, so a float anchored to one of those lands at
+  offset 0 until the renderer grows the case. `<wp:align>`
+  (left/center/right/inside/outside) maps onto `positionH/V.align`; the
+  float's `transform.left/top` reflect `posOffset` only.
 
 ### Preset geometry coverage audit
 

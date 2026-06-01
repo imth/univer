@@ -43,10 +43,18 @@ export interface IDrawingTransform {
     angle?: number;
 }
 
+export interface IDocPositionAxis {
+    relativeFrom: number;
+    /** EMU→px offset. Mutually exclusive with align. */
+    posOffset?: number;
+    /** AlignTypeH / AlignTypeV enum value (from <wp:align>). */
+    align?: number;
+}
+
 export interface IDocTransform {
     size: { width: number; height: number };
-    positionH: { relativeFrom: number; posOffset: number };
-    positionV: { relativeFrom: number; posOffset: number };
+    positionH: IDocPositionAxis;
+    positionV: IDocPositionAxis;
     angle: number;
 }
 
@@ -65,4 +73,15 @@ export interface ISimpleDrawing {
     behindDoc?: 0 | 1;
     /** Univer PositionedObjectLayoutType (INLINE=0, WRAP_NONE=1, etc.). */
     layoutType?: number;
+    /** OOXML wrapSquare/Tight/Through wrapText → WrapTextType enum value. */
+    wrapText?: number;
+    /** Wrap distance margins (px). wrapSquare/Tight/Through use L/R; square/topAndBottom use T/B. */
+    distL?: number;
+    distT?: number;
+    distR?: number;
+    distB?: number;
+    /** wrapPolygon start point (px, relative to drawing origin). */
+    start?: number[];
+    /** wrapPolygon subsequent points (px, relative to drawing origin). */
+    lineTo?: number[][];
 }
