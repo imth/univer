@@ -1,38 +1,38 @@
 import {
   UniverDocsMentionUIPlugin
-} from "../chunk-XSYLA4MU.js";
+} from "../chunk-TUIUF3VQ.js";
 import {
   SetActiveCommentOperation,
   ThreadCommentPanel,
   ThreadCommentPanelService,
   UniverThreadCommentUIPlugin
-} from "../chunk-GQG566ZE.js";
-import "../chunk-IQUVNM4H.js";
+} from "../chunk-VGNKBCGN.js";
+import "../chunk-D5V4HXQZ.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-D34HW6ZK.js";
+} from "../chunk-YSGTSAOY.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
-} from "../chunk-7SDOUPZO.js";
+} from "../chunk-WT2L3KGQ.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
   ThreadCommentModel,
   getDT
 } from "../chunk-TM5QNBBA.js";
-import "../chunk-YJYPSLQA.js";
+import "../chunk-NH4KUAXR.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-AQEQGIAN.js";
+} from "../chunk-VFTYBZI5.js";
 import {
   FUniver
 } from "../chunk-32E5INCS.js";
-import "../chunk-LKVXGXDI.js";
+import "../chunk-ZTNTIYC7.js";
 import {
   DEFAULT_DOCUMENT_DATA_SIMPLE
-} from "../chunk-AT4KGPUX.js";
+} from "../chunk-D333OPGQ.js";
 import {
   BulletListCommand,
   CutContentCommand,
@@ -66,7 +66,7 @@ import {
   getAnchorBounding,
   replaceSelectionFactory,
   whenDocAndEditorFocused
-} from "../chunk-XHQE667S.js";
+} from "../chunk-AWWTHDNL.js";
 import "../chunk-LI6UXASZ.js";
 import {
   Button,
@@ -99,20 +99,20 @@ import {
   useDependency,
   useEvent,
   useObservable
-} from "../chunk-6NLCZNFG.js";
+} from "../chunk-YCYH7T4W.js";
 import {
   zh_CN_default
 } from "../chunk-YRBPDJQT.js";
-import "../chunk-LJNGJSAA.js";
+import "../chunk-ARVZLWAF.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-OZJJTPRS.js";
+} from "../chunk-OH3WKAXS.js";
 import {
   IRenderManagerService,
   UniverRenderEnginePlugin,
   ptToPixel,
   withCurrentTypeOfRenderer
-} from "../chunk-53LCI556.js";
+} from "../chunk-TZSKLHKF.js";
 import {
   BehaviorSubject,
   BuildTextUtils,
@@ -7298,6 +7298,50 @@ function parseWrapPolygon(polygon) {
   }
   return { start: [sx, sy], lineTo };
 }
+function parsePicSrcRect(node) {
+  const sr = findFirstByName(node, "a:srcRect");
+  if (!sr) return void 0;
+  const a = nodeAttrs(sr);
+  const num = (v) => {
+    const n = Number(v);
+    return Number.isNaN(n) ? 0 : n;
+  };
+  return { l: num(a["@_l"]), t: num(a["@_t"]), r: num(a["@_r"]), b: num(a["@_b"]) };
+}
+function convertSrcRect(p, wVis, hVis) {
+  const lf = p.l / 1e5;
+  const rf = p.r / 1e5;
+  const tf = p.t / 1e5;
+  const bf = p.b / 1e5;
+  if (lf < 0 || rf < 0 || tf < 0 || bf < 0) return void 0;
+  const hDenom = 1 - lf - rf;
+  const vDenom = 1 - tf - bf;
+  if (hDenom <= 0 || vDenom <= 0) return void 0;
+  const out = {};
+  const left = wVis * lf / hDenom;
+  const right = wVis * rf / hDenom;
+  const top = hVis * tf / vDenom;
+  const bottom = hVis * bf / vDenom;
+  if (left > 0) out.left = left;
+  if (right > 0) out.right = right;
+  if (top > 0) out.top = top;
+  if (bottom > 0) out.bottom = bottom;
+  return Object.keys(out).length > 0 ? out : void 0;
+}
+function parsePicTransform(node) {
+  const out = {};
+  const xfrm = findFirstByName(node, "a:xfrm");
+  if (!xfrm) return out;
+  const a = nodeAttrs(xfrm);
+  const rotAttr = a["@_rot"];
+  const rotRaw = rotAttr !== void 0 ? Number(rotAttr) : 0;
+  if (!Number.isNaN(rotRaw) && rotRaw !== 0) {
+    out.rotationDegrees = rotRaw / 6e4 % 360;
+  }
+  if (a["@_flipH"] === "1") out.flipH = true;
+  if (a["@_flipV"] === "1") out.flipV = true;
+  return out;
+}
 var WRAP_TAGS = [
   ["wp:wrapNone", "none"],
   ["wp:wrapSquare", "square"],
@@ -7387,7 +7431,9 @@ function parseDrawingFromXmlNode(node, styles, themeFonts) {
           if (cy !== void 0) positioning.heightPx = Math.round(cy);
         }
       }
-      const out = { kind: "image", rId, positioning };
+      const out = { kind: "image", rId, positioning, ...parsePicTransform(node) };
+      const srcRectPermille = parsePicSrcRect(node);
+      if (srcRectPermille) out.srcRectPermille = srcRectPermille;
       return out;
     }
   }
@@ -7520,7 +7566,7 @@ function buildDrawing(drawingId, info, rels, media) {
   return void 0;
 }
 function buildImageDrawing(drawingId, info, rels, media) {
-  var _a, _b, _c, _d;
+  var _a, _b, _c, _d, _e;
   const rel = rels.get(info.rId);
   if (!rel || rel.type !== "image") return void 0;
   const path = resolveMediaPath(rel.target);
@@ -7537,7 +7583,15 @@ function buildImageDrawing(drawingId, info, rels, media) {
     imageSourceType: "BASE64",
     source: `data:${mime};base64,${base64}`
   };
-  applyPositioning(drawing, info.positioning, width, height, 0);
+  applyPositioning(drawing, info.positioning, width, height, (_e = info.rotationDegrees) != null ? _e : 0);
+  if (drawing.transform) {
+    if (info.flipH) drawing.transform.flipX = true;
+    if (info.flipV) drawing.transform.flipY = true;
+  }
+  if (info.srcRectPermille) {
+    const srcRect = convertSrcRect(info.srcRectPermille, width, height);
+    if (srcRect) drawing.srcRect = srcRect;
+  }
   return drawing;
 }
 var REL_FROM_H_MAP = {
