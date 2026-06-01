@@ -10,7 +10,7 @@ import {
 import "../chunk-D5V4HXQZ.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-KVPTXR5O.js";
+} from "../chunk-NLPLIXRV.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
@@ -7022,6 +7022,12 @@ function parseRunsFromPNode(pNode, drawingsOut, styles, pStyleRpr, themeFonts, p
           else runs.push(style ? { text, style } : { text });
         }
       }
+    } else if (name === "w:commentRangeStart") {
+      const id = nodeAttrs(child)["@_w:id"];
+      if (id != null) runs.push({ text: "", commentRangeStart: String(id) });
+    } else if (name === "w:commentRangeEnd") {
+      const id = nodeAttrs(child)["@_w:id"];
+      if (id != null) runs.push({ text: "", commentRangeEnd: String(id) });
     }
   }
   if (fieldDepth > 0 && pendingFieldFallback.length > 0) {
@@ -7700,7 +7706,20 @@ function buildShapeDrawing(drawingId, info) {
 var uuidv42 = () => generateRandomId();
 var { TABLE_START, TABLE_ROW_START, TABLE_CELL_START, TABLE_CELL_END, TABLE_ROW_END, TABLE_END } = DataStreamTreeTokenType;
 function emitRun(run, acc, ctx) {
+  var _a, _b;
   const runStart = acc.data.length;
+  if (run.commentRangeStart != null) {
+    const r = (_a = acc.commentRanges.get(run.commentRangeStart)) != null ? _a : {};
+    r.start = acc.data.length;
+    acc.commentRanges.set(run.commentRangeStart, r);
+    return;
+  }
+  if (run.commentRangeEnd != null) {
+    const r = (_b = acc.commentRanges.get(run.commentRangeEnd)) != null ? _b : {};
+    r.end = acc.data.length;
+    acc.commentRanges.set(run.commentRangeEnd, r);
+    return;
+  }
   if (run.drawingId && ctx.drawingInfoMap) {
     const info = ctx.drawingInfoMap.get(run.drawingId);
     if (info) {
@@ -8028,7 +8047,7 @@ function emitTable(t, acc, ctx) {
   };
 }
 function assembleDocument(children, ctx) {
-  var _a;
+  var _a, _b;
   const acc = {
     data: "",
     textRuns: [],
@@ -8039,7 +8058,9 @@ function assembleDocument(children, ctx) {
     customBlocks: [],
     drawings: {},
     tableSource: {},
-    listsUsed: /* @__PURE__ */ new Map()
+    listsUsed: /* @__PURE__ */ new Map(),
+    customDecorations: [],
+    commentRanges: /* @__PURE__ */ new Map()
   };
   const pageBreakOwners = (() => {
     var _a2;
@@ -8168,6 +8189,18 @@ function assembleDocument(children, ctx) {
       })
     };
   }
+  for (const [wId, range] of acc.commentRanges) {
+    if (range.start == null || range.end == null || range.end <= range.start) continue;
+    const threadId = (_a = ctx.commentIdToThreadId) == null ? void 0 : _a.get(wId);
+    if (!threadId) continue;
+    acc.customDecorations.push({
+      startIndex: range.start,
+      endIndex: range.end - 1,
+      // inclusive last covered char (matches customRanges)
+      id: threadId,
+      type: 0 /* COMMENT */
+    });
+  }
   const body = {
     dataStream: acc.data,
     textRuns: acc.textRuns,
@@ -8198,9 +8231,10 @@ function assembleDocument(children, ctx) {
   body.sectionBreaks = acc.sectionBreaks;
   if (acc.customRanges.length > 0) body.customRanges = acc.customRanges;
   if (acc.customBlocks.length > 0) body.customBlocks = acc.customBlocks;
+  if (acc.customDecorations.length > 0) body.customDecorations = acc.customDecorations;
   const docData = {
     id: uuidv42(),
-    documentStyle: (_a = ctx.documentStyle) != null ? _a : {},
+    documentStyle: (_b = ctx.documentStyle) != null ? _b : {},
     body
   };
   if (Object.keys(acc.tableSource).length > 0) docData.tableSource = acc.tableSource;
@@ -8243,6 +8277,8 @@ async function readOoxmlBundle(input) {
   const themeXml = await readOptionalText(zip, "word/theme/theme1.xml");
   const relsXml = await readOptionalText(zip, "word/_rels/document.xml.rels");
   const settingsXml = await readOptionalText(zip, "word/settings.xml");
+  const commentsXml = await readOptionalText(zip, "word/comments.xml");
+  const commentsExtendedXml = await readOptionalText(zip, "word/commentsExtended.xml");
   const headers = /* @__PURE__ */ new Map();
   const footers = /* @__PURE__ */ new Map();
   const headerRels = /* @__PURE__ */ new Map();
@@ -8283,12 +8319,158 @@ async function readOoxmlBundle(input) {
     themeXml,
     relsXml,
     settingsXml,
+    commentsXml,
+    commentsExtendedXml,
     media,
     headers: headers.size > 0 ? headers : void 0,
     footers: footers.size > 0 ? footers : void 0,
     headerRels: headerRels.size > 0 ? headerRels : void 0,
     footerRels: footerRels.size > 0 ? footerRels : void 0
   };
+}
+
+// ../packages/docs-exchange/src/utils/parse/parse-comments.ts
+var DOC_SUBUNIT_ID = "default_doc";
+var EMPTY = { threads: [], commentIdToThreadId: /* @__PURE__ */ new Map() };
+function findFirstByName2(node, target) {
+  if (!node || typeof node !== "object") return void 0;
+  if (nodeName(node) === target) return node;
+  for (const child of nodeChildren(node)) {
+    const found = findFirstByName2(child, target);
+    if (found) return found;
+  }
+  return void 0;
+}
+function commentBody(commentNode, styles, themeFonts) {
+  let data = "";
+  const textRuns = [];
+  const paragraphs = [];
+  for (const child of nodeChildren(commentNode)) {
+    if (nodeName(child) !== "w:p") continue;
+    const parsed = parseParagraph(child, void 0, styles, themeFonts);
+    for (const run of parsed.runs) {
+      if (!run.text) continue;
+      const start = data.length;
+      data += run.text;
+      if (run.style) textRuns.push({ st: start, ed: data.length, ts: run.style });
+    }
+    const paraEnd = data.length;
+    data += "\r";
+    paragraphs.push({ startIndex: paraEnd });
+  }
+  if (paragraphs.length === 0) {
+    data = "\r";
+    paragraphs.push({ startIndex: 0 });
+  }
+  return { dataStream: data, textRuns, paragraphs };
+}
+function lastParaId(commentNode) {
+  let last;
+  for (const child of nodeChildren(commentNode)) {
+    if (nodeName(child) !== "w:p") continue;
+    const pid = nodeAttrs(child)["@_w14:paraId"];
+    if (pid) last = pid;
+  }
+  return last;
+}
+function parseComments(commentsXml, commentsExtendedXml, styles, themeFonts, unitId = "") {
+  var _a, _b, _c, _d, _e;
+  if (!commentsXml) return EMPTY;
+  let root;
+  try {
+    root = xmlParser.parse(commentsXml);
+  } catch {
+    return EMPTY;
+  }
+  const commentsRoot = root.reduce((found, n) => found != null ? found : findFirstByName2(n, "w:comments"), void 0);
+  if (!commentsRoot) return EMPTY;
+  const raws = [];
+  const paraIdToWId = /* @__PURE__ */ new Map();
+  for (const node of nodeChildren(commentsRoot)) {
+    if (nodeName(node) !== "w:comment") continue;
+    const a = nodeAttrs(node);
+    const wId = String((_a = a["@_w:id"]) != null ? _a : "");
+    if (wId === "") continue;
+    const paraId = lastParaId(node);
+    raws.push({
+      wId,
+      paraId,
+      body: commentBody(node, styles, themeFonts),
+      author: (_b = a["@_w:author"]) != null ? _b : "",
+      date: (_c = a["@_w:date"]) != null ? _c : ""
+    });
+    if (paraId) paraIdToWId.set(paraId, wId);
+  }
+  if (raws.length === 0) return EMPTY;
+  const extByWId = /* @__PURE__ */ new Map();
+  if (commentsExtendedXml) {
+    try {
+      const extParsed = xmlParser.parse(commentsExtendedXml);
+      const extRoot = extParsed.reduce((found, n) => found != null ? found : findFirstByName2(n, "w15:commentsEx"), void 0);
+      if (extRoot) {
+        for (const ex of nodeChildren(extRoot)) {
+          if (nodeName(ex) !== "w15:commentEx") continue;
+          const a = nodeAttrs(ex);
+          const paraId = a["@_w15:paraId"];
+          if (!paraId) continue;
+          const wId = paraIdToWId.get(paraId);
+          if (!wId) continue;
+          const parentParaId = a["@_w15:paraIdParent"];
+          extByWId.set(wId, {
+            parentWId: parentParaId ? paraIdToWId.get(parentParaId) : void 0,
+            done: a["@_w15:done"] === "1"
+          });
+        }
+      }
+    } catch {
+    }
+  }
+  const idOf = (wId) => `docx-cmt-${wId}`;
+  const rootWIdOf = (wId) => {
+    var _a2;
+    let cur = wId;
+    const seen = /* @__PURE__ */ new Set();
+    while (!seen.has(cur)) {
+      seen.add(cur);
+      const parent = (_a2 = extByWId.get(cur)) == null ? void 0 : _a2.parentWId;
+      if (!parent || !raws.some((r) => r.wId === parent)) break;
+      cur = parent;
+    }
+    return cur;
+  };
+  const commentIdToThreadId = /* @__PURE__ */ new Map();
+  const byWId = /* @__PURE__ */ new Map();
+  for (const raw of raws) {
+    const rootWId = rootWIdOf(raw.wId);
+    const threadId = idOf(rootWId);
+    commentIdToThreadId.set(raw.wId, threadId);
+    const isRoot = rootWId === raw.wId;
+    const comment = {
+      id: idOf(raw.wId),
+      threadId,
+      dT: raw.date,
+      personId: raw.author,
+      text: raw.body,
+      unitId,
+      subUnitId: DOC_SUBUNIT_ID,
+      children: isRoot ? [] : void 0
+    };
+    if (!isRoot) comment.parentId = idOf(rootWId);
+    if ((_d = extByWId.get(raw.wId)) == null ? void 0 : _d.done) comment.resolved = true;
+    byWId.set(raw.wId, comment);
+  }
+  const threads = [];
+  for (const raw of raws) {
+    const comment = byWId.get(raw.wId);
+    const rootWId = rootWIdOf(raw.wId);
+    if (rootWId === raw.wId) {
+      threads.push(comment);
+    } else {
+      const rootComment = byWId.get(rootWId);
+      if (rootComment) ((_e = rootComment.children) != null ? _e : rootComment.children = []).push(comment);
+    }
+  }
+  return { threads, commentIdToThreadId };
 }
 
 // ../packages/docs-exchange/src/utils/parse/parse-hyperlink.ts
@@ -9024,21 +9206,21 @@ function parseStyles(stylesXml) {
 }
 
 // ../packages/docs-exchange/src/utils/parse/parse-theme.ts
-var EMPTY = { resolve: () => void 0 };
+var EMPTY2 = { resolve: () => void 0 };
 function parseTheme(themeXml) {
-  if (!themeXml) return EMPTY;
+  if (!themeXml) return EMPTY2;
   let parsed;
   try {
     parsed = xmlParser.parse(themeXml);
   } catch {
-    return EMPTY;
+    return EMPTY2;
   }
   const themeRoot = parsed.find((n) => nodeName(n) === "a:theme");
-  if (!themeRoot) return EMPTY;
+  if (!themeRoot) return EMPTY2;
   const elements = findChild(themeRoot, "a:themeElements");
-  if (!elements) return EMPTY;
+  if (!elements) return EMPTY2;
   const fontScheme = findChild(elements, "a:fontScheme");
-  if (!fontScheme) return EMPTY;
+  if (!fontScheme) return EMPTY2;
   const minor = readFontGroup(findChild(fontScheme, "a:minorFont"));
   const major = readFontGroup(findChild(fontScheme, "a:majorFont"));
   return {
@@ -9432,12 +9614,14 @@ var DOC_WATERMARK_PLUGIN = "DOC_WATERMARK_PLUGIN";
 var WATERMARK_TYPE_TEXT = "text";
 var WATERMARK_TYPE_IMAGE = "image";
 async function docxToUniverData(input) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u;
   const bundle = await readOoxmlBundle(input);
   const numbering = parseNumbering(bundle.numberingXml);
   const rels = parseRelationships(bundle.relsXml);
   const styles = parseStyles(bundle.stylesXml);
   const themeFonts = parseTheme(bundle.themeXml);
+  const unitId = generateRandomId();
+  const parsedComments = parseComments(bundle.commentsXml, bundle.commentsExtendedXml, styles, themeFonts, unitId);
   const docTree = xmlParser.parse(bundle.documentXml);
   const docRoot = docTree.find((n) => nodeName(n) === "w:document");
   const body = docRoot ? findChild(docRoot, "w:body") : void 0;
@@ -9560,8 +9744,10 @@ async function docxToUniverData(input) {
     drawingInfoMap,
     documentStyle,
     sectionBreakDefaults,
-    bodyEndSection
+    bodyEndSection,
+    commentIdToThreadId: parsedComments.commentIdToThreadId
   });
+  docData.id = unitId;
   if (Object.keys(headers).length > 0) docData.headers = headers;
   if (Object.keys(footers).length > 0) docData.footers = footers;
   if (Object.keys(extraDrawings).length > 0) {
@@ -9615,10 +9801,43 @@ async function docxToUniverData(input) {
       data: JSON.stringify({ byHeader, byFooter })
     });
   }
+  if (parsedComments.threads.length > 0) {
+    docData.resources = (_u = docData.resources) != null ? _u : [];
+    docData.resources.push({
+      name: "SHEET_UNIVER_THREAD_COMMENT_PLUGIN",
+      data: JSON.stringify({ default_doc: parsedComments.threads })
+    });
+  }
   return docData;
 }
 
 // ../packages/docs-exchange-ui/src/commands/commands/docx-import.command.ts
+var THREAD_COMMENT_RESOURCE = "SHEET_UNIVER_THREAD_COMMENT_PLUGIN";
+function registerCommentAuthors(accessor, data) {
+  var _a;
+  const res = ((_a = data.resources) != null ? _a : []).find((r) => r.name === THREAD_COMMENT_RESOURCE);
+  if (!res) return;
+  let parsed;
+  try {
+    parsed = JSON.parse(res.data);
+  } catch {
+    return;
+  }
+  const authors = /* @__PURE__ */ new Set();
+  const collect = (c) => {
+    var _a2;
+    if (c.personId) authors.add(c.personId);
+    (_a2 = c.children) == null ? void 0 : _a2.forEach(collect);
+  };
+  Object.values(parsed).forEach((list) => list.forEach(collect));
+  if (authors.size === 0) return;
+  const userManager = accessor.get(UserManagerService);
+  authors.forEach((name) => {
+    if (!userManager.getUser(name)) {
+      userManager.addUser({ userID: name, name, avatar: "", anonymous: false });
+    }
+  });
+}
 async function pickDocxFile() {
   return new Promise((resolve) => {
     const input = document.createElement("input");
@@ -9654,6 +9873,7 @@ var DocxImportOperation = {
     if (!bytes) return false;
     try {
       const data = await docxToUniverData(bytes);
+      registerCommentAuthors(accessor, data);
       const previous = instanceService.getCurrentUnitOfType(1 /* UNIVER_DOC */);
       const unit = instanceService.createUnit(
         1 /* UNIVER_DOC */,
