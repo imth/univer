@@ -15,6 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { assembleDocument } from '../utils/parse/assemble';
 import { parseComments } from '../utils/parse/parse-comments';
 
 const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml"';
@@ -76,5 +77,36 @@ describe('parseComments', () => {
         const out = parseComments(undefined, undefined, undefined);
         expect(out.threads).toEqual([]);
         expect(out.commentIdToThreadId.size).toBe(0);
+    });
+});
+
+describe('comment customDecorations via assemble', () => {
+    it('emits a COMMENT customDecoration over the marked range with threadId', () => {
+        const children = [{
+            kind: 'paragraph' as const,
+            paragraph: {
+                runs: [
+                    { text: 'A' },
+                    { text: '', commentRangeStart: '0' },
+                    { text: 'B' },
+                    { text: '', commentRangeEnd: '0' },
+                    { text: 'C' },
+                ],
+            },
+        }] as any;
+        const ctx: any = {
+            numbering: new Map(),
+            rels: new Map(),
+            media: new Map(),
+            commentIdToThreadId: new Map([['0', 'docx-cmt-0']]),
+        };
+        const doc = assembleDocument(children, ctx);
+        const decos = doc.body!.customDecorations ?? [];
+        expect(decos.length).toBe(1);
+        // dataStream: 'A'(0) 'B'(1) 'C'(2) '\r' → range covers 'B' at index 1.
+        expect(decos[0].id).toBe('docx-cmt-0');
+        expect(decos[0].type).toBe(0); // CustomDecorationType.COMMENT
+        expect(decos[0].startIndex).toBe(1);
+        expect(decos[0].endIndex).toBe(1);
     });
 });
