@@ -228,13 +228,19 @@ export function parseDrawingFromXmlNode(
         if (rId) {
             const positioning = parseAnchorPositioning(node);
             // Defensive: if positioning didn't capture extent (e.g. a non-standard
-            // nesting), fall back to the nearest wp:extent under this node.
-            if (positioning.widthPx === undefined) {
+            // nesting), fall back to the nearest wp:extent under this node. Guard
+            // each axis independently so a partial extent can't clobber a value
+            // parseAnchorPositioning already found.
+            if (positioning.widthPx === undefined || positioning.heightPx === undefined) {
                 const extent = findFirstByName(node, 'wp:extent');
-                const cx = emuAttrToPx(extent, '@_cx');
-                const cy = emuAttrToPx(extent, '@_cy');
-                positioning.widthPx = cx === undefined ? undefined : Math.round(cx);
-                positioning.heightPx = cy === undefined ? undefined : Math.round(cy);
+                if (positioning.widthPx === undefined) {
+                    const cx = emuAttrToPx(extent, '@_cx');
+                    if (cx !== undefined) positioning.widthPx = Math.round(cx);
+                }
+                if (positioning.heightPx === undefined) {
+                    const cy = emuAttrToPx(extent, '@_cy');
+                    if (cy !== undefined) positioning.heightPx = Math.round(cy);
+                }
             }
             const out: ImageDrawingInfo = { kind: 'image', rId, positioning };
             return out;

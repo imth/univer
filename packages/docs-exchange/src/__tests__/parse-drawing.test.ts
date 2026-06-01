@@ -80,9 +80,10 @@ describe('buildDrawing', () => {
         </w:drawing>`;
         const info = parseDrawingFromRunXml(xml);
         expect(info?.kind).toBe('image');
+        if (info?.kind !== 'image') return;
         const rels = new Map([['rId7', { type: 'image' as const, target: 'media/i.png' }]]);
         const media = new Map([['word/media/i.png', new Uint8Array([0x89, 0x50])]]);
-        const d = buildDrawing('img-inline', info!, rels, media);
+        const d = buildDrawing('img-inline', info, rels, media);
         expect(d?.layoutType).toBe(0); // PositionedObjectLayoutType.INLINE
     });
 });
