@@ -279,6 +279,25 @@ describe('image anchor wrap mapping', () => {
         expect(d?.docTransform?.positionV.relativeFrom).toBe(1); // PARAGRAPH
     });
 
+    it('image <a:xfrm rot/flipH/flipV> → angle + flipX/flipY', () => {
+        const rels = new Map([['rId8', { type: 'image' as const, target: 'media/i.png' }]]);
+        const media = new Map([['word/media/i.png', new Uint8Array([0x89, 0x50])]]);
+        const xml = `<w:drawing xmlns:w="x" xmlns:wp="y" xmlns:a="z" xmlns:r="r" xmlns:pic="p">
+          <wp:inline>
+            <wp:extent cx="952500" cy="952500"/>
+            <a:graphic><a:graphicData><pic:pic>
+              <pic:blipFill><a:blip r:embed="rId8"/></pic:blipFill>
+              <pic:spPr><a:xfrm rot="2700000" flipH="1" flipV="1"><a:off x="0" y="0"/><a:ext cx="952500" cy="952500"/></a:xfrm></pic:spPr>
+            </pic:pic></a:graphicData></a:graphic>
+          </wp:inline>
+        </w:drawing>`;
+        const d = buildDrawing('img-xfrm', parseDrawingFromRunXml(xml)!, rels, media);
+        expect(d?.transform?.angle).toBeCloseTo(45, 5); // 2700000/60000
+        expect(d?.docTransform?.angle).toBeCloseTo(45, 5);
+        expect(d?.transform?.flipX).toBe(true);
+        expect(d?.transform?.flipY).toBe(true);
+    });
+
     it('maps <wp:align> to positionH/V.align instead of posOffset', () => {
         const xml = `<w:drawing xmlns:w="x" xmlns:wp="y" xmlns:a="z" xmlns:r="r">
           <wp:anchor distL="0" distR="0">

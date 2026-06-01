@@ -97,6 +97,24 @@ function parseWrapPolygon(
     return { start: [sx, sy], lineTo };
 }
 
+function parsePicTransform(node: XmlNode): { rotationDegrees?: number; flipH?: boolean; flipV?: boolean } {
+    const out: { rotationDegrees?: number; flipH?: boolean; flipV?: boolean } = {};
+    // Images carry their transform in <pic:spPr><a:xfrm>; there is no wps shape
+    // on the image path, so the first a:xfrm under the drawing is the picture's.
+    const xfrm = findFirstByName(node, 'a:xfrm');
+    if (!xfrm) return out;
+    const a = nodeAttrs(xfrm);
+    const rotAttr = a['@_rot'] as string | undefined;
+    const rotRaw = rotAttr !== undefined ? Number(rotAttr) : 0;
+    if (!Number.isNaN(rotRaw) && rotRaw !== 0) {
+        // OOXML rot is 60000ths of a degree, range [0, 21600000).
+        out.rotationDegrees = (rotRaw / 60000) % 360;
+    }
+    if (a['@_flipH'] === '1') out.flipH = true;
+    if (a['@_flipV'] === '1') out.flipV = true;
+    return out;
+}
+
 const WRAP_TAGS: Array<[string, WrapMode]> = [
     ['wp:wrapNone', 'none'],
     ['wp:wrapSquare', 'square'],
@@ -167,6 +185,11 @@ export interface ImageDrawingInfo {
     kind: 'image';
     rId: string;
     positioning: PositioningInfo;
+    rotationDegrees?: number;
+    flipH?: boolean;
+    flipV?: boolean;
+    /** Raw OOXML <a:srcRect> in 1/100000 (per-mille-percent); converted at build. */
+    srcRectPermille?: { l: number; t: number; r: number; b: number };
 }
 
 export interface ShapeDrawingInfo {
@@ -247,7 +270,7 @@ export function parseDrawingFromXmlNode(
                     if (cy !== undefined) positioning.heightPx = Math.round(cy);
                 }
             }
-            const out: ImageDrawingInfo = { kind: 'image', rId, positioning };
+            const out: ImageDrawingInfo = { kind: 'image', rId, positioning, ...parsePicTransform(node) };
             return out;
         }
     }
@@ -460,7 +483,11 @@ function buildImageDrawing(
         imageSourceType: 'BASE64',
         source: `data:${mime};base64,${base64}`,
     };
-    applyPositioning(drawing, info.positioning, width, height, 0);
+    applyPositioning(drawing, info.positioning, width, height, info.rotationDegrees ?? 0);
+    if (drawing.transform) {
+        if (info.flipH) drawing.transform.flipX = true;
+        if (info.flipV) drawing.transform.flipY = true;
+    }
     return drawing;
 }
 
