@@ -205,6 +205,22 @@ Update this file when you add a TODO that crosses the importer/renderer boundary
   watermark resource. Rendering is the existing
   `@univerjs/docs-thread-comment-ui` (highlights + panel); **zero
   engine-render change**.
+- **Display wiring (two non-obvious requirements).** The thread-comment
+  panel does NOT just read the model — it re-fetches each comment by
+  `comment.unitId` and resolves the author via
+  `UserManagerService.getUser(personId)`. So:
+  1. **`comment.unitId` must equal the doc's runtime unitId.** The
+     importer can't know it at parse time, so `docx-to-univer` generates
+     the id up front, sets `docData.id` to it (DocumentDataModel uses
+     `snapshot.id` as the unitId), and threads the same id onto every
+     comment's `unitId`. A mismatch (e.g. `''`) makes the panel render
+     empty "placeholder" cards (no author, no text).
+  2. **Authors must be registered users.** `personId` is the `w:author`
+     name, which isn't a registered user, so the panel shows no author.
+     The import command (`docs-exchange-ui`'s `DocxImportOperation`)
+     registers each distinct author (`{ userID: name, name }`) in
+     `UserManagerService` before the unit renders. (Runtime-only — the
+     snapshot can't touch services.)
 - **Verified:** `demo.docx` (3 Reviewer/Editor/QA comments incl. a
   multi-run and a full-paragraph range) imports with the resource + 3
   COMMENT customDecorations in the live snapshot.
