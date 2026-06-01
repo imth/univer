@@ -65,6 +65,15 @@ function emuTextToPx(node: XmlNode | undefined): number | undefined {
     return emuStrToPx(textOf(node));
 }
 
+function emuAttrToPx(node: XmlNode | undefined, attr: string): number | undefined {
+    if (!node) return undefined;
+    const v = nodeAttrs(node)[attr] as string | undefined;
+    if (v === undefined) return undefined;
+    const n = Number(v);
+    if (Number.isNaN(n)) return undefined;
+    return n / EMU_PER_PX;
+}
+
 function parseWrapPolygon(
     polygon: XmlNode
 ): { start: [number, number]; lineTo: [number, number][] } | undefined {
@@ -104,8 +113,10 @@ export function parseAnchorPositioning(drawingNode: XmlNode): PositioningInfo {
     if (!positioning) return out;
 
     const extent = findChild(positioning, 'wp:extent');
-    out.widthPx = emuAttrToPx(extent, '@_cx');
-    out.heightPx = emuAttrToPx(extent, '@_cy');
+    const cx = emuAttrToPx(extent, '@_cx');
+    const cy = emuAttrToPx(extent, '@_cy');
+    out.widthPx = cx === undefined ? undefined : Math.round(cx);
+    out.heightPx = cy === undefined ? undefined : Math.round(cy);
 
     if (!anchor) return out;
 
@@ -238,15 +249,6 @@ export function parseDrawingFromXmlNode(
     }
 
     return undefined;
-}
-
-function emuAttrToPx(node: XmlNode | undefined, attr: string): number | undefined {
-    if (!node) return undefined;
-    const v = nodeAttrs(node)[attr] as string | undefined;
-    if (v === undefined) return undefined;
-    const n = Number(v);
-    if (Number.isNaN(n)) return undefined;
-    return n / EMU_PER_PX;
 }
 
 function parseShape(
@@ -481,12 +483,21 @@ const REL_FROM_V_MAP: Record<string, number> = {
     outsideMargin: 7,
 };
 
+// OOXML <wp:align> → Univer AlignTypeH / AlignTypeV enum values
+// (see core/src/types/interfaces/i-document-data.ts):
+//   AlignTypeH: CENTER=0, INSIDE=1, LEFT=2, OUTSIDE=3, RIGHT=4, BOTH=5, DISTRIBUTE=6
+//   AlignTypeV: BOTTOM=0, CENTER=1, INSIDE=2, OUTSIDE=3, TOP=4
 const ALIGN_H_MAP: Record<string, number> = { left: 2, center: 0, right: 4, inside: 1, outside: 3 };
 const ALIGN_V_MAP: Record<string, number> = { top: 4, center: 1, bottom: 0, inside: 2, outside: 3 };
 
 // PositionedObjectLayoutType numeric values (see @univerjs/core).
 function mapWrapToLayoutType(p: PositioningInfo): number {
     if (p.isInline) return 0; // INLINE
+    // NOTE: wrapTight/wrapThrough map to WRAP_TIGHT/WRAP_THROUGH (rectangular
+    // bounding-box flow-around in engine-render). The <wp:wrapPolygon> points we
+    // parse onto start/lineTo are only consumed by the engine for layoutType
+    // WRAP_POLYGON (=2); whether to promote polygon-bearing tight/through wraps
+    // to WRAP_POLYGON is a layer-2 decision to be calibrated during e2e (Task 8).
     switch (p.wrapMode) {
         case 'square': return 3; // WRAP_SQUARE
         case 'through': return 4; // WRAP_THROUGH
@@ -532,6 +543,7 @@ function applyPositioning(
     angle: number
 ): void {
     drawing.layoutType = mapWrapToLayoutType(p);
+    // Only emit behindDoc when true; absence is treated as 0 (in front) downstream.
     if (p.behindDoc) drawing.behindDoc = 1;
 
     const wrapText = mapWrapText(p.wrapText);
@@ -547,6 +559,8 @@ function applyPositioning(
 
     const relH = p.relativeFromH ? REL_FROM_H_MAP[p.relativeFromH] ?? 2 : 2;
     const relV = p.relativeFromV ? REL_FROM_V_MAP[p.relativeFromV] ?? 2 : 2;
+    // transform.left/top reflect posOffset only; <wp:align> intent lives on
+    // docTransform.positionH/V.align (the anchored renderer reads docTransform).
     drawing.transform = { left: p.posXPx ?? 0, top: p.posYPx ?? 0, width, height, angle };
     drawing.docTransform = {
         size: { width, height },
