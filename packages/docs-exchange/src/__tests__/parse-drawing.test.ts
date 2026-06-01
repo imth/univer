@@ -298,6 +298,47 @@ describe('image anchor wrap mapping', () => {
         expect(d?.transform?.flipY).toBe(true);
     });
 
+    describe('image srcRect crop', () => {
+        const rels = new Map([['rIdC', { type: 'image' as const, target: 'media/i.png' }]]);
+        const media = new Map([['word/media/i.png', new Uint8Array([0x89, 0x50])]]);
+        const build = (srcRectXml: string) => {
+            const xml = `<w:drawing xmlns:w="x" xmlns:wp="y" xmlns:a="z" xmlns:r="r" xmlns:pic="p">
+              <wp:inline>
+                <wp:extent cx="952500" cy="952500"/>
+                <a:graphic><a:graphicData><pic:pic>
+                  <pic:blipFill><a:blip r:embed="rIdC"/>${srcRectXml}</pic:blipFill>
+                  <pic:spPr/>
+                </pic:pic></a:graphicData></a:graphic>
+              </wp:inline>
+            </w:drawing>`;
+            return buildDrawing('img-c', parseDrawingFromRunXml(xml)!, rels, media);
+        };
+
+        it('converts l/r 25% to display px (extent 100px)', () => {
+            // l_f=r_f=0.25, denom=0.5, W_vis=100 → 100*0.25/0.5 = 50
+            const d = build('<a:srcRect l="25000" r="25000"/>');
+            expect(d?.srcRect?.left).toBeCloseTo(50, 0);
+            expect(d?.srcRect?.right).toBeCloseTo(50, 0);
+            expect(d?.srcRect?.top).toBeUndefined();
+            expect(d?.srcRect?.bottom).toBeUndefined();
+        });
+
+        it('skips degenerate srcRect (l+r >= 100%)', () => {
+            const d = build('<a:srcRect l="60000" r="60000"/>');
+            expect(d?.srcRect).toBeUndefined();
+        });
+
+        it('skips srcRect with negative edge', () => {
+            const d = build('<a:srcRect l="-10000"/>');
+            expect(d?.srcRect).toBeUndefined();
+        });
+
+        it('emits no srcRect when absent or all-zero', () => {
+            expect(build('')?.srcRect).toBeUndefined();
+            expect(build('<a:srcRect/>')?.srcRect).toBeUndefined();
+        });
+    });
+
     it('maps <wp:align> to positionH/V.align instead of posOffset', () => {
         const xml = `<w:drawing xmlns:w="x" xmlns:wp="y" xmlns:a="z" xmlns:r="r">
           <wp:anchor distL="0" distR="0">

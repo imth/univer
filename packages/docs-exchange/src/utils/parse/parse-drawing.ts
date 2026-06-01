@@ -97,6 +97,47 @@ function parseWrapPolygon(
     return { start: [sx, sy], lineTo };
 }
 
+function parsePicSrcRect(node: XmlNode): { l: number; t: number; r: number; b: number } | undefined {
+    const sr = findFirstByName(node, 'a:srcRect');
+    if (!sr) return undefined;
+    const a = nodeAttrs(sr);
+    const num = (v: unknown): number => {
+        const n = Number(v);
+        return Number.isNaN(n) ? 0 : n;
+    };
+    return { l: num(a['@_l']), t: num(a['@_t']), r: num(a['@_r']), b: num(a['@_b']) };
+}
+
+// OOXML <a:srcRect> gives the per-edge crop as a fraction of the *source*
+// (1/100000 units). Univer's ISrcRect is the cropped-off amount in *display*
+// px: the source fills (Wvis + left + right) x (Hvis + top + bottom), clipped
+// to the visible Wvis x Hvis. So left_px = Wvis * lf / (1 - lf - rf), etc.
+function convertSrcRect(
+    p: { l: number; t: number; r: number; b: number },
+    wVis: number,
+    hVis: number
+): { left?: number; top?: number; right?: number; bottom?: number } | undefined {
+    const lf = p.l / 100000;
+    const rf = p.r / 100000;
+    const tf = p.t / 100000;
+    const bf = p.b / 100000;
+    // OOXML allows negative (outset) values; v1 supports positive crops only.
+    if (lf < 0 || rf < 0 || tf < 0 || bf < 0) return undefined;
+    const hDenom = 1 - lf - rf;
+    const vDenom = 1 - tf - bf;
+    if (hDenom <= 0 || vDenom <= 0) return undefined; // fully cropped away
+    const out: { left?: number; top?: number; right?: number; bottom?: number } = {};
+    const left = (wVis * lf) / hDenom;
+    const right = (wVis * rf) / hDenom;
+    const top = (hVis * tf) / vDenom;
+    const bottom = (hVis * bf) / vDenom;
+    if (left > 0) out.left = left;
+    if (right > 0) out.right = right;
+    if (top > 0) out.top = top;
+    if (bottom > 0) out.bottom = bottom;
+    return Object.keys(out).length > 0 ? out : undefined;
+}
+
 function parsePicTransform(node: XmlNode): { rotationDegrees?: number; flipH?: boolean; flipV?: boolean } {
     const out: { rotationDegrees?: number; flipH?: boolean; flipV?: boolean } = {};
     // Images carry their transform in <pic:spPr><a:xfrm>; there is no wps shape
@@ -271,6 +312,8 @@ export function parseDrawingFromXmlNode(
                 }
             }
             const out: ImageDrawingInfo = { kind: 'image', rId, positioning, ...parsePicTransform(node) };
+            const srcRectPermille = parsePicSrcRect(node);
+            if (srcRectPermille) out.srcRectPermille = srcRectPermille;
             return out;
         }
     }
@@ -487,6 +530,10 @@ function buildImageDrawing(
     if (drawing.transform) {
         if (info.flipH) drawing.transform.flipX = true;
         if (info.flipV) drawing.transform.flipY = true;
+    }
+    if (info.srcRectPermille) {
+        const srcRect = convertSrcRect(info.srcRectPermille, width, height);
+        if (srcRect) drawing.srcRect = srcRect;
     }
     return drawing;
 }
