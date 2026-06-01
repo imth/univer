@@ -22,7 +22,7 @@ import {
 import "./chunk-VI4F7W4R.js";
 import {
   UniverDebuggerPlugin
-} from "./chunk-I2DPCRQJ.js";
+} from "./chunk-UA7SWQM7.js";
 import "./chunk-WT2L3KGQ.js";
 import {
   UniverWatermarkPlugin
