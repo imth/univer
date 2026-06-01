@@ -24,9 +24,14 @@ import { bytesToBase64 } from './bytes';
 import { parseParagraph } from './parse-paragraph';
 import { findChild, nodeAttrs, nodeChildren, nodeName, textOf, xmlParser } from './xml';
 
-// TODO(unsupported): wp:wrapSquare/Tight/Through actual flow-around (we render
-// shapes/images in front of text regardless), a:xfrm rot, image cropping
-// (a:srcRect), VML fallback (mc:Fallback path), custGeom, gradFill, shadows.
+// Wrap modes (wrapNone/Square/Tight/Through/TopAndBottom) and inline vs anchor
+// are mapped to real Univer layoutTypes for both images and shapes — see
+// parseAnchorPositioning / mapWrapToLayoutType / applyPositioning below.
+// TODO(unsupported): a:xfrm rot for images, image cropping (a:srcRect), VML
+// fallback (mc:Fallback path), custGeom, gradFill, shadows. wrapPolygon points
+// are parsed onto start/lineTo but only consumed by engine-render for
+// layoutType WRAP_POLYGON; promoting tight/through to WRAP_POLYGON + the
+// absolute-coordinate offset is a layer-2 follow-up (calibrate in e2e).
 
 const EMU_PER_PX = 9525;
 
