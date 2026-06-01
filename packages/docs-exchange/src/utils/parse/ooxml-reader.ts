@@ -54,6 +54,9 @@ export async function readOoxmlBundle(input: DocxInput): Promise<OoxmlBundle> {
     const themeXml = await readOptionalText(zip, 'word/theme/theme1.xml');
     const relsXml = await readOptionalText(zip, 'word/_rels/document.xml.rels');
     const settingsXml = await readOptionalText(zip, 'word/settings.xml');
+    const commentsXml = await readOptionalText(zip, 'word/comments.xml');
+    const commentsExtendedXml = await readOptionalText(zip, 'word/commentsExtended.xml');
+    const peopleXml = await readOptionalText(zip, 'word/people.xml');
 
     const headers = new Map<string, string>();
     const footers = new Map<string, string>();
@@ -97,6 +100,9 @@ export async function readOoxmlBundle(input: DocxInput): Promise<OoxmlBundle> {
         themeXml,
         relsXml,
         settingsXml,
+        commentsXml,
+        commentsExtendedXml,
+        peopleXml,
         media,
         headers: headers.size > 0 ? headers : undefined,
         footers: footers.size > 0 ? footers : undefined,

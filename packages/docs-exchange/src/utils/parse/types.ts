@@ -245,4 +245,10 @@ export interface OoxmlBundle {
     headerRels?: Map<string, string>;
   /** Per-footer rels xml content keyed by stem. */
     footerRels?: Map<string, string>;
+  /** word/comments.xml — for comment annotations. */
+    commentsXml?: string;
+  /** word/commentsExtended.xml — for extended comment metadata (replies, done state). */
+    commentsExtendedXml?: string;
+  /** word/people.xml — for comment author identity. */
+    peopleXml?: string;
 }
