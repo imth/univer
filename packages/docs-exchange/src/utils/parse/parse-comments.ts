@@ -115,7 +115,7 @@ export function parseComments(
     } catch {
         return EMPTY;
     }
-    const commentsRoot = findFirstByName(root[0], 'w:comments');
+    const commentsRoot = root.reduce<XmlNode | undefined>((found, n) => found ?? findFirstByName(n, 'w:comments'), undefined);
     if (!commentsRoot) return EMPTY;
 
     interface Raw { wId: string; paraId?: string; body: IDocumentBody; author: string; date: string }
@@ -141,7 +141,8 @@ export function parseComments(
     const extByWId = new Map<string, { parentWId?: string; done: boolean }>();
     if (commentsExtendedXml) {
         try {
-            const extRoot = findFirstByName((xmlParser.parse(commentsExtendedXml) as XmlNode[])[0], 'w15:commentsEx');
+            const extParsed = xmlParser.parse(commentsExtendedXml) as XmlNode[];
+            const extRoot = extParsed.reduce<XmlNode | undefined>((found, n) => found ?? findFirstByName(n, 'w15:commentsEx'), undefined);
             if (extRoot) {
                 for (const ex of nodeChildren(extRoot)) {
                     if (nodeName(ex) !== 'w15:commentEx') continue;
