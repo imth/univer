@@ -366,10 +366,20 @@ body via a custom-block `\b` token in the same way images are.
     those points need absolute-coordinate offsetting in the skeleton;
     promoting polygon-bearing wraps to `WRAP_POLYGON` is a layer-2
     follow-up (calibrate visually in e2e).
-- Position `relativeFrom` values other than `page` and `column`
-  fall back to the OOXML default. `<wp:align>` (left/center/right/
-  inside/outside) maps onto `positionH/V.align`; the float's
-  `transform.left/top` reflect `posOffset` only.
+- **Position `relativeFrom`.** `REL_FROM_H_MAP` / `REL_FROM_V_MAP` map
+  the OOXML `relativeFrom` to the **exact** `ObjectRelativeFromH/V` enum
+  value (`column → COLUMN(1)`, `paragraph → PARAGRAPH(1)`, `margin →
+  MARGIN(3)`, `page → PAGE(0)`, …). These numbers MUST match
+  core's enums — the renderer's `getPositionHorizon`/`getPositionVertical`
+  switch on the literal value, and a mismatched number falls through to
+  an unhandled branch that pins the float to the top-left edge with
+  `posOffset` silently dropped. The renderer currently implements the
+  `PAGE` / `COLUMN` / `MARGIN` frames; other frames (`character`, `line`,
+  the `*Margin` variants) are emitted with the correct enum but have no
+  renderer branch yet, so a float anchored to one of those lands at
+  offset 0 until the renderer grows the case. `<wp:align>`
+  (left/center/right/inside/outside) maps onto `positionH/V.align`; the
+  float's `transform.left/top` reflect `posOffset` only.
 
 ### Preset geometry coverage audit
 
