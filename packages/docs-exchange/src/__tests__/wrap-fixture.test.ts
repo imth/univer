@@ -19,9 +19,9 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { docxToUniverData } from '../docx-to-univer';
 
-const FIXTURE = path.resolve(__dirname, 'fixtures/wrap-shapes-fixture.docx');
+const FIXTURE = path.resolve(__dirname, 'fixtures/wrap-images-fixture.docx');
 
-describe('wrap-shapes-fixture.docx', () => {
+describe('wrap-images-fixture.docx', () => {
     it('imports floating images with real wrap layoutTypes', async () => {
         const buf = fs.readFileSync(FIXTURE);
         const doc = await docxToUniverData(buf);

@@ -1,7 +1,7 @@
 """Generate a tiny DOCX with floating images using different wrap modes.
 
 Run: python3 scripts/wrap-fixture/generate-wrap-fixture.py
-Produces packages/docs-exchange/src/__tests__/fixtures/wrap-shapes-fixture.docx
+Produces packages/docs-exchange/src/__tests__/fixtures/wrap-images-fixture.docx
 
 The doc has three paragraphs of filler text, each carrying an anchored 1-inch
 (914400 EMU) image: paragraph 1 uses <wp:wrapSquare>, paragraph 2 uses
@@ -18,7 +18,7 @@ import zipfile
 HERE = os.path.dirname(__file__)
 OUT = os.path.normpath(os.path.join(
     HERE, '..', '..', 'packages', 'docs-exchange', 'src', '__tests__',
-    'fixtures', 'wrap-shapes-fixture.docx'))
+    'fixtures', 'wrap-images-fixture.docx'))
 
 # 1x1 transparent PNG.
 PNG = bytes.fromhex(
