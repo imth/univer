@@ -26,6 +26,7 @@ import {
     flattenSdt,
     nodeChildren,
     nodeName,
+    parseComments,
     parseEvenAndOddHeaders,
     parseHeaderFooterRels,
     parseHeaderFooterXml,
@@ -60,6 +61,7 @@ export async function docxToUniverData(input: DocxInput): Promise<IDocumentData>
     const rels = parseRelationships(bundle.relsXml);
     const styles = parseStyles(bundle.stylesXml);
     const themeFonts = parseTheme(bundle.themeXml);
+    const parsedComments = parseComments(bundle.commentsXml, bundle.commentsExtendedXml, styles, themeFonts);
 
     const docTree = xmlParser.parse(bundle.documentXml) as XmlNode[];
     const docRoot = docTree.find((n) => nodeName(n) === 'w:document');
@@ -230,6 +232,7 @@ export async function docxToUniverData(input: DocxInput): Promise<IDocumentData>
         documentStyle,
         sectionBreakDefaults,
         bodyEndSection,
+        commentIdToThreadId: parsedComments.commentIdToThreadId,
     });
 
     if (Object.keys(headers).length > 0) docData.headers = headers;
@@ -299,6 +302,14 @@ export async function docxToUniverData(input: DocxInput): Promise<IDocumentData>
         docData.resources.push({
             name: DOC_WATERMARK_PLUGIN,
             data: JSON.stringify({ byHeader, byFooter }),
+        });
+    }
+
+    if (parsedComments.threads.length > 0) {
+        docData.resources = docData.resources ?? [];
+        docData.resources.push({
+            name: 'SHEET_UNIVER_THREAD_COMMENT_PLUGIN',
+            data: JSON.stringify({ default_doc: parsedComments.threads }),
         });
     }
 

@@ -16,6 +16,7 @@
 
 export * from './assemble';
 export * from './ooxml-reader';
+export * from './parse-comments';
 export * from './parse-drawing';
 export * from './parse-header-footer';
 export * from './parse-hyperlink';
