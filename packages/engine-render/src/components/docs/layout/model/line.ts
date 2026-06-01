@@ -327,7 +327,7 @@ export function collisionDetection(
     return true;
 }
 
-function _calculateSplit(
+export function _calculateSplit(
     drawing: IDocumentSkeletonDrawing,
     lineHeight: number,
     lineTop: number,
@@ -395,8 +395,14 @@ function _calculateSplit(
         );
     }
 
-    // wrapThrough | wrapTight
-    return __getCrossPoint(boundingBox.points, lineTop, lineHeight);
+    // wrapThrough | wrapTight.
+    // getBoundingBox returns the rotated corners as [lt, lb, rt, rb] — corner
+    // order, not perimeter order. Feeding that straight to __getCrossPoint would
+    // treat lt→lb→rt→rb as a self-crossing "bowtie" (the lb→rt and rb→lt edges
+    // are diagonals), under-reserving the rect's right side so body text
+    // overlaps the tilted drawing. Reorder to a real perimeter (lt → rt → rb → lb).
+    const [lt, lb, rt, rb] = boundingBox.points;
+    return __getCrossPoint([lt, rt, rb, lb], lineTop, lineHeight);
 }
 
 export function getBoundingBox(angle: number, left: number, width: number, top: number, height: number) {

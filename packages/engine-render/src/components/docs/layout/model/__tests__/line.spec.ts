@@ -20,6 +20,7 @@ import { LineType } from '../../../../../basics/i-document-skeleton-cached';
 import { Vector2 } from '../../../../../basics/vector2';
 import {
     __getCrossPoint,
+    _calculateSplit,
     calculateLineTopByDrawings,
     collisionDetection,
     createAndUpdateBlockAnchor,
@@ -62,6 +63,44 @@ describe('__getCrossPoint — rotated/polygon wrap horizontal extent', () => {
         const split = __getCrossPoint(rect, 6, 2); // band [6, 8] inside the rect
         expect(split?.left).toBeCloseTo(2, 5);
         expect(split?.width).toBeCloseTo(10, 5); // 12 − 2 = 10 (NOT 12)
+    });
+
+    it('rotated wrapTight reserves the tilted rect footprint (perimeter-ordered corners, no overlap)', () => {
+        // Regression: getBoundingBox returns corners as [lt, lb, rt, rb] — NOT
+        // perimeter order. Treated as a polygon directly that's a self-crossing
+        // "bowtie" (lt→lb→rt→rb), so the reserved span misses the rect's right
+        // side and body text overlaps the tilted image. _calculateSplit must
+        // reorder to perimeter order (lt → rt → rb → lb) before __getCrossPoint.
+        const angle = 30;
+        const left = 0;
+        const top = 0;
+        const width = 100;
+        const height = 40;
+        const drawing = {
+            aTop: top,
+            aLeft: left,
+            width,
+            height,
+            angle,
+            drawingOrigin: {
+                layoutType: PositionedObjectLayoutType.WRAP_TIGHT,
+                wrapText: WrapTextType.BOTH_SIDES,
+            },
+        } as any;
+
+        const bb = getBoundingBox(angle, left, width, top, height);
+        const lineHeight = 4;
+        const lineTop = bb.top! + bb.height! / 2 - lineHeight / 2; // band through the middle
+
+        // Reference: the rect's true horizontal extent at this band, computed
+        // from perimeter-ordered corners (lt, rt, rb, lb).
+        const [lt, lb, rt, rb] = bb.points;
+        const reference = __getCrossPoint([lt, rt, rb, lb], lineTop, lineHeight)!;
+
+        const actual = _calculateSplit(drawing, lineHeight, lineTop, 500)!;
+        expect(actual).toBeDefined();
+        expect(actual.left).toBeCloseTo(reference.left, 5);
+        expect(actual.width).toBeCloseTo(reference.width, 5);
     });
 
     it('follows a tilted (rotated) rectangle edge-by-edge across line bands', () => {
