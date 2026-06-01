@@ -187,3 +187,92 @@ describe('parseDrawingFromRunXml — shape (wps:wsp text box)', () => {
         expect(built?.docTransform?.positionV.relativeFrom).toBe(2); // PARAGRAPH
     });
 });
+
+describe('image anchor wrap mapping', () => {
+    function anchorImageXml(
+        wrapXml: string,
+        anchorAttrs = 'distT="91440" distB="91440" distL="114300" distR="114300" behindDoc="0"'
+    ): string {
+        return `<w:drawing xmlns:w="x" xmlns:wp="y" xmlns:a="z" xmlns:r="r">
+          <wp:anchor ${anchorAttrs}>
+            <wp:positionH relativeFrom="page"><wp:posOffset>952500</wp:posOffset></wp:positionH>
+            <wp:positionV relativeFrom="page"><wp:posOffset>476250</wp:posOffset></wp:positionV>
+            <wp:extent cx="952500" cy="952500"/>
+            ${wrapXml}
+            <a:graphic><a:graphicData><pic:pic xmlns:pic="p"><pic:blipFill><a:blip r:embed="rId9"/></pic:blipFill></pic:pic></a:graphicData></a:graphic>
+          </wp:anchor>
+        </w:drawing>`;
+    }
+    const rels = new Map([['rId9', { type: 'image' as const, target: 'media/i.png' }]]);
+    const media = new Map([['word/media/i.png', new Uint8Array([0x89, 0x50])]]);
+    const build = (wrapXml: string, attrs?: string) =>
+        buildDrawing('img', parseDrawingFromRunXml(anchorImageXml(wrapXml, attrs))!, rels, media);
+
+    it('wrapNone → WRAP_NONE (1) with behindDoc', () => {
+        const d = build('<wp:wrapNone/>', 'behindDoc="1"');
+        expect(d?.layoutType).toBe(1);
+        expect(d?.behindDoc).toBe(1);
+        // position carried through: 952500/9525 = 100, relativeFrom page = 0
+        expect(d?.docTransform?.positionH.relativeFrom).toBe(0);
+        expect(d?.docTransform?.positionH.posOffset).toBeCloseTo(100, 0);
+        expect(d?.transform?.left).toBeCloseTo(100, 0);
+    });
+
+    it('wrapSquare → WRAP_SQUARE (3) with dist + wrapText', () => {
+        const d = build('<wp:wrapSquare wrapText="bothSides"/>');
+        expect(d?.layoutType).toBe(3);
+        expect(d?.wrapText).toBe(0); // BOTH_SIDES
+        expect(d?.distL).toBeCloseTo(12, 0); // 114300/9525
+        expect(d?.distT).toBeCloseTo(9.6, 1); // 91440/9525
+    });
+
+    it('wrapTopAndBottom → WRAP_TOP_AND_BOTTOM (6)', () => {
+        const d = build('<wp:wrapTopAndBottom/>');
+        expect(d?.layoutType).toBe(6);
+        expect(d?.distT).toBeCloseTo(9.6, 1);
+        expect(d?.distB).toBeCloseTo(9.6, 1);
+    });
+
+    it('wrapTight → WRAP_TIGHT (5) with parsed polygon points', () => {
+        const wrap = `<wp:wrapTight wrapText="left">
+            <wp:wrapPolygon edited="0">
+              <wp:start x="0" y="0"/>
+              <wp:lineTo x="0" y="952500"/>
+              <wp:lineTo x="952500" y="952500"/>
+              <wp:lineTo x="952500" y="0"/>
+              <wp:lineTo x="0" y="0"/>
+            </wp:wrapPolygon>
+          </wp:wrapTight>`;
+        const d = build(wrap);
+        expect(d?.layoutType).toBe(5);
+        expect(d?.wrapText).toBe(1); // LEFT
+        expect(d?.start).toEqual([0, 0]);
+        // 952500/9525 = 100
+        expect(d?.lineTo?.length).toBe(4);
+        expect(d?.lineTo?.[0]).toEqual([0, 100]);
+        expect(d?.lineTo?.[1]).toEqual([100, 100]);
+    });
+
+    it('wrapThrough → WRAP_THROUGH (4)', () => {
+        const d = build('<wp:wrapThrough wrapText="largest"/>');
+        expect(d?.layoutType).toBe(4);
+        expect(d?.wrapText).toBe(3); // LARGEST
+    });
+
+    it('maps <wp:align> to positionH/V.align instead of posOffset', () => {
+        const xml = `<w:drawing xmlns:w="x" xmlns:wp="y" xmlns:a="z" xmlns:r="r">
+          <wp:anchor distL="0" distR="0">
+            <wp:positionH relativeFrom="margin"><wp:align>center</wp:align></wp:positionH>
+            <wp:positionV relativeFrom="page"><wp:align>top</wp:align></wp:positionV>
+            <wp:extent cx="952500" cy="952500"/>
+            <wp:wrapSquare/>
+            <a:graphic><a:graphicData><pic:pic xmlns:pic="p"><pic:blipFill><a:blip r:embed="rId9"/></pic:blipFill></pic:pic></a:graphicData></a:graphic>
+          </wp:anchor>
+        </w:drawing>`;
+        const d = buildDrawing('img', parseDrawingFromRunXml(xml)!, rels, media);
+        expect(d?.docTransform?.positionH.align).toBe(0); // AlignTypeH.CENTER
+        expect(d?.docTransform?.positionH.posOffset).toBeUndefined();
+        expect(d?.docTransform?.positionV.align).toBe(4); // AlignTypeV.TOP
+        expect(d?.docTransform?.positionV.relativeFrom).toBe(0); // page
+    });
+});
