@@ -41,6 +41,10 @@ export interface IDrawingTransform {
     height: number;
     /** Rotation in degrees (clockwise). Optional — defaults to 0 downstream. */
     angle?: number;
+    /** OOXML <a:xfrm flipH>. Horizontal mirror. */
+    flipX?: boolean;
+    /** OOXML <a:xfrm flipV>. Vertical mirror. */
+    flipY?: boolean;
 }
 
 export interface IDocPositionAxis {
@@ -84,4 +88,9 @@ export interface ISimpleDrawing {
     start?: number[];
     /** wrapPolygon subsequent points (px, relative to drawing origin). */
     lineTo?: number[][];
+    /**
+     * OOXML <a:srcRect> image crop, converted to Univer ISrcRect display px
+     * (amount cropped off each edge).
+     */
+    srcRect?: { left?: number; top?: number; right?: number; bottom?: number };
 }
