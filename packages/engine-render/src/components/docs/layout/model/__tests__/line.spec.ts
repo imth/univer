@@ -17,7 +17,9 @@
 import { PositionedObjectLayoutType, TableTextWrapType, WrapTextType } from '@univerjs/core';
 import { describe, expect, it } from 'vitest';
 import { LineType } from '../../../../../basics/i-document-skeleton-cached';
+import { Vector2 } from '../../../../../basics/vector2';
 import {
+    __getCrossPoint,
     calculateLineTopByDrawings,
     collisionDetection,
     createAndUpdateBlockAnchor,
@@ -41,6 +43,42 @@ function createTopBottomDrawing(top: number, height: number, angle = 0) {
         },
     };
 }
+
+describe('__getCrossPoint — rotated/polygon wrap horizontal extent', () => {
+    // Axis-aligned rectangle polygon: x ∈ [2, 12], y ∈ [4, 12].
+    const rect = [
+        new Vector2(2, 4),
+        new Vector2(12, 4),
+        new Vector2(12, 12),
+        new Vector2(2, 12),
+    ];
+
+    it('returns undefined when the line band does not vertically overlap the polygon', () => {
+        expect(__getCrossPoint(rect, 100, 14)).toBeUndefined(); // band [100, 114] far below
+        expect(__getCrossPoint(rect, -20, 10)).toBeUndefined(); // band [-20, -10] above
+    });
+
+    it('reserves only the polygon horizontal extent (width = max − min, not max coordinate)', () => {
+        const split = __getCrossPoint(rect, 6, 2); // band [6, 8] inside the rect
+        expect(split?.left).toBeCloseTo(2, 5);
+        expect(split?.width).toBeCloseTo(10, 5); // 12 − 2 = 10 (NOT 12)
+    });
+
+    it('follows a tilted (rotated) rectangle edge-by-edge across line bands', () => {
+        // A diamond (rect rotated 45°) centred at x=10, spanning y ∈ [0, 20].
+        const diamond = [
+            new Vector2(10, 0),
+            new Vector2(20, 10),
+            new Vector2(10, 20),
+            new Vector2(0, 10),
+        ];
+        const near = __getCrossPoint(diamond, 1, 1); // near top vertex → narrow band
+        const mid = __getCrossPoint(diamond, 9, 1); // near middle → widest band
+        expect(near).toBeDefined();
+        expect(mid).toBeDefined();
+        expect(mid!.width).toBeGreaterThan(near!.width);
+    });
+});
 
 describe('line model', () => {
     it('creates line skeleton and divides with drawing/table layout data', () => {

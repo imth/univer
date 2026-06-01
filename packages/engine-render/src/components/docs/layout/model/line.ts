@@ -28,7 +28,6 @@ import type {
 } from '../../../../basics/i-document-skeleton-cached';
 import type { IFloatObject } from '../tools';
 import { PositionedObjectLayoutType, TableTextWrapType, WrapTextType } from '@univerjs/core';
-import { Path2 } from '../../../../basics/path2';
 import { Transform } from '../../../../basics/transform';
 import { Vector2 } from '../../../../basics/vector2';
 
@@ -41,11 +40,6 @@ enum WrapTextRuler {
     BOTH,
     LEFT,
     RIGHT,
-}
-
-enum AxisType {
-    X,
-    Y,
 }
 
 interface ILineBoundingBox {
@@ -370,7 +364,7 @@ function _calculateSplit(
             }
         }
 
-        return __getCrossPoint(points, lineTop, lineHeight, columnWidth);
+        return __getCrossPoint(points, lineTop, lineHeight);
     }
 
     const { distL = 0, distT = 0, distB = 0, distR = 0, wrapText } = drawingOrigin;
@@ -402,7 +396,7 @@ function _calculateSplit(
     }
 
     // wrapThrough | wrapTight
-    return __getCrossPoint(boundingBox.points, lineTop, lineHeight, columnWidth);
+    return __getCrossPoint(boundingBox.points, lineTop, lineHeight);
 }
 
 export function getBoundingBox(angle: number, left: number, width: number, top: number, height: number) {
@@ -448,38 +442,62 @@ function translateHeaderFooterDrawingPosition(
     };
 }
 
-function __getCrossPoint(points: Vector2[], lineTop: number, lineHeight: number, columnWidth: number) {
-    const path = new Path2(points);
-    const crossPointTop = path.intersection([new Vector2(0, lineTop), new Vector2(columnWidth, lineTop)]);
-    const crossPointBottom = path.intersection([
-        new Vector2(0, lineTop + lineHeight),
-        new Vector2(columnWidth, lineTop + lineHeight),
-    ]);
+// X coordinates where the polygon's edges cross the horizontal line y = yPos.
+// A horizontal edge lying exactly on yPos contributes both endpoints.
+function __polygonEdgeXAtY(points: Vector2[], yPos: number): number[] {
+    const xs: number[] = [];
+    const n = points.length;
+    for (let i = 0; i < n; i++) {
+        const a = points[i];
+        const b = points[(i + 1) % n];
+        const crosses = (a.y <= yPos && b.y >= yPos) || (a.y >= yPos && b.y <= yPos);
+        if (!crosses) {
+            continue;
+        }
+        if (a.y === b.y) {
+            xs.push(a.x, b.x);
+        } else {
+            const t = (yPos - a.y) / (b.y - a.y);
+            xs.push(a.x + t * (b.x - a.x));
+        }
+    }
+    return xs;
+}
 
-    if (!crossPointTop && !crossPointBottom) {
+// Horizontal extent of a (convex) polygon within the line band
+// [lineTop, lineTop + lineHeight]. Used for rotated wrapSquare/Tight/Through
+// and for wrapPolygon. Returns undefined when the band doesn't overlap the
+// polygon vertically, so non-overlapping lines reserve no space (text flows
+// full width above/below the drawing).
+//
+// NB: computed directly from the polygon geometry rather than via
+// Path2.intersection (which only ever returns an empty set — it intersects each
+// edge with itself, see path2.ts), and `width` is a real width (max − min), as
+// the divide consumer expects (`start = left + width`).
+export function __getCrossPoint(points: Vector2[], lineTop: number, lineHeight: number) {
+    const lineBottom = lineTop + lineHeight;
+
+    const xs: number[] = [
+        ...__polygonEdgeXAtY(points, lineTop),
+        ...__polygonEdgeXAtY(points, lineBottom),
+    ];
+    // Vertices sitting between the two scan lines (e.g. a tilted-rect corner
+    // inside the band) also bound the horizontal extent.
+    for (const p of points) {
+        if (p.y >= lineTop && p.y <= lineBottom) {
+            xs.push(p.x);
+        }
+    }
+
+    if (xs.length === 0) {
         return;
     }
 
-    const range = ___getMaxAndMinAxis([...points, ...(crossPointTop || []), ...(crossPointBottom || [])]);
+    const min = Math.min(...xs);
+    const max = Math.max(...xs);
     return {
-        left: range.min,
-        width: range.max,
-    };
-}
-
-function ___getMaxAndMinAxis(points: Vector2[], axis = AxisType.X) {
-    const result = [];
-    for (let i = 0; i < points.length; i++) {
-        const point = points[i];
-        if (axis === AxisType.X) {
-            result.push(point.x);
-        } else {
-            result.push(point.y);
-        }
-    }
-    return {
-        max: Math.max(...result),
-        min: Math.min(...result),
+        left: min,
+        width: max - min,
     };
 }
 
