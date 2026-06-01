@@ -29,8 +29,9 @@ describe('parseDrawingFromRunXml', () => {
         expect(info?.kind).toBe('image');
         if (info?.kind === 'image') {
             expect(info.rId).toBe('rId5');
-            expect(info.widthPx).toBe(100);
-            expect(info.heightPx).toBe(100);
+            expect(info.positioning.widthPx).toBe(100);
+            expect(info.positioning.heightPx).toBe(100);
+            expect(info.positioning.isInline).toBe(true);
         }
     });
 
@@ -43,7 +44,7 @@ describe('buildDrawing', () => {
     it('returns ISimpleDrawing with all required fields', () => {
         const rels = new Map([['rId1', { type: 'image' as const, target: 'media/image1.png' }]]);
         const media = new Map([['word/media/image1.png', new Uint8Array([0x89, 0x50])]]);
-        const d = buildDrawing('d1', { kind: 'image', rId: 'rId1', widthPx: 50, heightPx: 60 }, rels, media);
+        const d = buildDrawing('d1', { kind: 'image', rId: 'rId1', positioning: { isInline: true, widthPx: 50, heightPx: 60 } }, rels, media);
         expect(d).toBeDefined();
         expect(d!.drawingId).toBe('d1');
         expect(d!.drawingType).toBe(0);
@@ -56,18 +57,33 @@ describe('buildDrawing', () => {
     it('resolves "../media/X" target relative to document.xml.rels', () => {
         const rels = new Map([['rId2', { type: 'image' as const, target: '../media/image2.jpg' }]]);
         const media = new Map([['word/media/image2.jpg', new Uint8Array([0xFF, 0xD8])]]);
-        const d = buildDrawing('d2', { kind: 'image', rId: 'rId2' }, rels, media);
+        const d = buildDrawing('d2', { kind: 'image', rId: 'rId2', positioning: { isInline: true } }, rels, media);
         expect(d?.source).toMatch(/^data:image\/jpeg;base64,/);
     });
 
     it('returns undefined when media bytes missing', () => {
         const rels = new Map([['rId3', { type: 'image' as const, target: 'media/missing.png' }]]);
-        expect(buildDrawing('d3', { kind: 'image', rId: 'rId3' }, rels, new Map())).toBeUndefined();
+        expect(buildDrawing('d3', { kind: 'image', rId: 'rId3', positioning: { isInline: true } }, rels, new Map())).toBeUndefined();
     });
 
     it('returns undefined when rId resolves to non-image', () => {
         const rels = new Map([['rId4', { type: 'hyperlink' as const, target: 'https://x.com' }]]);
-        expect(buildDrawing('d4', { kind: 'image', rId: 'rId4' }, rels, new Map())).toBeUndefined();
+        expect(buildDrawing('d4', { kind: 'image', rId: 'rId4', positioning: { isInline: true } }, rels, new Map())).toBeUndefined();
+    });
+
+    it('inline image gets layoutType INLINE (0)', () => {
+        const xml = `<w:drawing xmlns:w="x" xmlns:wp="y" xmlns:a="z" xmlns:r="r">
+          <wp:inline>
+            <wp:extent cx="952500" cy="952500"/>
+            <a:graphic><a:graphicData><pic:pic xmlns:pic="p"><pic:blipFill><a:blip r:embed="rId7"/></pic:blipFill></pic:pic></a:graphicData></a:graphic>
+          </wp:inline>
+        </w:drawing>`;
+        const info = parseDrawingFromRunXml(xml);
+        expect(info?.kind).toBe('image');
+        const rels = new Map([['rId7', { type: 'image' as const, target: 'media/i.png' }]]);
+        const media = new Map([['word/media/i.png', new Uint8Array([0x89, 0x50])]]);
+        const d = buildDrawing('img-inline', info!, rels, media);
+        expect(d?.layoutType).toBe(0); // PositionedObjectLayoutType.INLINE
     });
 });
 

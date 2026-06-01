@@ -161,8 +161,7 @@ export function parseAnchorPositioning(drawingNode: XmlNode): PositioningInfo {
 export interface ImageDrawingInfo {
     kind: 'image';
     rId: string;
-    widthPx?: number;
-    heightPx?: number;
+    positioning: PositioningInfo;
 }
 
 export interface ShapeDrawingInfo {
@@ -227,15 +226,17 @@ export function parseDrawingFromXmlNode(
     if (blip) {
         const rId = nodeAttrs(blip)['@_r:embed'];
         if (rId) {
-            const out: ImageDrawingInfo = { kind: 'image', rId };
-            const extent = findFirstByName(node, 'wp:extent');
-            if (extent) {
-                const a = nodeAttrs(extent);
-                const cx = Number(a['@_cx']);
-                const cy = Number(a['@_cy']);
-                if (!Number.isNaN(cx)) out.widthPx = Math.round(cx / EMU_PER_PX);
-                if (!Number.isNaN(cy)) out.heightPx = Math.round(cy / EMU_PER_PX);
+            const positioning = parseAnchorPositioning(node);
+            // Defensive: if positioning didn't capture extent (e.g. a non-standard
+            // nesting), fall back to the nearest wp:extent under this node.
+            if (positioning.widthPx === undefined) {
+                const extent = findFirstByName(node, 'wp:extent');
+                const cx = emuAttrToPx(extent, '@_cx');
+                const cy = emuAttrToPx(extent, '@_cy');
+                positioning.widthPx = cx === undefined ? undefined : Math.round(cx);
+                positioning.heightPx = cy === undefined ? undefined : Math.round(cy);
             }
+            const out: ImageDrawingInfo = { kind: 'image', rId, positioning };
             return out;
         }
     }
@@ -440,21 +441,16 @@ function buildImageDrawing(
                     ? 'image/bmp'
                     : 'image/png';
     const base64 = bytesToBase64(bytes);
-    const width = info.widthPx ?? 100;
-    const height = info.heightPx ?? 100;
-    return {
+    const width = info.positioning.widthPx ?? 100;
+    const height = info.positioning.heightPx ?? 100;
+    const drawing: ISimpleDrawing = {
         drawingId,
         drawingType: 0,
         imageSourceType: 'BASE64',
         source: `data:${mime};base64,${base64}`,
-        transform: { left: 0, top: 0, width, height },
-        docTransform: {
-            size: { width, height },
-            positionH: { relativeFrom: 2, posOffset: 0 },
-            positionV: { relativeFrom: 1, posOffset: 0 },
-            angle: 0,
-        },
     };
+    applyPositioning(drawing, info.positioning, width, height, 0);
+    return drawing;
 }
 
 // OOXML wp:positionH/V `relativeFrom` → Univer ObjectRelativeFromH/V.
