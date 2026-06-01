@@ -19,27 +19,53 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { docxToUniverData } from '../docx-to-univer';
 
-const FIXTURE = path.resolve(__dirname, '../../../../examples/public/demo.docx');
+// Committed fixture (scripts/comments-fixture/generate-comments-fixture.py):
+// 3 comments — Reviewer (top-level), Editor (top-level), QA (reply to Editor,
+// resolved) — each anchoring a text range.
+const FIXTURE = path.resolve(__dirname, 'fixtures/comments-fixture.docx');
 
-describe('demo.docx comments import', () => {
-    it('emits a thread-comment resource and COMMENT customDecorations', async () => {
+interface ResComment {
+    id: string;
+    personId: string;
+    threadId: string;
+    unitId: string;
+    resolved?: boolean;
+    parentId?: string;
+    children?: ResComment[];
+}
+
+describe('comments-fixture.docx', () => {
+    it('imports comments as a thread-comment resource (threads + resolved) and COMMENT decorations', async () => {
         const buf = fs.readFileSync(FIXTURE);
         const doc = await docxToUniverData(buf);
+
         const res = (doc.resources ?? []).find((r) => r.name === 'SHEET_UNIVER_THREAD_COMMENT_PLUGIN');
         expect(res).toBeDefined();
-        const data = JSON.parse(res!.data) as { default_doc: Array<{ id: string; personId: string; threadId: string; unitId: string }> };
-        // demo.docx has 3 top-level comments by Reviewer / Editor / QA.
-        expect(data.default_doc.length).toBe(3);
-        expect(new Set(data.default_doc.map((c) => c.personId))).toEqual(new Set(['Reviewer', 'Editor', 'QA']));
-        // The doc carries an explicit id, and every comment's unitId matches it —
-        // the thread-comment panel re-fetches comments by `comment.unitId`, so a
-        // mismatch (e.g. '') makes the panel show empty placeholder comments.
+        const roots = (JSON.parse(res!.data) as { default_doc: ResComment[] }).default_doc;
+
+        // Two top-level threads: Reviewer and Editor.
+        expect(roots.length).toBe(2);
+        expect(new Set(roots.map((c) => c.personId))).toEqual(new Set(['Reviewer', 'Editor']));
+
+        // The Editor thread has one reply (QA), nested + resolved + parented to root.
+        const editor = roots.find((c) => c.personId === 'Editor')!;
+        expect(editor.children?.length).toBe(1);
+        const reply = editor.children![0];
+        expect(reply.personId).toBe('QA');
+        expect(reply.parentId).toBe(editor.id);
+        expect(reply.threadId).toBe(editor.id);
+        expect(reply.resolved).toBe(true);
+
+        // The doc carries an explicit id, and EVERY comment (roots + replies)
+        // carries that same unitId — the panel re-fetches comments by unitId.
         expect(doc.id).toBeTruthy();
-        expect(data.default_doc.every((c) => c.unitId === doc.id)).toBe(true);
-        // Each comment anchors a COMMENT customDecoration in the body.
+        const allComments = [...roots, ...roots.flatMap((c) => c.children ?? [])];
+        expect(allComments.every((c) => c.unitId === doc.id)).toBe(true);
+
+        // Each comment range anchors a COMMENT customDecoration (id = thread root).
         const decos = (doc.body?.customDecorations ?? []).filter((d) => d.type === 0);
         expect(decos.length).toBe(3);
-        const threadIds = new Set(data.default_doc.map((c) => c.threadId));
+        const threadIds = new Set(roots.map((c) => c.id));
         expect(decos.every((d) => threadIds.has(d.id))).toBe(true);
     });
 });
