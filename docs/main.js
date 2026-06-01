@@ -10,7 +10,7 @@ import {
 import "../chunk-IQUVNM4H.js";
 import {
   UniverDebuggerPlugin
-} from "../chunk-Z3UHAL7Y.js";
+} from "../chunk-D34HW6ZK.js";
 import {
   InsertDocImageCommand,
   UniverDocsDrawingUIPlugin
@@ -7266,6 +7266,91 @@ function parseParagraph(pNode, drawingsOut, styles, themeFonts) {
 
 // ../packages/docs-exchange/src/utils/parse/parse-drawing.ts
 var EMU_PER_PX = 9525;
+function emuStrToPx(v) {
+  if (v === void 0 || v === null) return void 0;
+  const n = Number(v);
+  return Number.isNaN(n) ? void 0 : n / EMU_PER_PX;
+}
+function emuTextToPx(node) {
+  if (!node) return void 0;
+  return emuStrToPx(textOf(node));
+}
+function emuAttrToPx(node, attr) {
+  if (!node) return void 0;
+  const v = nodeAttrs(node)[attr];
+  if (v === void 0) return void 0;
+  const n = Number(v);
+  if (Number.isNaN(n)) return void 0;
+  return n / EMU_PER_PX;
+}
+function parseWrapPolygon(polygon) {
+  const startNode = findChild(polygon, "wp:start");
+  if (!startNode) return void 0;
+  const sx = emuAttrToPx(startNode, "@_x");
+  const sy = emuAttrToPx(startNode, "@_y");
+  if (sx === void 0 || sy === void 0) return void 0;
+  const lineTo = [];
+  for (const child of nodeChildren(polygon)) {
+    if (nodeName(child) !== "wp:lineTo") continue;
+    const x = emuAttrToPx(child, "@_x");
+    const y = emuAttrToPx(child, "@_y");
+    if (x !== void 0 && y !== void 0) lineTo.push([x, y]);
+  }
+  return { start: [sx, sy], lineTo };
+}
+var WRAP_TAGS = [
+  ["wp:wrapNone", "none"],
+  ["wp:wrapSquare", "square"],
+  ["wp:wrapTight", "tight"],
+  ["wp:wrapThrough", "through"],
+  ["wp:wrapTopAndBottom", "topAndBottom"]
+];
+function parseAnchorPositioning(drawingNode) {
+  const anchor = findFirstByName(drawingNode, "wp:anchor");
+  const inline = findFirstByName(drawingNode, "wp:inline");
+  const positioning = anchor != null ? anchor : inline;
+  const out = { isInline: !anchor && !!inline };
+  if (!positioning) return out;
+  const extent = findChild(positioning, "wp:extent");
+  const cx = emuAttrToPx(extent, "@_cx");
+  const cy = emuAttrToPx(extent, "@_cy");
+  out.widthPx = cx === void 0 ? void 0 : Math.round(cx);
+  out.heightPx = cy === void 0 ? void 0 : Math.round(cy);
+  if (!anchor) return out;
+  const aAttrs = nodeAttrs(anchor);
+  if (aAttrs["@_behindDoc"] === "1") out.behindDoc = true;
+  out.distLPx = emuStrToPx(aAttrs["@_distL"]);
+  out.distTPx = emuStrToPx(aAttrs["@_distT"]);
+  out.distRPx = emuStrToPx(aAttrs["@_distR"]);
+  out.distBPx = emuStrToPx(aAttrs["@_distB"]);
+  const positionH = findChild(anchor, "wp:positionH");
+  if (positionH) {
+    out.relativeFromH = nodeAttrs(positionH)["@_relativeFrom"];
+    const offset = findChild(positionH, "wp:posOffset");
+    const align = findChild(positionH, "wp:align");
+    if (offset) out.posXPx = emuTextToPx(offset);
+    else if (align) out.alignH = textOf(align);
+  }
+  const positionV = findChild(anchor, "wp:positionV");
+  if (positionV) {
+    out.relativeFromV = nodeAttrs(positionV)["@_relativeFrom"];
+    const offset = findChild(positionV, "wp:posOffset");
+    const align = findChild(positionV, "wp:align");
+    if (offset) out.posYPx = emuTextToPx(offset);
+    else if (align) out.alignV = textOf(align);
+  }
+  for (const [tag, mode] of WRAP_TAGS) {
+    const el = findChild(anchor, tag);
+    if (!el) continue;
+    out.wrapMode = mode;
+    const wt = nodeAttrs(el)["@_wrapText"];
+    if (wt) out.wrapText = wt;
+    const polygon = findChild(el, "wp:wrapPolygon");
+    if (polygon) out.polygon = parseWrapPolygon(polygon);
+    break;
+  }
+  return out;
+}
 function findFirstByName(node, target) {
   if (!node || typeof node !== "object") return void 0;
   const name = nodeName(node);
@@ -7290,15 +7375,19 @@ function parseDrawingFromXmlNode(node, styles, themeFonts) {
   if (blip) {
     const rId = nodeAttrs(blip)["@_r:embed"];
     if (rId) {
-      const out = { kind: "image", rId };
-      const extent = findFirstByName(node, "wp:extent");
-      if (extent) {
-        const a = nodeAttrs(extent);
-        const cx = Number(a["@_cx"]);
-        const cy = Number(a["@_cy"]);
-        if (!Number.isNaN(cx)) out.widthPx = Math.round(cx / EMU_PER_PX);
-        if (!Number.isNaN(cy)) out.heightPx = Math.round(cy / EMU_PER_PX);
+      const positioning = parseAnchorPositioning(node);
+      if (positioning.widthPx === void 0 || positioning.heightPx === void 0) {
+        const extent = findFirstByName(node, "wp:extent");
+        if (positioning.widthPx === void 0) {
+          const cx = emuAttrToPx(extent, "@_cx");
+          if (cx !== void 0) positioning.widthPx = Math.round(cx);
+        }
+        if (positioning.heightPx === void 0) {
+          const cy = emuAttrToPx(extent, "@_cy");
+          if (cy !== void 0) positioning.heightPx = Math.round(cy);
+        }
       }
+      const out = { kind: "image", rId, positioning };
       return out;
     }
   }
@@ -7310,52 +7399,14 @@ function parseDrawingFromXmlNode(node, styles, themeFonts) {
   }
   return void 0;
 }
-function emuAttrToPx(node, attr) {
-  if (!node) return void 0;
-  const v = nodeAttrs(node)[attr];
-  if (v === void 0) return void 0;
-  const n = Number(v);
-  if (Number.isNaN(n)) return void 0;
-  return n / EMU_PER_PX;
-}
 function parseShape(drawingNode, wsp, styles, themeFonts) {
-  const anchor = findFirstByName(drawingNode, "wp:anchor");
-  const inline = findFirstByName(drawingNode, "wp:inline");
-  const positioning = anchor != null ? anchor : inline;
-  if (!positioning) return void 0;
-  const extent = findChild(positioning, "wp:extent");
-  const widthPx = emuAttrToPx(extent, "@_cx");
-  const heightPx = emuAttrToPx(extent, "@_cy");
-  if (widthPx === void 0 || heightPx === void 0) return void 0;
+  const positioning = parseAnchorPositioning(drawingNode);
+  if (positioning.widthPx === void 0 || positioning.heightPx === void 0) return void 0;
   const out = {
     kind: "shape",
-    widthPx: Math.round(widthPx),
-    heightPx: Math.round(heightPx),
-    shapeProps: {},
-    isInline: positioning === inline
+    positioning,
+    shapeProps: {}
   };
-  if (anchor) {
-    const behindDocAttr = nodeAttrs(anchor)["@_behindDoc"];
-    if (behindDocAttr === "1") out.behindDoc = true;
-    const positionH = findChild(anchor, "wp:positionH");
-    const positionV = findChild(anchor, "wp:positionV");
-    if (positionH) {
-      out.relativeFromH = nodeAttrs(positionH)["@_relativeFrom"];
-      const offset = findChild(positionH, "wp:posOffset");
-      if (offset) {
-        const n = Number(textOf(offset));
-        if (!Number.isNaN(n)) out.posXPx = n / EMU_PER_PX;
-      }
-    }
-    if (positionV) {
-      out.relativeFromV = nodeAttrs(positionV)["@_relativeFrom"];
-      const offset = findChild(positionV, "wp:posOffset");
-      if (offset) {
-        const n = Number(textOf(offset));
-        if (!Number.isNaN(n)) out.posYPx = n / EMU_PER_PX;
-      }
-    }
-  }
   const spPr = findChild(wsp, "wps:spPr");
   if (spPr) {
     const xfrm = findChild(spPr, "a:xfrm");
@@ -7478,70 +7529,117 @@ function buildImageDrawing(drawingId, info, rels, media) {
   const ext = (_b = (_a = path.split(".").pop()) == null ? void 0 : _a.toLowerCase()) != null ? _b : "png";
   const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "gif" ? "image/gif" : ext === "bmp" ? "image/bmp" : "image/png";
   const base64 = bytesToBase64(bytes);
-  const width = (_c = info.widthPx) != null ? _c : 100;
-  const height = (_d = info.heightPx) != null ? _d : 100;
-  return {
+  const width = (_c = info.positioning.widthPx) != null ? _c : 100;
+  const height = (_d = info.positioning.heightPx) != null ? _d : 100;
+  const drawing = {
     drawingId,
     drawingType: 0,
     imageSourceType: "BASE64",
-    source: `data:${mime};base64,${base64}`,
-    transform: { left: 0, top: 0, width, height },
-    docTransform: {
-      size: { width, height },
-      positionH: { relativeFrom: 2, posOffset: 0 },
-      positionV: { relativeFrom: 1, posOffset: 0 },
-      angle: 0
-    }
+    source: `data:${mime};base64,${base64}`
   };
+  applyPositioning(drawing, info.positioning, width, height, 0);
+  return drawing;
 }
 var REL_FROM_H_MAP = {
   page: 0,
-  margin: 1,
-  column: 2,
-  character: 3,
-  leftMargin: 4,
-  rightMargin: 5,
-  insideMargin: 6,
-  outsideMargin: 7
+  column: 1,
+  character: 2,
+  margin: 3,
+  insideMargin: 4,
+  outsideMargin: 5,
+  leftMargin: 6,
+  rightMargin: 7
 };
 var REL_FROM_V_MAP = {
   page: 0,
-  margin: 1,
-  paragraph: 2,
-  line: 3,
+  paragraph: 1,
+  line: 2,
+  margin: 3,
   topMargin: 4,
   bottomMargin: 5,
   insideMargin: 6,
   outsideMargin: 7
 };
-function buildShapeDrawing(drawingId, info) {
-  var _a, _b, _c, _d, _e, _f, _g, _h;
-  const width = info.widthPx;
-  const height = info.heightPx;
-  const relH = info.relativeFromH ? (_a = REL_FROM_H_MAP[info.relativeFromH]) != null ? _a : 2 : 2;
-  const relV = info.relativeFromV ? (_b = REL_FROM_V_MAP[info.relativeFromV]) != null ? _b : 2 : 2;
-  return {
-    drawingId,
-    // DrawingTypeEnum.DRAWING_SHAPE = 1
-    drawingType: 1,
-    // PositionedObjectLayoutType: INLINE = 0 (occupies a glyph slot
-    // in the line and pushes following text right), WRAP_NONE = 1
-    // (floats over body text, doesn't displace it). `<wp:inline>`
-    // shapes need INLINE so they don't draw on top of the next
-    // run; `<wp:anchor>` shapes use WRAP_NONE because we don't
-    // yet implement actual flow-around for wrapSquare etc.
-    layoutType: info.isInline ? 0 : 1,
-    transform: { left: (_c = info.posXPx) != null ? _c : 0, top: (_d = info.posYPx) != null ? _d : 0, width, height, angle: (_e = info.rotationDegrees) != null ? _e : 0 },
-    docTransform: {
-      size: { width, height },
-      positionH: { relativeFrom: relH, posOffset: (_f = info.posXPx) != null ? _f : 0 },
-      positionV: { relativeFrom: relV, posOffset: (_g = info.posYPx) != null ? _g : 0 },
-      angle: (_h = info.rotationDegrees) != null ? _h : 0
-    },
-    shapeProperties: info.shapeProps,
-    textBoxContent: info.textBoxBody ? { body: info.textBoxBody } : void 0,
-    behindDoc: info.behindDoc ? 1 : 0
+var ALIGN_H_MAP = { left: 2, center: 0, right: 4, inside: 1, outside: 3 };
+var ALIGN_V_MAP = { top: 4, center: 1, bottom: 0, inside: 2, outside: 3 };
+function mapWrapToLayoutType(p) {
+  if (p.isInline) return 0;
+  switch (p.wrapMode) {
+    case "square":
+      return 3;
+    // WRAP_SQUARE
+    case "through":
+      return 4;
+    // WRAP_THROUGH
+    case "tight":
+      return 5;
+    // WRAP_TIGHT
+    case "topAndBottom":
+      return 6;
+    // WRAP_TOP_AND_BOTTOM
+    case "none":
+    default:
+      return 1;
+  }
+}
+function mapWrapText(wrapText) {
+  switch (wrapText) {
+    case "bothSides":
+      return 0;
+    case "left":
+      return 1;
+    case "right":
+      return 2;
+    case "largest":
+      return 3;
+    default:
+      return void 0;
+  }
+}
+function buildAxis(relFrom, offsetPx, align, alignMap) {
+  const axis = { relativeFrom: relFrom };
+  if (align && alignMap[align] !== void 0) axis.align = alignMap[align];
+  else axis.posOffset = offsetPx != null ? offsetPx : 0;
+  return axis;
+}
+function applyPositioning(drawing, p, width, height, angle) {
+  var _a, _b, _c, _d;
+  drawing.layoutType = mapWrapToLayoutType(p);
+  if (p.behindDoc) drawing.behindDoc = 1;
+  const wrapText = mapWrapText(p.wrapText);
+  if (wrapText !== void 0) drawing.wrapText = wrapText;
+  if (p.distLPx !== void 0) drawing.distL = p.distLPx;
+  if (p.distTPx !== void 0) drawing.distT = p.distTPx;
+  if (p.distRPx !== void 0) drawing.distR = p.distRPx;
+  if (p.distBPx !== void 0) drawing.distB = p.distBPx;
+  if (p.polygon) {
+    drawing.start = p.polygon.start;
+    drawing.lineTo = p.polygon.lineTo;
+  }
+  const relH = p.relativeFromH ? (_a = REL_FROM_H_MAP[p.relativeFromH]) != null ? _a : 1 : 1;
+  const relV = p.relativeFromV ? (_b = REL_FROM_V_MAP[p.relativeFromV]) != null ? _b : 1 : 1;
+  drawing.transform = { left: (_c = p.posXPx) != null ? _c : 0, top: (_d = p.posYPx) != null ? _d : 0, width, height, angle };
+  drawing.docTransform = {
+    size: { width, height },
+    positionH: buildAxis(relH, p.posXPx, p.alignH, ALIGN_H_MAP),
+    positionV: buildAxis(relV, p.posYPx, p.alignV, ALIGN_V_MAP),
+    angle
   };
+}
+function buildShapeDrawing(drawingId, info) {
+  var _a, _b, _c;
+  const width = (_a = info.positioning.widthPx) != null ? _a : 0;
+  const height = (_b = info.positioning.heightPx) != null ? _b : 0;
+  const angle = (_c = info.rotationDegrees) != null ? _c : 0;
+  const drawing = {
+    drawingId,
+    drawingType: 1,
+    // DrawingTypeEnum.DRAWING_SHAPE
+    shapeProperties: info.shapeProps,
+    textBoxContent: info.textBoxBody ? { body: info.textBoxBody } : void 0
+  };
+  applyPositioning(drawing, info.positioning, width, height, angle);
+  return drawing;
 }
 
 // ../packages/docs-exchange/src/utils/parse/assemble.ts
@@ -9156,8 +9254,8 @@ function parseDrawingMlAnchorAsImage(anchor, opts) {
   const ext = ((_a = path.split(".").pop()) != null ? _a : "png").toLowerCase();
   const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "gif" ? "image/gif" : ext === "bmp" ? "image/bmp" : ext === "svg" ? "image/svg+xml" : "image/png";
   const dataUrl = `data:${mime};base64,${bytesToBase64(bytes)}`;
-  const width = (_b = info.widthPx) != null ? _b : 468;
-  const height = (_c = info.heightPx) != null ? _c : 351;
+  const width = (_b = info.positioning.widthPx) != null ? _b : 468;
+  const height = (_c = info.positioning.heightPx) != null ? _c : 351;
   const originRatio = height > 0 ? width / height : 1;
   const xfrm = findChildDeep(anchor, "a:xfrm");
   let rotate = 0;
