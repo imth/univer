@@ -1132,7 +1132,14 @@ export class DocumentSkeleton extends Skeleton {
                 updateBlockIndex(allSkeletonPages);
                 this._addNewSectionByContinuous(curSkeletonPage, columnProperties!, columnSeparatorType!);
                 isContinuous = true;
-            } else if (layoutAnchor == null || curSkeletonPage == null) {
+            } else if (layoutAnchor == null || curSkeletonPage == null || i > startSectionIndex) {
+                // A non-CONTINUOUS section starts on a fresh page. During an
+                // incremental re-layout (layoutAnchor != null — e.g. triggered by
+                // a floating drawing), only the *resumed* section (i ===
+                // startSectionIndex) continues on the existing page; sections
+                // after it (i > startSectionIndex) must still open their own page,
+                // otherwise a NEXT_PAGE break following a wrapped image collapses
+                // onto the current page.
                 curSkeletonPage = createSkeletonPage(
                     ctx,
                     sectionBreakConfig,

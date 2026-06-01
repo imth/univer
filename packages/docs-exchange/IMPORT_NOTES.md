@@ -381,6 +381,30 @@ body via a custom-block `\b` token in the same way images are.
   (left/center/right/inside/outside) maps onto `positionH/V.align`; the
   float's `transform.left/top` reflect `posOffset` only.
 
+### Image transforms — rotation / flip / crop
+
+Pictures (`<pic:pic>`) carry their own transform/crop, parsed off the
+image path (distinct from the `<wps:spPr>` shape path):
+
+- **Rotation & flip** (`<pic:spPr><a:xfrm rot flipH flipV>`):
+  `parsePicTransform` reads `rot` (60000ths-of-a-degree → degrees) onto
+  `transform.angle` / `docTransform.angle`, and `flipH`/`flipV` onto
+  `transform.flipX`/`flipY`. The renderer's `renderImages` applies all
+  three (`angle`/`flipX`/`flipY` ride on the transform), so no
+  engine-render change was needed.
+- **Crop** (`<a:srcRect l t r b>` in `<pic:blipFill>`): OOXML gives the
+  per-edge crop as a fraction of the *source* (1/100000 units).
+  `convertSrcRect` converts to Univer's `ISrcRect`, which is the
+  cropped-off amount in *display* px (source fills
+  `(Wvis+left+right) × (Hvis+top+bottom)`, clipped to the visible box):
+  `left_px = Wvis * lf / (1 - lf - rf)`, etc. `renderImages` calls
+  `image.setSrcRect`, so cropping renders for free.
+- **Guards**: a degenerate crop (`l+r ≥ 100%` or `t+b ≥ 100%`) or any
+  negative (outset) edge is skipped — no `srcRect` is emitted. All-zero /
+  absent `<a:srcRect>` emits nothing.
+- **Out of scope**: negative (outset) `srcRect`, blip effects
+  (`<a:duotone>` / `<a:alphaModFix>`), gradient fills, shadows.
+
 ### Preset geometry coverage audit
 
 Fixture: [`packages/docs-exchange/src/__tests__/fixtures/preset-shapes-fixture.docx`](src/__tests__/fixtures/preset-shapes-fixture.docx),

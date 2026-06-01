@@ -26,12 +26,14 @@ import { findChild, nodeAttrs, nodeChildren, nodeName, textOf, xmlParser } from 
 
 // Wrap modes (wrapNone/Square/Tight/Through/TopAndBottom) and inline vs anchor
 // are mapped to real Univer layoutTypes for both images and shapes — see
-// parseAnchorPositioning / mapWrapToLayoutType / applyPositioning below.
-// TODO(unsupported): a:xfrm rot for images, image cropping (a:srcRect), VML
-// fallback (mc:Fallback path), custGeom, gradFill, shadows. wrapPolygon points
-// are parsed onto start/lineTo but only consumed by engine-render for
-// layoutType WRAP_POLYGON; promoting tight/through to WRAP_POLYGON + the
-// absolute-coordinate offset is a layer-2 follow-up (calibrate in e2e).
+// parseAnchorPositioning / mapWrapToLayoutType / applyPositioning below. Image
+// rotation/flip (<pic> a:xfrm rot/flipH/flipV) and crop (<a:srcRect>) are also
+// mapped — see parsePicTransform / parsePicSrcRect / convertSrcRect.
+// TODO(unsupported): VML fallback (mc:Fallback path), custGeom, gradFill,
+// shadows, negative (outset) <a:srcRect>. wrapPolygon points are parsed onto
+// start/lineTo but only consumed by engine-render for layoutType WRAP_POLYGON;
+// promoting tight/through to WRAP_POLYGON + the absolute-coordinate offset is a
+// layer-2 follow-up (calibrate in e2e).
 
 const EMU_PER_PX = 9525;
 
@@ -95,6 +97,65 @@ function parseWrapPolygon(
         if (x !== undefined && y !== undefined) lineTo.push([x, y]);
     }
     return { start: [sx, sy], lineTo };
+}
+
+function parsePicSrcRect(node: XmlNode): { l: number; t: number; r: number; b: number } | undefined {
+    const sr = findFirstByName(node, 'a:srcRect');
+    if (!sr) return undefined;
+    const a = nodeAttrs(sr);
+    const num = (v: unknown): number => {
+        const n = Number(v);
+        return Number.isNaN(n) ? 0 : n;
+    };
+    return { l: num(a['@_l']), t: num(a['@_t']), r: num(a['@_r']), b: num(a['@_b']) };
+}
+
+// OOXML <a:srcRect> gives the per-edge crop as a fraction of the *source*
+// (1/100000 units). Univer's ISrcRect is the cropped-off amount in *display*
+// px: the source fills (Wvis + left + right) x (Hvis + top + bottom), clipped
+// to the visible Wvis x Hvis. So left_px = Wvis * lf / (1 - lf - rf), etc.
+function convertSrcRect(
+    p: { l: number; t: number; r: number; b: number },
+    wVis: number,
+    hVis: number
+): { left?: number; top?: number; right?: number; bottom?: number } | undefined {
+    const lf = p.l / 100000;
+    const rf = p.r / 100000;
+    const tf = p.t / 100000;
+    const bf = p.b / 100000;
+    // OOXML allows negative (outset) values; v1 supports positive crops only.
+    if (lf < 0 || rf < 0 || tf < 0 || bf < 0) return undefined;
+    const hDenom = 1 - lf - rf;
+    const vDenom = 1 - tf - bf;
+    if (hDenom <= 0 || vDenom <= 0) return undefined; // fully cropped away
+    const out: { left?: number; top?: number; right?: number; bottom?: number } = {};
+    const left = (wVis * lf) / hDenom;
+    const right = (wVis * rf) / hDenom;
+    const top = (hVis * tf) / vDenom;
+    const bottom = (hVis * bf) / vDenom;
+    if (left > 0) out.left = left;
+    if (right > 0) out.right = right;
+    if (top > 0) out.top = top;
+    if (bottom > 0) out.bottom = bottom;
+    return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function parsePicTransform(node: XmlNode): { rotationDegrees?: number; flipH?: boolean; flipV?: boolean } {
+    const out: { rotationDegrees?: number; flipH?: boolean; flipV?: boolean } = {};
+    // Images carry their transform in <pic:spPr><a:xfrm>; there is no wps shape
+    // on the image path, so the first a:xfrm under the drawing is the picture's.
+    const xfrm = findFirstByName(node, 'a:xfrm');
+    if (!xfrm) return out;
+    const a = nodeAttrs(xfrm);
+    const rotAttr = a['@_rot'] as string | undefined;
+    const rotRaw = rotAttr !== undefined ? Number(rotAttr) : 0;
+    if (!Number.isNaN(rotRaw) && rotRaw !== 0) {
+        // OOXML rot is 60000ths of a degree, range [0, 21600000).
+        out.rotationDegrees = (rotRaw / 60000) % 360;
+    }
+    if (a['@_flipH'] === '1') out.flipH = true;
+    if (a['@_flipV'] === '1') out.flipV = true;
+    return out;
 }
 
 const WRAP_TAGS: Array<[string, WrapMode]> = [
@@ -167,6 +228,11 @@ export interface ImageDrawingInfo {
     kind: 'image';
     rId: string;
     positioning: PositioningInfo;
+    rotationDegrees?: number;
+    flipH?: boolean;
+    flipV?: boolean;
+    /** Raw OOXML <a:srcRect> in 1/100000 (per-mille-percent); converted at build. */
+    srcRectPermille?: { l: number; t: number; r: number; b: number };
 }
 
 export interface ShapeDrawingInfo {
@@ -247,7 +313,9 @@ export function parseDrawingFromXmlNode(
                     if (cy !== undefined) positioning.heightPx = Math.round(cy);
                 }
             }
-            const out: ImageDrawingInfo = { kind: 'image', rId, positioning };
+            const out: ImageDrawingInfo = { kind: 'image', rId, positioning, ...parsePicTransform(node) };
+            const srcRectPermille = parsePicSrcRect(node);
+            if (srcRectPermille) out.srcRectPermille = srcRectPermille;
             return out;
         }
     }
@@ -460,7 +528,15 @@ function buildImageDrawing(
         imageSourceType: 'BASE64',
         source: `data:${mime};base64,${base64}`,
     };
-    applyPositioning(drawing, info.positioning, width, height, 0);
+    applyPositioning(drawing, info.positioning, width, height, info.rotationDegrees ?? 0);
+    if (drawing.transform) {
+        if (info.flipH) drawing.transform.flipX = true;
+        if (info.flipV) drawing.transform.flipY = true;
+    }
+    if (info.srcRectPermille) {
+        const srcRect = convertSrcRect(info.srcRectPermille, width, height);
+        if (srcRect) drawing.srcRect = srcRect;
+    }
     return drawing;
 }
 
