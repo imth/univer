@@ -2,7 +2,7 @@ import {
   DEFAULT_SLIDE_DATA,
   ObjectProvider,
   UniverSlidesPlugin
-} from "../chunk-5UF6K5II.js";
+} from "../chunk-3RS4E3O3.js";
 import {
   DOCS_COMPONENT_MAIN_LAYER_INDEX,
   DRAWING_IMAGE_ALLOW_IMAGE_LIST,
@@ -18,7 +18,7 @@ import {
   UniverDocsUIPlugin,
   UniverDrawingPlugin,
   getImageSize
-} from "../chunk-RWPMR47C.js";
+} from "../chunk-WORBCXKB.js";
 import "../chunk-LI6UXASZ.js";
 import {
   AutofillDoubleIcon,
@@ -54,14 +54,14 @@ import {
   scrollbarClassName,
   useDependency,
   useObservable
-} from "../chunk-NFRVCGXI.js";
+} from "../chunk-CV6DP4OR.js";
 import {
   zh_CN_default
 } from "../chunk-TEFKPMMF.js";
-import "../chunk-DDNH2LYO.js";
+import "../chunk-HY2OAPV5.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-FHKGEGDD.js";
+} from "../chunk-LVNQYW4R.js";
 import {
   FIX_ONE_PIXEL_BLUR_OFFSET,
   IRenderManagerService,
@@ -75,7 +75,7 @@ import {
   fixLineWidthByScale,
   getCurrentTypeOfRenderer,
   pxToNum
-} from "../chunk-VGF75R5Y.js";
+} from "../chunk-ODWOHFZR.js";
 import {
   BehaviorSubject,
   DEFAULT_EMPTY_DOCUMENT_VALUE,

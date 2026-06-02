@@ -1,36 +1,36 @@
 import {
   UniverDocsMentionUIPlugin
-} from "../chunk-Z6YKATGB.js";
+} from "../chunk-MRSJUGGV.js";
 import {
   SetActiveCommentOperation,
   ThreadCommentPanel,
   ThreadCommentPanelService,
   UniverThreadCommentUIPlugin
-} from "../chunk-ZMNFLBQU.js";
-import "../chunk-AR2XLGIP.js";
+} from "../chunk-DJYJQQ33.js";
+import "../chunk-JBIPY5G3.js";
 import {
   InsertDocImageCommand,
   UniverDebuggerPlugin,
   UniverDocsDrawingUIPlugin
-} from "../chunk-F4TJQHSF.js";
+} from "../chunk-5E5UAZHD.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
   ThreadCommentModel,
   getDT
 } from "../chunk-QJ52P6YG.js";
-import "../chunk-UJ3QZ2LJ.js";
+import "../chunk-TZEE3RW5.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-R75WIQQJ.js";
+} from "../chunk-5EQZX2ZM.js";
 import {
   FUniver
 } from "../chunk-VW3WZZGE.js";
-import "../chunk-BGBIKM5E.js";
+import "../chunk-TAJMLV5R.js";
 import {
   DEFAULT_DOCUMENT_DATA_SIMPLE
-} from "../chunk-5UF6K5II.js";
+} from "../chunk-3RS4E3O3.js";
 import {
   BulletListCommand,
   CutContentCommand,
@@ -66,7 +66,7 @@ import {
   getAnchorBounding,
   replaceSelectionFactory,
   whenDocAndEditorFocused
-} from "../chunk-RWPMR47C.js";
+} from "../chunk-WORBCXKB.js";
 import "../chunk-LI6UXASZ.js";
 import {
   Button,
@@ -99,20 +99,20 @@ import {
   useDependency,
   useEvent,
   useObservable
-} from "../chunk-NFRVCGXI.js";
+} from "../chunk-CV6DP4OR.js";
 import {
   zh_CN_default
 } from "../chunk-TEFKPMMF.js";
-import "../chunk-DDNH2LYO.js";
+import "../chunk-HY2OAPV5.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-FHKGEGDD.js";
+} from "../chunk-LVNQYW4R.js";
 import {
   IRenderManagerService,
   UniverRenderEnginePlugin,
   ptToPixel,
   withCurrentTypeOfRenderer
-} from "../chunk-VGF75R5Y.js";
+} from "../chunk-ODWOHFZR.js";
 import {
   BehaviorSubject,
   BuildTextUtils,
@@ -2551,6 +2551,89 @@ var DOCX_BORDER_TO_UNIVER_DASH = {
   dotDotDash: 5,
   dotted: 2
 };
+
+// ../packages/docs-exchange/src/utils/parse/expand-table-grid.ts
+function isContinuation(cell) {
+  return cell.vMerge === "continue";
+}
+function expandTableGrid(table) {
+  var _a, _b;
+  const columnOwner = [];
+  const grid = [];
+  const ownerSnapshots = [];
+  let gridWidth = 0;
+  for (const rowSource of table.rows) {
+    const rowCells = [];
+    let colCursor = 0;
+    for (const cell of rowSource) {
+      const columnSpan = Math.max(1, (_a = cell.columnSpan) != null ? _a : 1);
+      if (!isContinuation(cell)) {
+        const master = {
+          kind: "master",
+          colStart: colCursor,
+          columnSpan,
+          rowSpan: Math.max(1, (_b = cell.rowSpan) != null ? _b : 1),
+          source: cell,
+          master: void 0
+        };
+        master.master = master;
+        rowCells.push(master);
+        for (let c = colCursor; c < colCursor + columnSpan; c++) columnOwner[c] = master;
+        for (let c = colCursor + 1; c < colCursor + columnSpan; c++) {
+          rowCells.push({ kind: "covered", colStart: c, columnSpan: 1, rowSpan: 1, master });
+        }
+      } else {
+        const owner = columnOwner[colCursor];
+        if (owner) {
+          rowCells.push({ kind: "covered", colStart: colCursor, columnSpan: 1, rowSpan: 1, master: owner });
+          for (let c = colCursor + 1; c < colCursor + columnSpan; c++) {
+            rowCells.push({ kind: "covered", colStart: c, columnSpan: 1, rowSpan: 1, master: owner });
+          }
+        } else {
+          const master = {
+            kind: "master",
+            colStart: colCursor,
+            columnSpan,
+            rowSpan: 1,
+            source: cell,
+            master: void 0
+          };
+          master.master = master;
+          rowCells.push(master);
+          for (let c = colCursor; c < colCursor + columnSpan; c++) columnOwner[c] = master;
+          for (let c = colCursor + 1; c < colCursor + columnSpan; c++) {
+            rowCells.push({ kind: "covered", colStart: c, columnSpan: 1, rowSpan: 1, master });
+          }
+        }
+      }
+      colCursor += columnSpan;
+    }
+    gridWidth = Math.max(gridWidth, colCursor);
+    grid.push(rowCells);
+    ownerSnapshots.push(columnOwner.slice());
+  }
+  grid.forEach((rowCells, ri) => {
+    let width = rowCells.reduce((n, c) => Math.max(n, c.colStart + c.columnSpan), 0);
+    while (width < gridWidth) {
+      const owner = ownerSnapshots[ri][width];
+      if (owner) {
+        rowCells.push({ kind: "covered", colStart: width, columnSpan: 1, rowSpan: 1, master: owner });
+      } else {
+        const pad = {
+          kind: "covered",
+          colStart: width,
+          columnSpan: 1,
+          rowSpan: 1,
+          master: void 0
+        };
+        pad.master = pad;
+        rowCells.push(pad);
+      }
+      width += 1;
+    }
+  });
+  return grid;
+}
 
 // ../packages/docs-exchange/src/utils/parse/bytes.ts
 function bytesToBase64(bytes) {
@@ -7941,20 +8024,25 @@ function resolveCellBorder(side, cellBorders, tableBorders, isPerimeter) {
   return tableBorders.insideV;
 }
 function emitTable(t, acc, ctx) {
-  var _a, _b, _c;
+  var _a;
   const tableId = `tbl_${uuidv42()}`;
   const start = acc.data.length;
   acc.data += TABLE_START;
-  for (const row of t.rows) {
+  const grid = expandTableGrid(t);
+  for (const rowCells of grid) {
     acc.data += TABLE_ROW_START;
-    for (const cell of row) {
+    for (const gc of rowCells) {
       acc.data += TABLE_CELL_START;
-      for (const p of cell.paragraphs) {
-        emitParagraph(
-          p.sectionBreakAfter ? { ...p, sectionBreakAfter: void 0 } : p,
-          acc,
-          ctx
-        );
+      if (gc.kind === "master") {
+        for (const p of gc.source.paragraphs) {
+          emitParagraph(
+            p.sectionBreakAfter ? { ...p, sectionBreakAfter: void 0 } : p,
+            acc,
+            ctx
+          );
+        }
+      } else {
+        emitParagraph({ runs: [] }, acc, ctx);
       }
       acc.sectionBreaks.push({ startIndex: acc.data.length });
       acc.data += "\n";
@@ -7976,55 +8064,35 @@ function emitTable(t, acc, ctx) {
   const totalWidth = colSizes.reduce((a, b) => a + b, 0);
   const tableSize = t.preferredWidthPx !== void 0 ? { type: 1, width: { v: t.preferredWidthPx } } : { type: 0, width: { v: totalWidth } };
   const rowCount = t.rows.length;
-  const cellMeta = [];
-  let gridColCount = 0;
-  for (let ri = 0; ri < t.rows.length; ri++) {
-    const row = t.rows[ri];
-    const metaRow = [];
-    let cursor = 0;
-    for (const c of row) {
-      const colSpan = (_a = c.columnSpan) != null ? _a : 1;
-      metaRow.push({
-        colStart: cursor,
-        colSpan,
-        rowSpan: (_b = c.rowSpan) != null ? _b : 1,
-        isContinue: c.vMerge === "continue"
-      });
-      cursor += colSpan;
-    }
-    gridColCount = Math.max(gridColCount, cursor);
-    cellMeta.push(metaRow);
-  }
+  const gridColCount = Math.max(0, ...grid.map((r) => r.reduce((n, c) => Math.max(n, c.colStart + c.columnSpan), 0)));
   acc.tableSource[tableId] = {
     tableId,
-    tableRows: t.rows.map((row, ri) => {
-      var _a2, _b2, _c2;
-      const tableCells = row.map((c, ci) => {
-        var _a3, _b3, _c3, _d, _e, _f, _g, _h, _i;
+    tableRows: grid.map((rowCells, ri) => {
+      var _a2, _b, _c;
+      const tableCells = rowCells.map((gc) => {
+        var _a3, _b2, _c2, _d, _e, _f, _g, _h, _i;
+        if (gc.kind === "covered") {
+          return { rowSpan: 0, columnSpan: 0 };
+        }
+        const c = gc.source;
         const cellEntry = {
-          // Cell margin: cell-level overrides table-level, table-level overrides global default.
           margin: marginToUniver(c.margin, {
-            start: (_b3 = (_a3 = t.cellMargin) == null ? void 0 : _a3.start) != null ? _b3 : defaultMargin.start,
-            end: (_d = (_c3 = t.cellMargin) == null ? void 0 : _c3.end) != null ? _d : defaultMargin.end,
+            start: (_b2 = (_a3 = t.cellMargin) == null ? void 0 : _a3.start) != null ? _b2 : defaultMargin.start,
+            end: (_d = (_c2 = t.cellMargin) == null ? void 0 : _c2.end) != null ? _d : defaultMargin.end,
             top: (_f = (_e = t.cellMargin) == null ? void 0 : _e.top) != null ? _f : defaultMargin.top,
             bottom: (_h = (_g = t.cellMargin) == null ? void 0 : _g.bottom) != null ? _h : defaultMargin.bottom
           })
         };
-        if (c.rowSpan !== void 0) cellEntry.rowSpan = c.rowSpan;
-        if (c.columnSpan !== void 0) cellEntry.columnSpan = c.columnSpan;
-        if (c.vMerge === "continue") cellEntry.vMergeContinue = 1;
+        cellEntry.rowSpan = gc.rowSpan;
+        cellEntry.columnSpan = gc.columnSpan;
         const fill = (_i = c.shadingFill) != null ? _i : t.shadingFill;
         if (fill && fill !== "auto") cellEntry.backgroundColor = { rgb: `#${fill.toUpperCase()}` };
-        const meta = cellMeta[ri][ci];
-        if (meta.isContinue) {
-          return cellEntry;
-        }
         const sides = ["top", "bottom", "left", "right"];
         const isPerimeter = {
           top: ri === 0,
-          bottom: ri + meta.rowSpan - 1 === rowCount - 1,
-          left: meta.colStart === 0,
-          right: meta.colStart + meta.colSpan === gridColCount
+          bottom: ri + gc.rowSpan - 1 === rowCount - 1,
+          left: gc.colStart === 0,
+          right: gc.colStart + gc.columnSpan === gridColCount
         };
         for (const side of sides) {
           const resolved = resolveCellBorder(side, c.borders, t.borders, isPerimeter[side]);
@@ -8042,8 +8110,8 @@ function emitTable(t, acc, ctx) {
       });
       const trHeight = ((_a2 = t.rowHeights) == null ? void 0 : _a2[ri]) !== void 0 ? { val: { v: t.rowHeights[ri].v }, hRule: ROW_HEIGHT_RULE_TO_UNIVER[t.rowHeights[ri].rule] } : { val: { v: 0 }, hRule: 0 };
       const rowEntry = { tableCells, trHeight };
-      if ((_b2 = t.rowCantSplit) == null ? void 0 : _b2[ri]) rowEntry.cantSplit = 1;
-      if ((_c2 = t.rowIsHeader) == null ? void 0 : _c2[ri]) rowEntry.repeatHeaderRow = 1;
+      if ((_b = t.rowCantSplit) == null ? void 0 : _b[ri]) rowEntry.cantSplit = 1;
+      if ((_c = t.rowIsHeader) == null ? void 0 : _c[ri]) rowEntry.repeatHeaderRow = 1;
       return rowEntry;
     }),
     tableColumns: colSizes.map((w) => ({
@@ -8051,7 +8119,7 @@ function emitTable(t, acc, ctx) {
       // TableSizeType.SPECIFIED
     })),
     align: t.align ? ALIGN_TO_UNIVER[t.align] : 0,
-    indent: { v: (_c = t.indentPx) != null ? _c : 0 },
+    indent: { v: (_a = t.indentPx) != null ? _a : 0 },
     textWrap: 0,
     // TableTextWrapType.NONE — TODO(unsupported): <w:tblpPr> floating tables map to WRAP
     position: {
