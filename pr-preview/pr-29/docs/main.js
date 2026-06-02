@@ -12,7 +12,7 @@ import {
   InsertDocImageCommand,
   UniverDebuggerPlugin,
   UniverDocsDrawingUIPlugin
-} from "../chunk-IZ6HL2BE.js";
+} from "../chunk-XH5XEAW5.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
