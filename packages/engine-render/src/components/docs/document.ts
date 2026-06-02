@@ -1403,5 +1403,15 @@ function setTableCellBorderDash(ctx: UniverRenderingContext, dashStyle?: DashSty
         return;
     }
 
+    if (dashStyle === DashStyleType.DOT_DASH) {
+        ctx.setLineDash([4, 2, 1, 2]);
+        return;
+    }
+
+    if (dashStyle === DashStyleType.DOT_DOT_DASH) {
+        ctx.setLineDash([4, 2, 1, 2, 1, 2]);
+        return;
+    }
+
     ctx.setLineDash([0]);
 }
