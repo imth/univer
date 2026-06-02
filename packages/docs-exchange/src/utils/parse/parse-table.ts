@@ -390,7 +390,13 @@ export function parseTable(
 
     if (rowHeights.some((h) => h !== undefined)) result.rowHeights = rowHeights;
     if (rowCantSplit.some(Boolean)) result.rowCantSplit = rowCantSplit;
-    if (rowIsHeader.some(Boolean)) result.rowIsHeader = rowIsHeader;
+  // Repeat-header rows repeat at the top of each page a table spans, so the
+  // layout reserves their height on every page. That only makes sense for a
+  // leading header block with body rows beneath it. Some generators stamp
+  // <w:tblHeader/> on EVERY row — honoring that reserves the whole table height
+  // per page and paginates one row per page. When all rows are headers there is
+  // no body to repeat into, so drop it (matches how Word renders such tables).
+    if (rowIsHeader.some(Boolean) && !rowIsHeader.every(Boolean)) result.rowIsHeader = rowIsHeader;
 
     return result;
 }

@@ -91,6 +91,36 @@ describe('parseParagraphStyle', () => {
         expect(parseParagraphStyle(node)?.borderBottom?.padding).toBe(4);
     });
 
+    it('skips pBdr sides with w:val="none" / w:sz="0" (explicit no border, not a box)', () => {
+        // Word writes a full pBdr with every side val="none" sz="0" to mean
+        // "no paragraph border". Emitting any border here draws a spurious box.
+        const node = pNode(
+            '<w:p xmlns:w="x"><w:pPr>'
+            + '<w:jc w:val="center"/>'
+            + '<w:pBdr>'
+            + '<w:top w:val="none" w:sz="0" w:space="0" w:color="1a1c1f"/>'
+            + '<w:bottom w:val="none" w:sz="0" w:space="0" w:color="1a1c1f"/>'
+            + '<w:left w:val="none" w:sz="0" w:space="0" w:color="1a1c1f"/>'
+            + '<w:right w:val="none" w:sz="0" w:space="0" w:color="1a1c1f"/>'
+            + '<w:between w:val="none" w:sz="0" w:space="0" w:color="1a1c1f"/>'
+            + '</w:pBdr></w:pPr></w:p>'
+        );
+        const s = parseParagraphStyle(node);
+        expect(s?.horizontalAlign).toBe(2); // the style object still exists
+        expect(s?.borderTop).toBeUndefined();
+        expect(s?.borderBottom).toBeUndefined();
+        expect(s?.borderLeft).toBeUndefined();
+        expect(s?.borderRight).toBeUndefined();
+        expect(s?.borderBetween).toBeUndefined();
+    });
+
+    it('skips a w:val="nil" border side', () => {
+        const node = pNode(
+            '<w:p xmlns:w="x"><w:pPr><w:pBdr><w:bottom w:val="nil" w:sz="4" w:color="000000"/></w:pBdr></w:pPr></w:p>'
+        );
+        expect(parseParagraphStyle(node)?.borderBottom).toBeUndefined();
+    });
+
     it('does not throw when w:jc has no val attribute (I2 guard)', () => {
     // <w:jc/> with no w:val — previously would do `undefined in ALIGN_MAP` → TypeError
         const node = pNode('<w:p xmlns:w="x"><w:pPr><w:jc/></w:pPr></w:p>');

@@ -78,8 +78,16 @@ const HEADING_MAP: Record<string, number> = {
 // Word resolves "automatic" on a white page.
 const DEFAULT_BORDER_COLOR_RGB = '#000000';
 
-function parseBorder(b: Record<string, unknown>): NonNullable<ParsedParagraphStyle['borderBottom']> {
+function parseBorder(b: Record<string, unknown>): NonNullable<ParsedParagraphStyle['borderBottom']> | undefined {
     const a = nodeAttrs(b);
+    const valAttr = a['@_w:val'] as string | undefined;
+    const sz = Number(a['@_w:sz']);
+  // ECMA-376 §17.3.1.6: w:val="none"/"nil" (or an explicit zero width) means the
+  // side has NO border. Word renders nothing; Word also writes a full pBdr of
+  // val="none" sz="0" sides to mean "no paragraph border", so emitting anything
+  // here draws a spurious box. Mirror the table-border handling (borderToUniver).
+    if (valAttr === 'none' || valAttr === 'nil' || sz === 0) return undefined;
+
     const out: NonNullable<ParsedParagraphStyle['borderBottom']> = {};
   // ECMA-376: w:color="auto" means "use theme/automatic color". The renderer
   // doesn't resolve theme colors and crashes on `border.color.rgb` when color
@@ -89,9 +97,7 @@ function parseBorder(b: Record<string, unknown>): NonNullable<ParsedParagraphSty
     const colorAttr = a['@_w:color'] as string | undefined;
     if (colorAttr && colorAttr !== 'auto') out.color = { rgb: `#${colorAttr.toUpperCase()}` };
     else out.color = { rgb: DEFAULT_BORDER_COLOR_RGB };
-    const sz = Number(a['@_w:sz']);
     if (!Number.isNaN(sz)) out.width = Math.max(1, Math.round(sz / 6));
-    const valAttr = a['@_w:val'] as string | undefined;
     out.dashStyle = (valAttr && DOCX_BORDER_TO_UNIVER_DASH[valAttr]) || 1;
     const space = Number(a['@_w:space']);
     // ECMA-376 §17.3.1.7: w:space is in points (NOT dxa). Renderer wants px.
@@ -275,11 +281,13 @@ export function parsePPr(pPr: XmlNode | undefined): ParsedParagraphStyle | undef
         } else if (name === 'w:pBdr') {
             for (const b of nodeChildren(child)) {
                 const bn = nodeName(b);
-                if (bn === 'w:bottom') out.borderBottom = parseBorder(b);
-                else if (bn === 'w:top') out.borderTop = parseBorder(b);
-                else if (bn === 'w:left') out.borderLeft = parseBorder(b);
-                else if (bn === 'w:right') out.borderRight = parseBorder(b);
-                else if (bn === 'w:between') out.borderBetween = parseBorder(b);
+                const parsed = parseBorder(b);
+                if (!parsed) continue; // val="none"/"nil"/sz=0 → no border on this side
+                if (bn === 'w:bottom') out.borderBottom = parsed;
+                else if (bn === 'w:top') out.borderTop = parsed;
+                else if (bn === 'w:left') out.borderLeft = parsed;
+                else if (bn === 'w:right') out.borderRight = parsed;
+                else if (bn === 'w:between') out.borderBetween = parsed;
             }
         } else if (name === 'w:tabs') {
             parseTabsInto(child, out);
