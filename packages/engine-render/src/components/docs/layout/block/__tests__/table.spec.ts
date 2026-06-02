@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
-import { BooleanNumber, TableAlignmentType, TableRowHeightRule, VerticalAlignmentType } from '@univerjs/core';
+import type { ITable } from '@univerjs/core';
+import type { IParagraphList } from '../../../../../basics/i-document-skeleton-cached';
+import type { DataStreamTreeNode } from '../../../view-model/data-stream-tree-node';
+import { BooleanNumber, TableAlignmentType, TableRowHeightRule, TableSizeType, VerticalAlignmentType } from '@univerjs/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import {
     createTableSkeleton,
     createTableSkeletons,
@@ -33,6 +35,21 @@ vi.mock('../../model/page', () => ({
     createSkeletonCellPages: (...args: unknown[]) => createSkeletonCellPagesMock(...args),
     createNullCellPage: (...args: unknown[]) => createNullCellPageMock(...args),
 }));
+
+function createMockTable(overrides: Partial<ITable> = {}): ITable {
+    return {
+        tableId: 'test-table',
+        tableRows: [],
+        tableColumns: [],
+        align: TableAlignmentType.START,
+        indent: { v: 0 },
+        textWrap: 0 as unknown as ITable['textWrap'],
+        position: {} as unknown as ITable['position'],
+        dist: {} as unknown as ITable['dist'],
+        size: { type: TableSizeType.UNSPECIFIED, width: { v: 100 } },
+        ...overrides,
+    } as ITable;
+}
 
 function createRowNode(startIndex: number, endIndex: number, cellCount: number) {
     return {
@@ -125,6 +142,120 @@ function makeCellPage(width: number, height: number) {
     };
 }
 
+describe('table utilities', () => {
+    describe('getTableSliceId', () => {
+        it('concatenates tableId and sliceIndex with delimiter', () => {
+            expect(getTableSliceId('table1', 0)).toBe('table1#-#0');
+            expect(getTableSliceId('table1', 2)).toBe('table1#-#2');
+            expect(getTableSliceId('my-table', 99)).toBe('my-table#-#99');
+        });
+    });
+
+    describe('getTableIdAndSliceIndex', () => {
+        it('parses sliced table id', () => {
+            expect(getTableIdAndSliceIndex('table1#-#0')).toEqual({
+                tableId: 'table1',
+                sliceIndex: 0,
+            });
+            expect(getTableIdAndSliceIndex('table1#-#2')).toEqual({
+                tableId: 'table1',
+                sliceIndex: 2,
+            });
+        });
+
+        it('returns sliceIndex 0 for unsliced table id', () => {
+            expect(getTableIdAndSliceIndex('table1')).toEqual({
+                tableId: 'table1',
+                sliceIndex: 0,
+            });
+        });
+    });
+
+    describe('getNullTableSkeleton', () => {
+        it('returns a skeleton with zero dimensions and given bounds', () => {
+            const table = createMockTable();
+            const skeleton = getNullTableSkeleton(10, 50, table);
+
+            expect(skeleton.rows).toEqual([]);
+            expect(skeleton.width).toBe(0);
+            expect(skeleton.height).toBe(0);
+            expect(skeleton.top).toBe(0);
+            expect(skeleton.left).toBe(0);
+            expect(skeleton.st).toBe(10);
+            expect(skeleton.ed).toBe(50);
+            expect(skeleton.tableId).toBe('test-table');
+            expect(skeleton.tableSource).toBe(table);
+        });
+    });
+
+    describe('rollbackListCache', () => {
+        it('removes paragraph lists whose startIndex is inside the table range', () => {
+            const paragraphList1: IParagraphList = {
+                bullet: {} as unknown as IParagraphList['bullet'],
+                paragraph: { startIndex: 5 } as unknown as IParagraphList['paragraph'],
+            };
+            const paragraphList2: IParagraphList = {
+                bullet: {} as unknown as IParagraphList['bullet'],
+                paragraph: { startIndex: 15 } as unknown as IParagraphList['paragraph'],
+            };
+            const paragraphList3: IParagraphList = {
+                bullet: {} as unknown as IParagraphList['bullet'],
+                paragraph: { startIndex: 25 } as unknown as IParagraphList['paragraph'],
+            };
+
+            const listLevel = new Map<string, IParagraphList[][]>([
+                ['list1', [[paragraphList1, paragraphList2, paragraphList3]]],
+            ]);
+
+            const tableNode = {
+                startIndex: 10,
+                endIndex: 20,
+            } as DataStreamTreeNode;
+
+            rollbackListCache(listLevel, tableNode);
+
+            const result = listLevel.get('list1')![0];
+            expect(result).toHaveLength(1);
+            expect(result[0].paragraph.startIndex).toBe(5);
+        });
+
+        it('does not remove paragraph lists outside the table range', () => {
+            const paragraphList1: IParagraphList = {
+                bullet: {} as unknown as IParagraphList['bullet'],
+                paragraph: { startIndex: 1 } as unknown as IParagraphList['paragraph'],
+            };
+            const paragraphList2: IParagraphList = {
+                bullet: {} as unknown as IParagraphList['bullet'],
+                paragraph: { startIndex: 2 } as unknown as IParagraphList['paragraph'],
+            };
+
+            const listLevel = new Map<string, IParagraphList[][]>([
+                ['list1', [[paragraphList1, paragraphList2]]],
+            ]);
+
+            const tableNode = {
+                startIndex: 10,
+                endIndex: 20,
+            } as DataStreamTreeNode;
+
+            rollbackListCache(listLevel, tableNode);
+
+            const result = listLevel.get('list1')![0];
+            expect(result).toHaveLength(2);
+        });
+
+        it('handles empty listLevel', () => {
+            const listLevel = new Map<string, IParagraphList[][]>();
+            const tableNode = {
+                startIndex: 10,
+                endIndex: 20,
+            } as DataStreamTreeNode;
+
+            expect(() => rollbackListCache(listLevel, tableNode)).not.toThrow();
+        });
+    });
+});
+
 describe('docs table layout', () => {
     beforeEach(() => {
         createSkeletonCellPagesMock.mockReset();
@@ -158,6 +289,87 @@ describe('docs table layout', () => {
         expect(skeleton?.rows[0].cells[1].marginTop).toBeGreaterThanOrEqual(1);
     });
 
+    it('keeps covered merged cells as non-rendering layout placeholders', () => {
+        const { ctx, curPage, viewModel, tableNode, sectionBreakConfig, tableSource } = createContextAndTable();
+        createSkeletonCellPagesMock.mockImplementation(
+            (_ctx: unknown, _viewModel: unknown, _cellNode: unknown, _section: unknown, table: any, row: number, col: number) => {
+                const columnSpan = Math.max(1, table.tableRows[row].tableCells[col].columnSpan ?? 1);
+                return [makeCellPage(60 * columnSpan, 20)];
+            }
+        );
+        tableSource.tableRows[0].tableCells = [
+            { columnSpan: 2, vAlign: VerticalAlignmentType.TOP },
+            { rowSpan: 0, columnSpan: 0, vAlign: VerticalAlignmentType.TOP },
+            { vAlign: VerticalAlignmentType.TOP },
+        ];
+        tableNode.children[0] = createRowNode(1, 30, 3) as any;
+
+        const skeleton = createTableSkeleton(ctx, curPage, viewModel, tableNode, sectionBreakConfig);
+
+        expect(skeleton).not.toBeNull();
+        const cells = skeleton!.rows[0].cells;
+        expect(cells).toHaveLength(3);
+        expect((cells[1] as any).isMergedCellCovered).toBe(true);
+        expect(cells[2].left).toBe(120);
+        expect(createSkeletonCellPagesMock.mock.calls.some((call) => call[5] === 0 && call[6] === 1)).toBe(false);
+    });
+
+    it('does not shift cells after a same-row horizontally covered merged cell', () => {
+        const { ctx, curPage, viewModel, tableNode, sectionBreakConfig, tableSource } = createContextAndTable();
+        createSkeletonCellPagesMock.mockImplementation(
+            (_ctx: unknown, _viewModel: unknown, _cellNode: unknown, _section: unknown, table: any, row: number, col: number) => {
+                const columnSpan = Math.max(1, table.tableRows[row].tableCells[col].columnSpan ?? 1);
+                return [makeCellPage(60 * columnSpan, 20)];
+            }
+        );
+        tableSource.tableRows[0].tableCells = [
+            { vAlign: VerticalAlignmentType.TOP },
+            { columnSpan: 2, vAlign: VerticalAlignmentType.TOP },
+            { rowSpan: 0, columnSpan: 0, vAlign: VerticalAlignmentType.TOP },
+            { vAlign: VerticalAlignmentType.TOP },
+        ];
+        tableNode.children[0] = createRowNode(1, 30, 4) as any;
+
+        const skeleton = createTableSkeleton(ctx, curPage, viewModel, tableNode, sectionBreakConfig);
+
+        expect(skeleton?.rows[0].cells[3].left).toBe(180);
+    });
+
+    it('expands merged master cell height across spanned rows', () => {
+        const { ctx, curPage, viewModel, tableNode, sectionBreakConfig, tableSource } = createContextAndTable();
+        tableSource.tableRows[0].tableCells = [
+            { rowSpan: 2, columnSpan: 2, vAlign: VerticalAlignmentType.TOP },
+            { rowSpan: 0, columnSpan: 0, vAlign: VerticalAlignmentType.TOP },
+        ];
+        tableSource.tableRows[1].tableCells = [
+            { rowSpan: 0, columnSpan: 0, vAlign: VerticalAlignmentType.TOP },
+            { rowSpan: 0, columnSpan: 0, vAlign: VerticalAlignmentType.TOP },
+        ];
+
+        const skeleton = createTableSkeleton(ctx, curPage, viewModel, tableNode, sectionBreakConfig);
+
+        expect(skeleton?.rows[0].cells[0].pageHeight).toBe(
+            skeleton!.rows[0].height + skeleton!.rows[1].height
+        );
+    });
+
+    it('treats explicit row height as a minimum so wrapped cell content remains visible', () => {
+        const { ctx, curPage, viewModel, tableNode, sectionBreakConfig, tableSource } = createContextAndTable();
+        tableSource.tableRows[0].trHeight = {
+            hRule: TableRowHeightRule.EXACT,
+            val: { v: 18 },
+        };
+        createSkeletonCellPagesMock.mockImplementation(
+            (_ctx: unknown, _viewModel: unknown, _cellNode: unknown, _section: unknown, _table: unknown, row: number) =>
+                [makeCellPage(60, row === 0 ? 48 : 20)]
+        );
+
+        const skeleton = createTableSkeleton(ctx, curPage, viewModel, tableNode, sectionBreakConfig);
+
+        expect(skeleton?.rows[0].height).toBe(50);
+        expect(skeleton?.rows[0].cells[0].pageHeight).toBe(50);
+    });
+
     it('creates sliced tables when available height is limited', () => {
         const { ctx, curPage, viewModel, tableNode, sectionBreakConfig } = createContextAndTable();
 
@@ -171,340 +383,51 @@ describe('docs table layout', () => {
         }
     });
 
-    it('createTableSkeletons (cross-page variant) handles vMerge identically to single-page', () => {
-        // Same fixture as the "skips vMerge continuation slots" test, run
-        // through the cross-page entry point with ample height so it
-        // doesn't actually paginate. Regression: cross-page used to walk
-        // by cellNode index, so it never skipped continuation slots and
-        // never absorbed rowSpan height deficits.
-        createSkeletonCellPagesMock.mockReset();
-        createSkeletonCellPagesMock.mockImplementation(
-            (_ctx: unknown, _vm: unknown, _cell: unknown, _sec: unknown, _t: unknown, row: number, col: number) => {
-                if (row === 0 && col === 0) return [makeCellPage(60, 60)];
-                return [makeCellPage(60, 20)];
+    it('repeats multiple leading header rows on sliced table pages', () => {
+        const { ctx, curPage, viewModel, tableNode, sectionBreakConfig, tableSource } = createContextAndTable();
+        tableSource.tableRows[1].repeatHeaderRow = BooleanNumber.TRUE;
+        tableSource.tableRows.push(
+            {
+                repeatHeaderRow: BooleanNumber.FALSE,
+                trHeight: {
+                    hRule: TableRowHeightRule.EXACT,
+                    val: { v: 70 },
+                },
+                cantSplit: BooleanNumber.FALSE,
+                tableCells: [
+                    { vAlign: VerticalAlignmentType.TOP },
+                    { vAlign: VerticalAlignmentType.TOP },
+                ],
+            },
+            {
+                repeatHeaderRow: BooleanNumber.FALSE,
+                trHeight: {
+                    hRule: TableRowHeightRule.EXACT,
+                    val: { v: 40 },
+                },
+                cantSplit: BooleanNumber.FALSE,
+                tableCells: [
+                    { vAlign: VerticalAlignmentType.TOP },
+                    { vAlign: VerticalAlignmentType.TOP },
+                ],
             }
         );
+        tableNode.children.push(createRowNode(41, 60, 2) as any, createRowNode(61, 80, 2) as any);
 
-        const tableSource = {
-            tableId: 'table-vm-cross',
-            align: TableAlignmentType.START,
-            indent: { v: 0 },
-            tableRows: [
-                {
-                    repeatHeaderRow: BooleanNumber.FALSE,
-                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
-                    cantSplit: BooleanNumber.FALSE,
-                    tableCells: [{ rowSpan: 2 }, {}],
-                },
-                {
-                    repeatHeaderRow: BooleanNumber.FALSE,
-                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
-                    cantSplit: BooleanNumber.FALSE,
-                    tableCells: [{ vMergeContinue: BooleanNumber.TRUE }, {}],
-                },
-            ],
-        } as any;
-        const viewModel = { getTableByStartIndex: vi.fn(() => ({ tableSource })) } as any;
-        // cellNodes are 1:1 with rowSource.tableCells (parser keeps
-        // continuation entries), so row 1 has 2 child nodes too.
-        const tableNode = {
-            startIndex: 0,
-            endIndex: 80,
-            children: [createRowNode(1, 20, 2), createRowNode(21, 40, 2)],
-        } as any;
-        const curPage = {
-            pageWidth: 400,
-            pageHeight: 600,
-            marginTop: 20,
-            marginBottom: 20,
-            marginLeft: 10,
-            marginRight: 10,
-        } as any;
+        const result = createTableSkeletons(ctx, curPage, viewModel, tableNode, sectionBreakConfig, 110);
 
-        const result = createTableSkeletons({} as any, curPage, viewModel, tableNode, {} as any, 600);
-        expect(result.skeTables.length).toBe(1);
-        const skeleton = result.skeTables[0];
-        // Row 0 has both real cells; row 1 has only the right-side cell
-        // (continuation slot is skipped).
-        expect(skeleton.rows[0].cells.length).toBe(2);
-        expect(skeleton.rows[1].cells.length).toBe(1);
-        // Row 1's real cell sits at left = 60 (after the continuation column).
-        expect(skeleton.rows[1].cells[0].left).toBe(60);
-        // Spanned cell's pageHeight = sum of row 0 + row 1 heights (62).
-        expect(skeleton.rows[0].cells[0].pageHeight).toBe(62);
-        // Row 1 absorbed the 18 px deficit.
-        expect(skeleton.rows[1].height).toBe(40);
-        // cellSourceIndex round-trips.
-        expect(skeleton.rows[0].cells[0].cellSourceIndex).toBe(0);
-        expect(skeleton.rows[1].cells[0].cellSourceIndex).toBe(1);
+        expect(result.skeTables.length).toBeGreaterThan(1);
+        expect(result.skeTables[1].rows[0]).toMatchObject({ index: 0, isRepeatRow: true });
+        expect(result.skeTables[1].rows[1]).toMatchObject({ index: 1, isRepeatRow: true });
+        expect(result.skeTables[1].rows[2]).toMatchObject({ index: 2, isRepeatRow: false });
     });
 
-    it('skips vMerge continuation slots and absorbs height deficit into the last spanned row', () => {
-        // 2-row × 2-col table: row 0 col 0 is rowSpan=2 (content height
-        // 60); row 0 col 1 is normal (height 20); row 1 col 0 is the
-        // vMerge continuation; row 1 col 1 normal (height 20).
-        // Margins = 1+1 → natural per-row height = 22.
-        // Spanned cell needs 62, spanned rows available 22+22=44 → 18 px
-        // deficit → row 1 height becomes 40, spanned pageHeight = 62.
-        createSkeletonCellPagesMock.mockReset();
-        createSkeletonCellPagesMock.mockImplementation(
-            (_ctx: unknown, _vm: unknown, _cell: unknown, _sec: unknown, _t: unknown, row: number, col: number) => {
-                if (row === 0 && col === 0) return [makeCellPage(60, 60)];
-                return [makeCellPage(60, 20)];
-            }
-        );
-
-        const tableSource = {
-            tableId: 'table-vm',
-            align: TableAlignmentType.START,
-            indent: { v: 0 },
-            tableRows: [
-                {
-                    repeatHeaderRow: BooleanNumber.FALSE,
-                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
-                    cantSplit: BooleanNumber.FALSE,
-                    tableCells: [
-                        { rowSpan: 2 },
-                        {},
-                    ],
-                },
-                {
-                    repeatHeaderRow: BooleanNumber.FALSE,
-                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
-                    cantSplit: BooleanNumber.FALSE,
-                    tableCells: [
-                        { vMergeContinue: BooleanNumber.TRUE },
-                        {},
-                    ],
-                },
-            ],
-        } as any;
-        const viewModel = { getTableByStartIndex: vi.fn(() => ({ tableSource })) } as any;
-        const tableNode = {
-            startIndex: 0,
-            endIndex: 80,
-            children: [
-                createRowNode(1, 20, 2),
-                createRowNode(21, 40, 2),
-            ],
-        } as any;
-        const curPage = {
-            pageWidth: 400,
-            pageHeight: 300,
-            marginTop: 20,
-            marginBottom: 20,
-            marginLeft: 10,
-            marginRight: 10,
-        } as any;
-
-        const skeleton = createTableSkeleton({} as any, curPage, viewModel, tableNode, {} as any);
-        expect(skeleton).toBeTruthy();
-        // Row 0 has BOTH cells (the rowSpan owner + the normal col 1 cell).
-        expect(skeleton!.rows[0].cells.length).toBe(2);
-        // Row 1 has ONE cell — the continuation slot is skipped.
-        expect(skeleton!.rows[1].cells.length).toBe(1);
-
-        const spanned = skeleton!.rows[0].cells[0];
-        // Spanned cell's pageHeight = row 0 (22) + row 1 (22 + 18 deficit) = 62.
-        expect(spanned.pageHeight).toBe(62);
-        // Row 1's height absorbed the 18 px deficit.
-        expect(skeleton!.rows[1].height).toBe(40);
-        // cellSourceIndex round-trips to the underlying ITableCell index.
-        expect(spanned.cellSourceIndex).toBe(0);
-        expect(skeleton!.rows[1].cells[0].cellSourceIndex).toBe(1);
-        // The row-1 real cell is the right-hand col-1 cell — its `left`
-        // must reserve room for the continuation column on the left, not
-        // collapse to 0 (regression: cells after a continuation slot used
-        // to render at left=0).
-        expect(skeleton!.rows[1].cells[0].left).toBeGreaterThan(0);
-        expect(skeleton!.rows[1].cells[0].left).toBe(spanned.pageWidth);
-    });
-
-    it('keeps an earlier rowSpan cell tall when a later rowSpan cell stretches the rows', () => {
-        // 2-row × 2-col table. Both cells in row 0 are rowSpan=2 owners.
-        // col-0 owner needs 20 px (short). col-1 owner needs 60 px (tall).
-        // Natural row heights are 22 each (20 content + 1+1 margins) → row
-        // total 44 → col-1 needs 16 px of deficit, absorbed by row 1.
-        // Regression: col-0 pageHeight must reflect the FINAL row total
-        // (22 + 38 = 60), not the row total at the time col-0 was processed
-        // (22 + 22 = 44).
-        createSkeletonCellPagesMock.mockReset();
-        createSkeletonCellPagesMock.mockImplementation(
-            (_ctx: unknown, _vm: unknown, _cell: unknown, _sec: unknown, _t: unknown, row: number, col: number) => {
-                if (row === 0 && col === 0) return [makeCellPage(60, 20)];
-                if (row === 0 && col === 1) return [makeCellPage(60, 60)];
-                return [makeCellPage(60, 0)];
-            }
-        );
-
-        const tableSource = {
-            tableId: 'table-multi-span',
-            align: TableAlignmentType.START,
-            indent: { v: 0 },
-            tableRows: [
-                {
-                    repeatHeaderRow: BooleanNumber.FALSE,
-                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
-                    cantSplit: BooleanNumber.FALSE,
-                    tableCells: [{ rowSpan: 2 }, { rowSpan: 2 }],
-                },
-                {
-                    repeatHeaderRow: BooleanNumber.FALSE,
-                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
-                    cantSplit: BooleanNumber.FALSE,
-                    tableCells: [{ vMergeContinue: BooleanNumber.TRUE }, { vMergeContinue: BooleanNumber.TRUE }],
-                },
-            ],
-        } as any;
-        const viewModel = { getTableByStartIndex: vi.fn(() => ({ tableSource })) } as any;
-        const tableNode = {
-            startIndex: 0,
-            endIndex: 80,
-            children: [createRowNode(1, 20, 2), createRowNode(21, 40, 2)],
-        } as any;
-        const curPage = {
-            pageWidth: 400,
-            pageHeight: 300,
-            marginTop: 20,
-            marginBottom: 20,
-            marginLeft: 10,
-            marginRight: 10,
-        } as any;
-
-        const skeleton = createTableSkeleton({} as any, curPage, viewModel, tableNode, {} as any);
-        expect(skeleton).toBeTruthy();
-        // Row 0 stays at 0 (no single-row cells contribute height); row 1
-        // absorbs deficits from BOTH spanned cells (22 from col-0, then
-        // another 40 from col-1's 62 px requirement), so row 1 = 62.
-        expect(skeleton!.rows[0].height).toBe(0);
-        expect(skeleton!.rows[1].height).toBe(62);
-        // Regression check: col-0's pageHeight reflects row 1's FINAL
-        // height (after col-1 stretched it), not the row total at the
-        // moment col-0 was processed. Both spanned cells should be 62.
-        expect(skeleton!.rows[0].cells[0].pageHeight).toBe(62);
-        expect(skeleton!.rows[0].cells[1].pageHeight).toBe(62);
-    });
-
-    it('uses tableColumns as the authoritative grid-column origin (Basic Table layout)', () => {
-        // Mirrors `全格式.docx` → "Basic Table": 3 rows × 4 grid columns.
-        // Row 0: [gridSpan=2] [normal] [rowSpan=2]   (3 real cells over 4 cols)
-        // Row 1: [normal] [normal] [vMerge cont]    (3 real cells)
-        // Row 2: [normal] [normal] [gridSpan=2]     (3 real cells over 4 cols)
-        // Regression: a row-0 col-2 with width 144 used to push a delta into
-        // col-3's left, so later cells in col-3 rendered too far right.
-        createSkeletonCellPagesMock.mockReset();
-        createSkeletonCellPagesMock.mockImplementation(
-            (_c: unknown, _v: unknown, _cell: unknown, _s: unknown, t: any, row: number, col: number, _ah?: number, _mh?: number, cellIdx?: number) => {
-                const cell = t.tableRows[row].tableCells[cellIdx ?? col];
-                const span = Math.max(1, cell.columnSpan ?? 1);
-                let w = 0;
-                for (let i = 0; i < span; i++) w += t.tableColumns[col + i].size.width.v;
-                return [makeCellPage(w, 18)];
-            }
-        );
-
-        const tableSource = {
-            tableId: 'table-basic',
-            align: TableAlignmentType.START,
-            indent: { v: 0 },
-            tableColumns: [
-                { size: { width: { v: 144 } } },
-                { size: { width: { v: 144 } } },
-                { size: { width: { v: 144 } } },
-                { size: { width: { v: 143 } } },
-            ],
-            tableRows: [
-                {
-                    repeatHeaderRow: BooleanNumber.FALSE,
-                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
-                    cantSplit: BooleanNumber.FALSE,
-                    tableCells: [
-                        { columnSpan: 2 },
-                        {},
-                        { rowSpan: 2 },
-                    ],
-                },
-                {
-                    repeatHeaderRow: BooleanNumber.FALSE,
-                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
-                    cantSplit: BooleanNumber.FALSE,
-                    tableCells: [
-                        {},
-                        {},
-                        { vMergeContinue: BooleanNumber.TRUE },
-                    ],
-                },
-                {
-                    repeatHeaderRow: BooleanNumber.FALSE,
-                    trHeight: { hRule: TableRowHeightRule.AUTO, val: { v: 0 } },
-                    cantSplit: BooleanNumber.FALSE,
-                    tableCells: [
-                        {},
-                        {},
-                        { columnSpan: 2 },
-                    ],
-                },
-            ],
-        } as any;
-        const viewModel = { getTableByStartIndex: vi.fn(() => ({ tableSource })) } as any;
-        const tableNode = {
-            startIndex: 0,
-            endIndex: 80,
-            children: [createRowNode(1, 20, 3), createRowNode(21, 40, 3), createRowNode(41, 60, 3)],
-        } as any;
-        const curPage = {
-            pageWidth: 800,
-            pageHeight: 600,
-            marginTop: 20,
-            marginBottom: 20,
-            marginLeft: 10,
-            marginRight: 10,
-        } as any;
-
-        const skeleton = createTableSkeleton({} as any, curPage, viewModel, tableNode, {} as any);
-        expect(skeleton).toBeTruthy();
-
-        // Row 0: gridSpan=2 cell at col 0 (left=0), normal at col 2 (left=288),
-        // rowSpan=2 cell at col 3 (left=432).
-        expect(skeleton!.rows[0].cells[0].left).toBe(0);
-        expect(skeleton!.rows[0].cells[0].pageWidth).toBe(288);
-        expect(skeleton!.rows[0].cells[1].left).toBe(288);
-        expect(skeleton!.rows[0].cells[2].left).toBe(432);
-
-        // Row 1: skips the col-3 continuation slot; cells at cols 0, 1.
-        expect(skeleton!.rows[1].cells.length).toBe(2);
-        expect(skeleton!.rows[1].cells[0].left).toBe(0);
-        expect(skeleton!.rows[1].cells[1].left).toBe(144);
-
-        // Row 2: cells at cols 0, 1, and gridSpan=2 at col 2.
-        // Regression: col-2 used to land at 575 (288+144+143) because the
-        // delta from the previous row's col-2 width cascaded into col-3.
-        expect(skeleton!.rows[2].cells[0].left).toBe(0);
-        expect(skeleton!.rows[2].cells[1].left).toBe(144);
-        expect(skeleton!.rows[2].cells[2].left).toBe(288);
-        expect(skeleton!.rows[2].cells[2].pageWidth).toBe(287);
-    });
-
-    it('handles rollback/slice id helpers and missing table branches', () => {
-        const listCache = new Map<string, any[][]>([
-            ['a', [[{ paragraph: { startIndex: 1 } }, { paragraph: { startIndex: 20 } }]]],
-        ]);
-        rollbackListCache(listCache as any, { startIndex: 5, endIndex: 50 } as any);
-        expect(listCache.get('a')?.[0].length).toBe(1);
-
-        const sliceId = getTableSliceId('table-x', 3);
-        expect(sliceId).toBe('table-x#-#3');
-        expect(getTableIdAndSliceIndex(sliceId)).toEqual({ tableId: 'table-x', sliceIndex: 3 });
-        expect(getTableIdAndSliceIndex('table-y')).toEqual({ tableId: 'table-y', sliceIndex: 0 });
-
-        const nullTable = getNullTableSkeleton(1, 2, { tableId: 't0' } as any);
-        expect(nullTable.rows).toEqual([]);
-        expect(nullTable.tableId).toBe('t0');
-
+    it('returns an empty slice result when the table is missing', () => {
         const { ctx, curPage, tableNode, sectionBreakConfig } = createContextAndTable();
         const noTableViewModel = {
             getTableByStartIndex: vi.fn(() => null),
         };
+
         expect(createTableSkeleton(ctx, curPage, noTableViewModel as any, tableNode, sectionBreakConfig)).toBeNull();
         const sliced = createTableSkeletons(ctx, curPage, noTableViewModel as any, tableNode, sectionBreakConfig, 100);
         expect(sliced.skeTables).toEqual([]);
