@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import type { IDocumentRenderConfig, IParagraphBorder, IScale, ITableCellBorder, Nullable } from '@univerjs/core';
+import type { IDocumentRenderConfig, IParagraphBorder, IScale, ITableCell, ITableCellBorder, Nullable } from '@univerjs/core';
 
 import type { IDocumentSkeletonDivide, IDocumentSkeletonGlyph, IDocumentSkeletonLine, IDocumentSkeletonPage, IDocumentSkeletonRow, IDocumentSkeletonTable } from '../../basics/i-document-skeleton-cached';
 import type { Transform } from '../../basics/transform';
@@ -25,7 +25,7 @@ import type { ComponentExtension, IDrawInfo, IExtensionConfig } from '../extensi
 import type { IDocumentsConfig, IPageMarginLayout } from './doc-component';
 import type { DocumentSkeleton } from './layout/doc-skeleton';
 import type { IDocsTableRenderViewport } from './table-render-viewport';
-import { BooleanNumber, CellValueType, DashStyleType, HorizontalAlign, VerticalAlign, WrapStrategy } from '@univerjs/core';
+import { CellValueType, DashStyleType, HorizontalAlign, VerticalAlign, WrapStrategy } from '@univerjs/core';
 import { Subject } from 'rxjs';
 import { BORDER_TYPE as BORDER_LTRB, drawLineByBorderType } from '../../basics';
 import { calculateRectRotate, getRotateOffsetAndFarthestHypotenuse } from '../../basics/draw';
@@ -1006,29 +1006,20 @@ export class Documents extends DocComponent {
         const { marginLeft, marginTop } = page;
         const { pageWidth, pageHeight } = cell;
         const rowSke = cell.parent as IDocumentSkeletonRow;
-        // Prefer the explicit `cellSourceIndex` stashed during layout —
-        // `rowSke.cells.indexOf(cell)` no longer matches the index into
-        // `rowSource.tableCells` once vMerge continuation cells are
-        // dropped from the skeleton. Fall back to indexOf for legacy
-        // skeletons that don't carry the field yet.
-        const index = cell.cellSourceIndex ?? rowSke.cells.indexOf(cell);
-        const cellSource = rowSke.rowSource.tableCells[index];
+        const index = rowSke.cells.indexOf(cell);
 
-        // vMerge continuation cell — its visual region is owned by the
-        // restart cell above, which already paints the full merged
-        // rectangle's border and background. Drawing here would lay a
-        // spurious internal border across the merge.
-        if (cellSource?.vMergeContinue === BooleanNumber.TRUE) {
+        if (index < 0) {
             return;
         }
 
-        const {
-            borderTop = DEFAULT_BORDER_COLOR,
-            borderBottom = DEFAULT_BORDER_COLOR,
-            borderLeft = DEFAULT_BORDER_COLOR,
-            borderRight = DEFAULT_BORDER_COLOR,
-            backgroundColor,
-        } = cellSource;
+        const cellSource = rowSke.rowSource.tableCells[index];
+        const tableSke = rowSke.parent as IDocumentSkeletonTable | undefined;
+        const rowIndexInTable = tableSke?.rows.indexOf(rowSke);
+        const rowIndex = rowIndexInTable == null || rowIndexInTable < 0 ? rowSke.index ?? 0 : rowIndexInTable;
+
+        if (!cellSource || cellSource.rowSpan === 0 || cellSource.columnSpan === 0) {
+            return;
+        }
 
         if (this._drawLiquid == null) {
             return;
@@ -1039,61 +1030,85 @@ export class Documents extends DocComponent {
         y += marginTop;
 
         // Draw cell bg.
-        if (backgroundColor && backgroundColor.rgb) {
+        if (cellSource.backgroundColor?.rgb) {
             ctx.save();
-            ctx.fillStyle = backgroundColor.rgb;
+            ctx.fillStyle = cellSource.backgroundColor.rgb;
             ctx.fillRectByPrecision(x, y, pageWidth, pageHeight);
             ctx.restore();
         }
 
-        ctx.save();
-        ctx.setLineWidthByPrecision (1);
-
-        ctx.save();
-        ctx.strokeStyle = borderLeft.color.rgb ?? DEFAULT_BORDER_COLOR.color.rgb!;
-        applyDocBorderDash(ctx, borderLeft.dashStyle);
-        drawLineByBorderType(ctx, BORDER_LTRB.LEFT, 0, {
+        const position = {
             startX: x,
             startY: y,
             endX: x + pageWidth,
             endY: y + pageHeight,
-        });
-        ctx.restore();
+        };
+
+        const rightCellSource = this._getTableCellSource(rowSke, index + 1);
+        const bottomCellSource = tableSke ? this._getTableCellSource(tableSke.rows[rowIndex + 1], index) : undefined;
+        this._drawTableCellBorder(ctx, this._resolveTableCellBorder(cellSource.borderRight, rightCellSource?.borderLeft), BORDER_LTRB.RIGHT, position);
+        this._drawTableCellBorder(ctx, this._resolveTableCellBorder(cellSource.borderBottom, bottomCellSource?.borderTop), BORDER_LTRB.BOTTOM, position);
+
+        if (rowIndex <= 0) {
+            this._drawTableCellBorder(ctx, this._resolveTableCellBorder(cellSource.borderTop), BORDER_LTRB.TOP, position);
+        }
+
+        if (index <= 0) {
+            this._drawTableCellBorder(ctx, this._resolveTableCellBorder(cellSource.borderLeft), BORDER_LTRB.LEFT, position);
+        }
+    }
+
+    private _getTableCellSource(row: Nullable<IDocumentSkeletonRow>, column: number): Nullable<ITableCell> {
+        return row?.rowSource.tableCells[column] ?? null;
+    }
+
+    private _resolveTableCellBorder(primary?: ITableCellBorder, secondary?: ITableCellBorder): Nullable<ITableCellBorder> {
+        if (this._isDrawableTableCellBorder(primary)) {
+            return primary!;
+        }
+
+        if (this._isDrawableTableCellBorder(secondary)) {
+            return secondary!;
+        }
+
+        if (primary || secondary) {
+            return null;
+        }
+
+        return DEFAULT_BORDER_COLOR;
+    }
+
+    private _isDrawableTableCellBorder(border?: ITableCellBorder): boolean {
+        if (!border) {
+            return false;
+        }
+
+        const lineWidth = border.width?.v ?? 1;
+        const color = border.color?.rgb ?? DEFAULT_BORDER_COLOR.color.rgb!;
+        return lineWidth > 0 && color !== 'transparent';
+    }
+
+    private _drawTableCellBorder(
+        ctx: UniverRenderingContext,
+        border: Nullable<ITableCellBorder>,
+        type: BORDER_LTRB,
+        position: { startX: number; startY: number; endX: number; endY: number }
+    ) {
+        if (!border) {
+            return;
+        }
+
+        const lineWidth = border.width?.v ?? 1;
+        const color = border.color?.rgb ?? DEFAULT_BORDER_COLOR.color.rgb!;
+        if (lineWidth <= 0 || color === 'transparent') {
+            return;
+        }
 
         ctx.save();
-        ctx.strokeStyle = borderTop.color.rgb ?? DEFAULT_BORDER_COLOR.color.rgb!;
-        applyDocBorderDash(ctx, borderTop.dashStyle);
-        drawLineByBorderType(ctx, BORDER_LTRB.TOP, 0, {
-            startX: x,
-            startY: y,
-            endX: x + pageWidth,
-            endY: y + pageHeight,
-        });
-        ctx.restore();
-
-        ctx.save();
-        ctx.strokeStyle = borderRight.color.rgb ?? DEFAULT_BORDER_COLOR.color.rgb!;
-        applyDocBorderDash(ctx, borderRight.dashStyle);
-        drawLineByBorderType(ctx, BORDER_LTRB.RIGHT, 0, {
-            startX: x,
-            startY: y,
-            endX: x + pageWidth,
-            endY: y + pageHeight,
-        });
-        ctx.restore();
-
-        ctx.save();
-        ctx.strokeStyle = borderBottom.color.rgb ?? DEFAULT_BORDER_COLOR.color.rgb!;
-        applyDocBorderDash(ctx, borderBottom.dashStyle);
-        drawLineByBorderType(ctx, BORDER_LTRB.BOTTOM, 0, {
-            startX: x,
-            startY: y,
-            endX: x + pageWidth,
-            endY: y + pageHeight,
-        });
-        ctx.restore();
-
-        // restore setLineWidthByPrecision.
+        ctx.setLineWidthByPrecision(lineWidth);
+        setTableCellBorderDash(ctx, border.dashStyle);
+        ctx.strokeStyle = color;
+        drawLineByBorderType(ctx, type, 0, position);
         ctx.restore();
     }
 
@@ -1375,4 +1390,18 @@ function leaderChar(leader: number): string | undefined {
         case 4: return '·';
         default: return undefined;
     }
+}
+
+function setTableCellBorderDash(ctx: UniverRenderingContext, dashStyle?: DashStyleType) {
+    if (dashStyle === DashStyleType.DOT) {
+        ctx.setLineDash([2]);
+        return;
+    }
+
+    if (dashStyle === DashStyleType.DASH) {
+        ctx.setLineDash([6]);
+        return;
+    }
+
+    ctx.setLineDash([0]);
 }
