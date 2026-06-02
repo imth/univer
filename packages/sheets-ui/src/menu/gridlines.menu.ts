@@ -29,11 +29,11 @@ export function ToggleGridlinesMenuFactory(accessor: IAccessor): IMenuButtonItem
     return {
         id: ToggleGridlinesCommand.id,
         type: MenuItemType.BUTTON,
-        tooltip: 'toolbar.toggleGridlines',
+        tooltip: 'sheets-ui.toolbar.toggleGridlines',
         icon: 'HideGridlinesDoubleIcon',
         activated$: new Observable<boolean>((observer) => {
             const getValue = () => {
-                const workbook = instanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET);
+                const workbook = instanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET);
                 if (workbook) return workbook.getActiveSheet().getConfig().showGridlines === BooleanNumber.TRUE;
                 return false;
             };

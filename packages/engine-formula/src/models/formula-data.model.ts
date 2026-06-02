@@ -93,7 +93,7 @@ export class FormulaDataModel extends Disposable {
                     const { startRow, startColumn, endRow, endColumn } = range;
                     for (let r = startRow; r <= endRow; r++) {
                         for (let c = startColumn; c <= endColumn; c++) {
-                            arrayFormulaCellMatrixData.setValue(r, c, null);
+                            arrayFormulaCellMatrixData.realDeleteValue(r, c);
                         }
                     }
 
@@ -141,13 +141,17 @@ export class FormulaDataModel extends Disposable {
                     const { startRow, startColumn, endRow, endColumn } = arrayFormulaRange;
                     for (let r = startRow; r <= endRow; r++) {
                         for (let c = startColumn; c <= endColumn; c++) {
-                            arrayFormulaCellMatrixData.setValue(r, c, null);
+                            arrayFormulaCellMatrixData.realDeleteValue(r, c);
                         }
                     }
                 });
 
                 cellMatrixData.forValue((row, column, cellData) => {
-                    arrayFormulaCellMatrixData.setValue(row, column, cellData);
+                    if (cellData == null) {
+                        arrayFormulaCellMatrixData.realDeleteValue(row, column);
+                    } else {
+                        arrayFormulaCellMatrixData.setValue(row, column, cellData);
+                    }
                 });
 
                 if (this._arrayFormulaCellData[unitId]) {
@@ -457,14 +461,24 @@ export class FormulaDataModel extends Disposable {
 
         const arrayFormulaRange = this._arrayFormulaRange[unitId]?.[sheetId];
 
-        if (!arrayFormulaRange) return;
+        if (!arrayFormulaRange) return false;
 
         const arrayFormulaRangeMatrix = new ObjectMatrix(arrayFormulaRange);
         const cellMatrix = new ObjectMatrix(cellValue);
+        let changed = false;
 
-        cellMatrix.forValue((r, c, cell) => {
-            arrayFormulaRangeMatrix.realDeleteValue(r, c);
+        cellMatrix.forValue((r, c) => {
+            if (arrayFormulaRangeMatrix.getValue(r, c) != null) {
+                arrayFormulaRangeMatrix.realDeleteValue(r, c);
+                changed = true;
+            }
         });
+
+        if (changed && this._arrayFormulaRange[unitId]) {
+            this._arrayFormulaRange[unitId]![sheetId] = arrayFormulaRangeMatrix.getData();
+        }
+
+        return changed;
     }
 
     updateArrayFormulaCellData(
@@ -476,21 +490,28 @@ export class FormulaDataModel extends Disposable {
 
         const arrayFormulaRange = this._arrayFormulaRange[unitId]?.[sheetId];
 
-        if (!arrayFormulaRange) return;
+        if (!arrayFormulaRange) return false;
 
         const arrayFormulaRangeMatrix = new ObjectMatrix(arrayFormulaRange);
 
         const arrayFormulaCellData = this._arrayFormulaCellData[unitId]?.[sheetId];
 
-        if (!arrayFormulaCellData) return;
+        if (!arrayFormulaCellData) return false;
 
         const arrayFormulaCellDataMatrix = new ObjectMatrix(arrayFormulaCellData);
 
         const cellMatrix = new ObjectMatrix(cellValue);
+        let changed = false;
 
-        cellMatrix.forValue((r, c, cell) => {
-            clearArrayFormulaCellDataByCell(arrayFormulaRangeMatrix, arrayFormulaCellDataMatrix, r, c);
+        cellMatrix.forValue((r, c) => {
+            changed = clearArrayFormulaCellDataByCell(arrayFormulaRangeMatrix, arrayFormulaCellDataMatrix, r, c) || changed;
         });
+
+        if (changed && this._arrayFormulaCellData[unitId]) {
+            this._arrayFormulaCellData[unitId]![sheetId] = arrayFormulaCellDataMatrix.getData();
+        }
+
+        return changed;
     }
 
     updateImageFormulaData(unitId: string, sheetId: string, cellValue: IObjectMatrixPrimitiveType<Nullable<ICellData>>) {
@@ -599,7 +620,7 @@ export class FormulaDataModel extends Disposable {
 
                         // Calculation is only required when there is only a formula and no value
                         const isFormula = isFormulaString(currentCell?.f) || isFormulaId(currentCell?.si);
-                        const noValue = currentCell?.v === undefined || currentCell?.v === null || currentCell?.v === '';
+                        const noValue = currentCell?.v === undefined || currentCell?.v === null || currentCell?.v === '' || currentCell?.v === 0 || currentCell?.v === '0';
 
                         if (!(isFormula && noValue)) continue;
 

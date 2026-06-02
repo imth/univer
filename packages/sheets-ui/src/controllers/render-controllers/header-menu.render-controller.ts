@@ -44,6 +44,13 @@ enum HEADER_HOVER_TYPE {
     COLUMN,
 }
 
+interface IHeaderBaseLayout {
+    rowBaseWidth: number;
+    rowGutterWidth: number;
+    columnBaseHeight: number;
+    columnGutterHeight: number;
+}
+
 /**
  * header highlight
  * column menu: show, hover and mousedown event
@@ -129,7 +136,7 @@ export class HeaderMenuRenderController extends Disposable implements IRenderMod
                 return;
             }
 
-            const { rowHeaderWidth, columnHeaderHeight } = skeleton;
+            const { rowBaseWidth, rowGutterWidth, columnBaseHeight, columnGutterHeight } = getHeaderBaseLayout(skeleton);
 
             const { startX, startY, endX, endY, column } = getCoordByOffset(
                 evt.offsetX,
@@ -140,9 +147,9 @@ export class HeaderMenuRenderController extends Disposable implements IRenderMod
 
             if (initialType === HEADER_HOVER_TYPE.ROW) {
                 this._hoverRect?.transformByState({
-                    width: rowHeaderWidth,
+                    width: rowBaseWidth,
                     height: endY - startY,
-                    left: 0,
+                    left: rowGutterWidth,
                     top: startY,
                 });
             } else {
@@ -150,25 +157,25 @@ export class HeaderMenuRenderController extends Disposable implements IRenderMod
 
                 this._hoverRect?.transformByState({
                     width: endX - startX,
-                    height: columnHeaderHeight,
+                    height: columnBaseHeight,
                     left: startX,
-                    top: 0,
+                    top: columnGutterHeight,
                 });
 
                 if (this._hoverMenu == null) {
                     return;
                 }
 
-                if (endX - startX < columnHeaderHeight * 2) {
+                if (endX - startX < columnBaseHeight * 2) {
                     this._hoverMenu.hide();
                     return;
                 }
 
-                const menuSize = columnHeaderHeight * 0.8;
+                const menuSize = columnBaseHeight * 0.8;
 
                 this._hoverMenu.transformByState({
-                    left: endX - columnHeaderHeight,
-                    top: columnHeaderHeight / 2 - menuSize / 2,
+                    left: endX - columnBaseHeight,
+                    top: columnGutterHeight + columnBaseHeight / 2 - menuSize / 2,
                 });
 
                 this._hoverMenu.setShapeProps({ size: menuSize });
@@ -298,4 +305,29 @@ export class HeaderMenuRenderController extends Disposable implements IRenderMod
             ],
         };
     }
+}
+
+function getHeaderBaseLayout(skeleton: {
+    rowHeaderWidth: number;
+    rowHeaderWidthAndMarginLeft: number;
+    columnHeaderHeight: number;
+    columnHeaderHeightAndMarginTop: number;
+    worksheet: { getConfig?: () => { rowHeader?: { width?: number }; columnHeader?: { height?: number } } };
+}): IHeaderBaseLayout {
+    const config = skeleton.worksheet.getConfig?.();
+    const configuredRowWidth = config?.rowHeader?.width;
+    const configuredColumnHeight = config?.columnHeader?.height;
+    const rowBaseWidth = typeof configuredRowWidth === 'number' && configuredRowWidth > 0
+        ? Math.min(configuredRowWidth, skeleton.rowHeaderWidth)
+        : skeleton.rowHeaderWidth;
+    const columnBaseHeight = typeof configuredColumnHeight === 'number' && configuredColumnHeight > 0
+        ? Math.min(configuredColumnHeight, skeleton.columnHeaderHeight)
+        : skeleton.columnHeaderHeight;
+
+    return {
+        rowBaseWidth,
+        rowGutterWidth: Math.max(0, skeleton.rowHeaderWidthAndMarginLeft - rowBaseWidth),
+        columnBaseHeight,
+        columnGutterHeight: Math.max(0, skeleton.columnHeaderHeightAndMarginTop - columnBaseHeight),
+    };
 }

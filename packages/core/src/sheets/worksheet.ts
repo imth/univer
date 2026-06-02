@@ -28,6 +28,7 @@ import { createRowColIter } from '../shared/row-col-iter';
 import { generateRandomId } from '../shared/tools';
 import { DEFAULT_STYLES } from '../types/const';
 import { CellValueType } from '../types/enum';
+import { DocumentFlavor } from '../types/interfaces';
 import { cloneWorksheetData } from './clone';
 import { ColumnManager } from './column-manager';
 import { Range } from './range';
@@ -1269,6 +1270,8 @@ export class Worksheet {
             width: Number.POSITIVE_INFINITY,
             height: Number.POSITIVE_INFINITY,
         };
+        documentData.documentStyle.documentFlavor = DocumentFlavor.UNSPECIFIED;
+        documentData.documentStyle.paragraphLineGapDefault = 0;
 
         documentData.documentStyle.renderConfig = {
             ...documentData.documentStyle.renderConfig,
@@ -1398,6 +1401,39 @@ export function extractPureTextFromCell(cell: Nullable<ICellData>): string {
     if (typeof rawValue === 'boolean') return rawValue ? 'TRUE' : 'FALSE';
 
     return '';
+}
+
+export function getDisplayValueFromCell(cell: Nullable<ICellDataForSheetInterceptor>): string {
+    if (!cell) {
+        return '';
+    }
+
+    const richTextValue = cell.p?.body?.dataStream;
+    if (richTextValue) {
+        return BuildTextUtils.transform.getPlainText(richTextValue);
+    }
+
+    const displayValue = cell.v;
+
+    if (displayValue === null || displayValue === undefined) {
+        return '';
+    }
+
+    if (cell.t === CellValueType.BOOLEAN) {
+        if (typeof displayValue === 'string') {
+            return displayValue.toUpperCase();
+        }
+
+        if (typeof displayValue === 'number') {
+            return displayValue ? 'TRUE' : 'FALSE';
+        }
+    }
+
+    if (typeof displayValue === 'boolean') {
+        return displayValue ? 'TRUE' : 'FALSE';
+    }
+
+    return String(displayValue);
 }
 
 export function getOriginCellValue(cell: Nullable<ICellData>) {

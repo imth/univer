@@ -60,7 +60,7 @@ function handleInlineFormat(
 
 export interface ISetInlineFormatCommandParams {
     preCommandId: string;
-    value?: string;
+    value?: string | Partial<ITextStyle> | null;
 }
 
 const SetInlineFormatBoldCommandId = 'doc.command.set-inline-format-bold';
@@ -198,6 +198,21 @@ export const SetInlineFormatTextColorCommand: ICommand = {
     },
 };
 
+const SetInlineFormatTextFillCommandId = 'doc.command.set-inline-format-text-fill';
+export const SetInlineFormatTextFillCommand: ICommand = {
+    id: SetInlineFormatTextFillCommandId,
+    type: CommandType.COMMAND,
+    handler: async (accessor, params) => {
+        const commandService = accessor.get(ICommandService);
+
+        return handleInlineFormat(
+            SetInlineFormatTextFillCommandId,
+            params,
+            commandService
+        );
+    },
+};
+
 const SetInlineFormatTextBackgroundColorCommandId = 'doc.command.set-inline-format-text-background-color';
 export const SetInlineFormatTextBackgroundColorCommand: ICommand = {
     id: SetInlineFormatTextBackgroundColorCommandId,
@@ -253,7 +268,10 @@ export const SetInlineFormatCommand: ICommand<ISetInlineFormatCommandParams> = {
         const univerInstanceService = accessor.get(IUniverInstanceService);
         const docMenuStyleService = accessor.get(DocMenuStyleService);
 
-        const docRanges = docSelectionManagerService.getDocRanges();
+        const textRanges = docSelectionManagerService.getTextRanges() ?? [];
+        const docRanges = textRanges.length > 0
+            ? textRanges.filter((range) => range.startOffset != null && range.endOffset != null)
+            : docSelectionManagerService.getDocRanges();
         const activeRange = docRanges.find((r) => r.isActive) ?? docRanges[0];
 
         if (docRanges.length === 0) {
@@ -262,7 +280,7 @@ export const SetInlineFormatCommand: ICommand<ISetInlineFormatCommandParams> = {
 
         const { segmentId } = docRanges[0];
 
-        const docDataModel = univerInstanceService.getCurrentUnitForType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
+        const docDataModel = univerInstanceService.getCurrentUnitOfType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
         if (docDataModel == null) {
             return false;
         }
@@ -276,6 +294,7 @@ export const SetInlineFormatCommand: ICommand<ISetInlineFormatCommandParams> = {
         const unitId = docDataModel.getUnitId();
 
         let formatValue;
+        let formatPatch: Partial<ITextStyle> | undefined;
 
         switch (preCommandId) {
             case SetInlineFormatBoldCommand.id: // fallthrough
@@ -310,6 +329,11 @@ export const SetInlineFormatCommand: ICommand<ISetInlineFormatCommandParams> = {
                 formatValue = {
                     rgb: value,
                 };
+                break;
+            }
+
+            case SetInlineFormatTextFillCommand.id: {
+                formatPatch = value as Partial<ITextStyle>;
                 break;
             }
 
@@ -357,17 +381,21 @@ export const SetInlineFormatCommand: ICommand<ISetInlineFormatCommandParams> = {
                 const cacheStyle = docMenuStyleService.getStyleCache();
                 const key = COMMAND_ID_TO_FORMAT_KEY_MAP[preCommandId];
 
-                docMenuStyleService.setStyleCache(
-                    {
-                        [key]: cacheStyle?.[key] !== undefined && isNeedReverseValue(key)
-                            ? getReverseFormatValue(
-                                cacheStyle,
-                                key,
-                                preCommandId
-                            )
-                            : formatValue,
-                    }
-                );
+                if (formatPatch) {
+                    docMenuStyleService.setStyleCache(formatPatch);
+                } else {
+                    docMenuStyleService.setStyleCache(
+                        {
+                            [key]: cacheStyle?.[key] !== undefined && isNeedReverseValue(key)
+                                ? getReverseFormatValue(
+                                    cacheStyle,
+                                    key,
+                                    preCommandId
+                                )
+                                : formatValue,
+                        }
+                    );
+                }
                 continue;
             }
 
@@ -377,7 +405,7 @@ export const SetInlineFormatCommand: ICommand<ISetInlineFormatCommandParams> = {
                     {
                         st: 0,
                         ed: endOffset - startOffset,
-                        ts: {
+                        ts: formatPatch ?? {
                             [COMMAND_ID_TO_FORMAT_KEY_MAP[preCommandId]]: formatValue,
                         },
                     },
@@ -489,6 +517,7 @@ export function getStyleInTextRange(
     style.st = textRuns.length && textRuns.every((t) => t.ts?.st?.s === BooleanNumber.TRUE) ? textRuns[0].ts?.st : style.st;
     style.bg = textRuns.find((t) => t.ts?.bg != null)?.ts?.bg ?? style.bg;
     style.cl = textRuns.find((t) => t.ts?.cl != null)?.ts?.cl ?? style.cl;
+    style.textFill = textRuns.find((t) => t.ts?.textFill != null)?.ts?.textFill ?? style.textFill;
 
     const vas = textRuns.filter((t) => t?.ts?.va != null);
 

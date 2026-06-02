@@ -45,7 +45,7 @@ export const InsertSlideShapeRectangleOperation: ICommand<IInsertShapeOperationP
         const id = generateRandomId(6);
 
         const univerInstanceService = accessor.get(IUniverInstanceService);
-        // const slideData = univerInstanceService.getCurrentUnitForType<SlideDataModel>(UniverInstanceType.UNIVER_SLIDE);
+        // const slideData = univerInstanceService.getCurrentUnitOfType<SlideDataModel>(UniverInstanceType.UNIVER_SLIDE);
 
         const unitId = params.unitId;
         const slideData = univerInstanceService.getUnit<SlideDataModel>(unitId);
@@ -105,13 +105,13 @@ export const ToggleSlideEditSidebarOperation: ICommand = {
         let title = '';
         let children = '';
         if (objectType === ObjectType.RECT) {
-            title = 'slide.sidebar.shape';
+            title = 'slides-ui.sidebar.shape';
             children = COMPONENT_SLIDE_SIDEBAR;
         } else if (objectType === ObjectType.IMAGE) {
-            title = 'slide.sidebar.image';
+            title = 'slides-ui.sidebar.image';
             children = COMPONENT_SLIDE_SIDEBAR;
         } else if (objectType === ObjectType.RICH_TEXT) {
-            title = 'slide.sidebar.text';
+            title = 'slides-ui.sidebar.text';
             children = COMPONENT_SLIDE_SIDEBAR;
         }
 
@@ -149,7 +149,7 @@ export const InsertSlideShapeEllipseOperation: ICommand<IInsertShapeOperationPar
         const id = generateRandomId(6);
 
         const univerInstanceService = accessor.get(IUniverInstanceService);
-        // const slideData = univerInstanceService.getCurrentUnitForType<SlideDataModel>(UniverInstanceType.UNIVER_SLIDE);
+        // const slideData = univerInstanceService.getCurrentUnitOfType<SlideDataModel>(UniverInstanceType.UNIVER_SLIDE);
 
         const unitId = params.unitId;
         const slideData = univerInstanceService.getUnit<SlideDataModel>(unitId);

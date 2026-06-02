@@ -33,6 +33,7 @@ import {
     UniverInstanceType,
 } from '@univerjs/core';
 import { DocSelectionManagerService, RichTextEditingMutation } from '@univerjs/docs';
+import { DocContentInsertService } from '../../services/doc-content-insert.service';
 import { getRichTextEditPath } from '../util';
 import { getCurrentParagraph } from './util';
 
@@ -52,7 +53,7 @@ export const ListOperationCommand: ICommand<IListOperationCommandParams> = {
 
         const listType: string = params.listType;
 
-        const docDataModel = univerInstanceService.getCurrentUnitForType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
+        const docDataModel = univerInstanceService.getCurrentUnitOfType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
         const docRanges = params.docRange ?? docSelectionManagerService.getDocRanges() ?? [];
 
         if (docDataModel == null || docRanges.length === 0) {
@@ -118,7 +119,7 @@ export const ChangeListTypeCommand: ICommand<IChangeListTypeCommandParams> = {
         const univerInstanceService = accessor.get(IUniverInstanceService);
         const commandService = accessor.get(ICommandService);
         const { listType } = params;
-        const docDataModel = univerInstanceService.getCurrentUnitForType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
+        const docDataModel = univerInstanceService.getCurrentUnitOfType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
         const activeRanges = params.docRange ?? docSelectionManagerService.getDocRanges();
         if (docDataModel == null || activeRanges == null || !activeRanges.length) {
             return false;
@@ -189,7 +190,7 @@ export const ChangeListNestingLevelCommand: ICommand<IChangeListNestingLevelComm
         const docSelectionManagerService = accessor.get(DocSelectionManagerService);
         const univerInstanceService = accessor.get(IUniverInstanceService);
         const commandService = accessor.get(ICommandService);
-        const docDataModel = univerInstanceService.getCurrentUnitForType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
+        const docDataModel = univerInstanceService.getCurrentUnitOfType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
         const activeRange = docSelectionManagerService.getActiveTextRange();
         if (docDataModel == null || activeRange == null) {
             return false;
@@ -301,7 +302,7 @@ export const ToggleCheckListCommand: ICommand<IToggleCheckListCommandParams> = {
         const commandService = accessor.get(ICommandService);
         const { index, segmentId, textRanges } = params;
 
-        const docDataModel = univerInstanceService.getCurrentUnitForType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
+        const docDataModel = univerInstanceService.getCurrentUnitOfType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
         if (docDataModel == null) {
             return false;
         }
@@ -345,6 +346,7 @@ export const ToggleCheckListCommand: ICommand<IToggleCheckListCommandParams> = {
 
 interface IOrderListCommandParams {
     value?: PresetListType;
+    docRange?: ITextRangeWithStyle[];
 }
 
 export const OrderListCommand: ICommand<IOrderListCommandParams> = {
@@ -357,11 +359,13 @@ export const OrderListCommand: ICommand<IOrderListCommandParams> = {
         if (params?.value) {
             return commandService.syncExecuteCommand(ChangeListTypeCommand.id, {
                 listType: params.value,
+                docRange: params.docRange,
             });
         }
 
         return commandService.syncExecuteCommand(ListOperationCommand.id, {
             listType: PresetListType.ORDER_LIST,
+            docRange: params?.docRange,
         });
     },
 };
@@ -382,7 +386,7 @@ export const QuickListCommand: ICommand<IQuickListCommandParams> = {
         const docSelectionManagerService = accessor.get(DocSelectionManagerService);
         const univerInstanceService = accessor.get(IUniverInstanceService);
         const commandService = accessor.get(ICommandService);
-        const docDataModel = univerInstanceService.getCurrentUnitForType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
+        const docDataModel = univerInstanceService.getCurrentUnitOfType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
         const activeRange = docSelectionManagerService.getActiveTextRange();
         if (docDataModel == null || activeRange == null) {
             return false;
@@ -483,19 +487,28 @@ export const QuickListCommand: ICommand<IQuickListCommandParams> = {
 
 function insertList(accessor: IAccessor, listType: PresetListType) {
     const commandService = accessor.get(ICommandService);
-    const paragraph = getCurrentParagraph(accessor);
-    if (!paragraph) {
-        return false;
-    }
     const docDataModel = accessor.get(IUniverInstanceService).getCurrentUnitOfType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
     if (!docDataModel) {
         return false;
     }
+    let contentInsertRange: ReturnType<DocContentInsertService['consumeInsertRange']> = null;
+    try {
+        contentInsertRange = accessor.get(DocContentInsertService).consumeInsertRange(docDataModel.getUnitId());
+    } catch {
+        contentInsertRange = null;
+    }
+    const paragraph = contentInsertRange ? null : getCurrentParagraph(accessor);
+    if (!contentInsertRange && !paragraph) {
+        return false;
+    }
+    const sourceParagraph = paragraph || undefined;
+    const insertOffset = contentInsertRange?.startOffset ?? sourceParagraph!.startIndex + 1;
+    const sourceBullet = sourceParagraph?.bullet;
     const textX = BuildTextUtils.selection.replace({
         doc: docDataModel,
         selection: {
-            startOffset: paragraph.startIndex + 1,
-            endOffset: paragraph.startIndex + 1,
+            startOffset: insertOffset,
+            endOffset: contentInsertRange?.endOffset ?? insertOffset,
             collapsed: true,
         },
         body: {
@@ -504,12 +517,12 @@ function insertList(accessor: IAccessor, listType: PresetListType) {
                 {
                     startIndex: 0,
                     paragraphStyle: {
-                        ...paragraph.paragraphStyle,
+                        ...(sourceParagraph?.paragraphStyle ?? {}),
                     },
                     bullet: {
                         listType,
-                        listId: paragraph.bullet?.listType === listType ? paragraph.bullet.listId : generateRandomId(6),
-                        nestingLevel: paragraph.bullet?.listType === listType ? paragraph.bullet.nestingLevel : 0,
+                        listId: sourceBullet?.listType === listType ? sourceBullet.listId : generateRandomId(6),
+                        nestingLevel: sourceBullet?.listType === listType ? sourceBullet.nestingLevel : 0,
                     },
                 },
             ],
@@ -525,8 +538,8 @@ function insertList(accessor: IAccessor, listType: PresetListType) {
             unitId: docDataModel.getUnitId(),
             actions: [],
             textRanges: [{
-                startOffset: paragraph.startIndex + 1,
-                endOffset: paragraph.startIndex + 1,
+                startOffset: insertOffset,
+                endOffset: insertOffset,
                 collapsed: true,
             }],
             isEditing: false,

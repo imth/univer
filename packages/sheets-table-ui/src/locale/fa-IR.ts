@@ -17,10 +17,11 @@
 import type enUS from './en-US';
 
 const locale: typeof enUS = {
-    'sheets-table': {
+    'sheets-table-ui': {
         title: 'جدول',
         selectRange: 'انتخاب محدوده جدول',
         rename: 'تغییر نام جدول',
+        renamePlaceholder: 'Enter table name',
         updateRange: 'به‌روزرسانی محدوده جدول',
         tableRangeWithMergeError: 'محدوده جدول نمی‌تواند با سلول‌های ادغام‌شده همپوشانی داشته باشد',
         tableRangeWithOtherTableError: 'محدوده جدول نمی‌تواند با جداول دیگر همپوشانی داشته باشد',
@@ -41,6 +42,16 @@ const locale: typeof enUS = {
         columnPrefix: 'ستون',
         tablePrefix: 'جدول',
         tableNameError: 'لا يمكن أن يحتوي اسم الجدول على مسافات، ولا يمكن أن يبدأ برقم، ولا يمكن أن يتكرر مع أسماء الجداول الموجودة',
+        columnMenu: {
+            'insert-left': 'Insert 1 table column left',
+            'insert-right': 'Insert 1 table column right',
+            delete: 'Delete table column',
+        },
+
+        sort: {
+            'sort-asc': 'صعودی',
+            'sort-desc': 'نزولی',
+        },
 
         insert: {
             main: 'درج جدول',

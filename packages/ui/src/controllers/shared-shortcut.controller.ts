@@ -39,16 +39,18 @@ function whenEditorFocusedButNotCellEditor(contextService: IContextService): boo
 
 export const CopyShortcutItem: IShortcutItem = {
     id: CopyCommand.id,
-    description: 'shortcut.copy',
+    description: 'ui.shortcut.copy',
     group: '1_common-edit',
+    groupTitle: 'ui.common-edit',
     binding: KeyCode.C | MetaKeys.CTRL_COMMAND,
     preconditions: whenEditorFocused,
 };
 
 export const CutShortcutItem: IShortcutItem = {
     id: CutCommand.id,
-    description: 'shortcut.cut',
+    description: 'ui.shortcut.cut',
     group: '1_common-edit',
+    groupTitle: 'ui.common-edit',
     binding: KeyCode.X | MetaKeys.CTRL_COMMAND,
     preconditions: whenEditorFocused,
 };
@@ -58,8 +60,9 @@ export const CutShortcutItem: IShortcutItem = {
  */
 export const OnlyDisplayPasteShortcutItem: IShortcutItem = {
     id: PasteCommand.id,
-    description: 'shortcut.paste',
+    description: 'ui.shortcut.paste',
     group: '1_common-edit',
+    groupTitle: 'ui.common-edit',
     binding: KeyCode.V | MetaKeys.CTRL_COMMAND,
     preconditions: () => false,
 };
@@ -68,7 +71,7 @@ export const OnlyDisplayPasteShortcutItem: IShortcutItem = {
 // see #1404.
 // export const PasteShortcutItem: IShortcutItem = {
 //     id: PasteCommand.id,
-//     description: 'shortcut.paste',
+//     description: 'ui.shortcut.paste',
 //     group: '1_common-edit',
 //     binding: KeyCode.V | MetaKeys.CTRL_COMMAND,
 //     preconditions: supportClipboardAPI,
@@ -76,16 +79,18 @@ export const OnlyDisplayPasteShortcutItem: IShortcutItem = {
 
 export const UndoShortcutItem: IShortcutItem = {
     id: UndoCommand.id,
-    description: 'shortcut.undo',
+    description: 'ui.shortcut.undo',
     group: '1_common-edit',
+    groupTitle: 'ui.common-edit',
     binding: KeyCode.Z | MetaKeys.CTRL_COMMAND,
     preconditions: whenEditorFocusedButNotCellEditor,
 };
 
 export const RedoShortcutItem: IShortcutItem = {
     id: RedoCommand.id,
-    description: 'shortcut.redo',
+    description: 'ui.shortcut.redo',
     group: '1_common-edit',
+    groupTitle: 'ui.common-edit',
     binding: KeyCode.Y | MetaKeys.CTRL_COMMAND,
     preconditions: whenEditorFocusedButNotCellEditor,
 };

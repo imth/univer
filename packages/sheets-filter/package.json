@@ -1,9 +1,9 @@
 {
     "name": "@univerjs/sheets-filter",
-    "version": "0.21.1",
+    "version": "0.25.0",
     "private": false,
-    "description": "A library for filtering data in Univer Sheet",
-    "author": "DreamNum <developer@univer.ai>",
+    "description": "Filtering model, commands, and services for Univer Sheets.",
+    "author": "DreamNum Co., Ltd. <developer@univer.ai>",
     "license": "Apache-2.0",
     "funding": {
         "type": "opencollective",
@@ -17,11 +17,18 @@
     "bugs": {
         "url": "https://github.com/dream-num/univer/issues"
     },
-    "keywords": [],
+    "keywords": [
+        "univer",
+        "sheets",
+        "filter",
+        "spreadsheet",
+        "plugin"
+    ],
     "exports": {
         ".": "./src/index.ts",
         "./*": "./src/*",
-        "./facade": "./src/facade/index.ts"
+        "./facade": "./src/facade/index.ts",
+        "./locale/*": "./src/locale/*.ts"
     },
     "main": "./src/index.ts",
     "types": "./lib/types/index.d.ts",
@@ -39,6 +46,11 @@
                 "import": "./lib/es/*",
                 "require": "./lib/cjs/*",
                 "types": "./lib/types/index.d.ts"
+            },
+            "./locale/*": {
+                "import": "./lib/es/locale/*.js",
+                "require": "./lib/cjs/locale/*.js",
+                "types": "./lib/types/locale/*.d.ts"
             },
             "./facade": {
                 "import": "./lib/es/facade.js",
@@ -81,7 +93,7 @@
     "devDependencies": {
         "@univerjs-infra/shared": "workspace:*",
         "rxjs": "^7.8.2",
-        "typescript": "^6.0.2",
-        "vitest": "^4.1.4"
+        "typescript": "^6.0.3",
+        "vitest": "^4.1.7"
     }
 }

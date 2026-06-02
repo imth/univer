@@ -194,16 +194,16 @@ describe('LocalUndoRedoService', () => {
             id: 'fail',
         });
 
-        expect(commandService.syncExecuteCommand(UndoCommandId)).toBe(true);
-        expect(undoRedoService.pitchTopUndoElement()).toBeNull();
-        expect(undoRedoService.pitchTopRedoElement()?.id).toBe('fail');
+        expect(commandService.syncExecuteCommand(UndoCommandId)).toBe(false);
+        expect(undoRedoService.pitchTopUndoElement()?.id).toBe('fail');
+        expect(undoRedoService.pitchTopRedoElement()).toBeNull();
 
-        expect(commandService.syncExecuteCommand(RedoCommandId)).toBe(true);
+        expect(commandService.syncExecuteCommand(RedoCommandId)).toBe(false);
         expect(undoRedoService.pitchTopRedoElement()).toBeNull();
         expect(undoRedoService.pitchTopUndoElement()?.id).toBe('fail');
 
         const batching = undoRedoService.__tempBatchingUndoRedo('unit-1');
-        expect(() => undoRedoService.__tempBatchingUndoRedo('unit-1')).toThrowError(/cannot batching undo redo twice/);
+        expect(() => undoRedoService.__tempBatchingUndoRedo('unit-1')).toThrow(/cannot batching undo redo twice/);
         batching.dispose();
     });
 });

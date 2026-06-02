@@ -262,7 +262,7 @@ export class NumfmtEditorController extends Disposable {
                 getMutations(command) {
                     switch (command.id) {
                         case SetRangeValuesCommand.id: {
-                            const workbook = self._univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
+                            const workbook = self._univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
                             const unitId = workbook.getUnitId();
                             const subUnitId = workbook.getActiveSheet()?.getSheetId();
                             if (!subUnitId) {
@@ -335,10 +335,6 @@ export class NumfmtEditorController extends Disposable {
         super.dispose();
         this._collectEffectMutation.clean();
     }
-}
-
-function isNumeric(str: string) {
-    return /^-?\d+(\.\d+)?$/.test(str);
 }
 
 function canConvertRichTextToNumfmt(body: IDocumentBody): boolean {

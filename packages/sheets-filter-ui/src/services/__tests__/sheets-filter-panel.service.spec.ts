@@ -19,11 +19,10 @@ import type { IEditorBridgeServiceVisibleParam } from '@univerjs/sheets-ui';
 import type { IOpenFilterPanelOperationParams } from '../../commands/operations/sheets-filter.operation';
 import type { IFilterConditionFormParams } from '../../models/conditions';
 import type { IFilterByValueWithTreeItem } from '../sheets-filter-panel.service';
-import { CommandType, ICommandService, Inject, Injector, LocaleService, Plugin, Univer, UniverInstanceType } from '@univerjs/core';
+import { awaitTime, CommandType, ICommandService, Inject, Injector, LocaleService, Plugin, Univer, UniverInstanceType } from '@univerjs/core';
 import { ActiveDirtyManagerService, IActiveDirtyManagerService, ISheetRowFilteredService, SheetRowFilteredService } from '@univerjs/engine-formula';
 import { MarkDirtyFilterChangeMutation, RefRangeService, SheetInterceptorService, SheetRangeThemeModel, SheetsSelectionsService, ZebraCrossingCacheController } from '@univerjs/sheets';
 import { CustomFilterOperator, FilterBy, SheetsFilterService, UniverSheetsFilterPlugin } from '@univerjs/sheets-filter';
-import { SetSheetsFilterCriteriaCommand } from '@univerjs/sheets-filter/commands/commands/sheets-filter.command.js';
 import { afterEach, beforeEach, describe, expect, it, vitest } from 'vitest';
 import { E_ITEMS, ITEMS, ITEMS_WITH_EMPTY, WithCustomFilterModelFactory, WithMergedCellFilterFactory, WithMultiEmptyCellsModelFactory, WithTwoFilterColumnsFactory, WithValuesAndEmptyFilterModelFactory, WithValuesFilterModelFactory } from '../../__testing__/data';
 import { CloseFilterPanelOperation, OpenFilterPanelOperation } from '../../commands/operations/sheets-filter.operation';
@@ -115,7 +114,6 @@ function createSheetsFilterPanelServiceTestBed(workbookData: IWorkbookData) {
     [
         OpenFilterPanelOperation,
         CloseFilterPanelOperation,
-        SetSheetsFilterCriteriaCommand,
         SetCellEditVisibleOperation,
         MarkDirtyFilterChangeMutation,
     ].forEach((command) => commandService.registerCommand(command));
@@ -262,7 +260,7 @@ describe('test "SheetsFilterPanelService"', () => {
                 subUnitId: 'sheet1',
                 col: 0,
             } as IOpenFilterPanelOperationParams)).toBeTruthy();
-            await await tick();
+            await tick();
 
             expect(sheetsFilterPanelService.filterBy).toBe(FilterBy.VALUES);
             const filterByModel = sheetsFilterPanelService.filterByModel as ByValuesModel;
@@ -302,7 +300,7 @@ describe('test "SheetsFilterPanelService"', () => {
             const filterItems = filterByModel.filterItems;
             const emptyItem = filterItems.find((item) => item.key === 'empty');
             expect(emptyItem).toEqual({
-                title: 'sheets-filter.panel.empty',
+                title: 'sheets-filter-ui.panel.empty',
                 count: 4,
                 leaf: true,
                 checked: true,
@@ -347,7 +345,7 @@ describe('test "SheetsFilterPanelService"', () => {
                     count: 1,
                 },
                 {
-                    title: 'sheets-filter.panel.empty',
+                    title: 'sheets-filter-ui.panel.empty',
                     count: 3,
                     leaf: true,
                     checked: true,
@@ -386,7 +384,7 @@ describe('test "SheetsFilterPanelService"', () => {
                     count: 1,
                 },
                 {
-                    title: 'sheets-filter.panel.empty',
+                    title: 'sheets-filter-ui.panel.empty',
                     count: 3,
                     leaf: true,
                     checked: true,
@@ -520,7 +518,7 @@ describe('test "SheetsFilterPanelService"', () => {
 });
 
 function tick(milliseconds: number = 0): Promise<void> {
-    const result = new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+    const result = awaitTime(milliseconds);
     vitest.advanceTimersByTime(milliseconds + 1);
     return result;
 }

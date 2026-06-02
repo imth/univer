@@ -21,9 +21,25 @@ import type { Editor } from '@univerjs/docs-ui';
 import type { ISelectionWithCoord, ISetSelectionsOperationParams } from '@univerjs/sheets';
 import type { RefObject } from 'react';
 import type { IRefSelection } from './use-highlight';
-import { DisposableCollection, ICommandService, IUniverInstanceService, Rectangle, ThemeService, UniverInstanceType } from '@univerjs/core';
+import {
+    DisposableCollection,
+    ICommandService,
+    IUniverInstanceService,
+    noop,
+    Rectangle,
+    ThemeService,
+    UniverInstanceType,
+} from '@univerjs/core';
 import { DocSelectionManagerService } from '@univerjs/docs';
-import { deserializeRangeWithSheet, generateStringWithSequence, LexerTreeBuilder, sequenceNodeType, serializeRange, serializeRangeWithSheet, serializeRangeWithSpreadsheet } from '@univerjs/engine-formula';
+import {
+    deserializeRangeWithSheet,
+    generateStringWithSequence,
+    LexerTreeBuilder,
+    sequenceNodeType,
+    serializeRange,
+    serializeRangeWithSheet,
+    serializeRangeWithSpreadsheet,
+} from '@univerjs/engine-formula';
 import { IRenderManagerService } from '@univerjs/engine-render';
 import { IRefSelectionsService, SetSelectionsOperation } from '@univerjs/sheets';
 import { SheetSkeletonManagerService } from '@univerjs/sheets-ui';
@@ -31,7 +47,7 @@ import { useDependency, useEvent, useObservable } from '@univerjs/ui';
 import { useEffect, useMemo } from 'react';
 import { merge } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
-import { RefSelectionsRenderService } from '../../../services/render-services/ref-selections.render-service';
+import { RefSelectionsRenderService } from '../../../services/render-services/ref-selections.render.service';
 import { findIndexFromSequenceNodes, findRefSequenceIndex } from '../../range-selector/utils/find-index-from-sequence-nodes';
 import { getOffsetFromSequenceNodes } from '../../range-selector/utils/get-offset-from-sequence-nodes';
 import { sequenceNodeToText } from '../../range-selector/utils/sequence-node-to-text';
@@ -60,7 +76,6 @@ const prepareSelectionChangeContext = (opts: { editor?: Editor; lexerTreeBuilder
     };
 };
 
-const noop = (() => { }) as any;
 export const useSheetSelectionChange = (
     isNeed: boolean,
     isFocus: boolean,
@@ -71,7 +86,7 @@ export const useSheetSelectionChange = (
     isSupportAcrossSheet: boolean,
     listenSelectionSet: boolean,
     editor?: Editor,
-    handleRangeChange: ((refString: string, offset: number, isEnd: boolean, isModify?: boolean) => void) = noop
+    handleRangeChange: ((refString: string, offset: number, isEnd: boolean, isModify?: boolean) => void) = noop as any
 ) => {
     const renderManagerService = useDependency(IRenderManagerService);
     const univerInstanceService = useDependency(IUniverInstanceService);
@@ -147,12 +162,12 @@ export const useSheetSelectionChange = (
             }
         } else {
             const orderedSelections = [...selections];
-            // 当 isCtrlAddMode 为 true 时，跳过 updatingRefIndex 的逻辑，不调整选区顺序
+            // When isCtrlAddMode is true, skip the updatingRefIndex logic and do not adjust selection order
             if (!isCtrlAddMode && updatingRefIndex !== -1) {
                 const last = orderedSelections.pop();
                 last && orderedSelections.splice(updatingRefIndex, 0, last);
             }
-            // 更新全部的 ref Selection
+            // Update all ref Selections
             let currentRefIndex = 0;
             const newTokens = sequenceNodes.map((item) => {
                 if (typeof item === 'string') {
@@ -169,7 +184,7 @@ export const useSheetSelectionChange = (
                     }
 
                     if (isSupportAcrossSheet) {
-                        // 直接跳过非当前表的 node 节点
+                        // Directly skip nodes that are not in the current sheet
                         if (contextRef.current.activeSheet?.getName() !== nodeRange.sheetName) {
                             return item.token;
                         }
@@ -234,7 +249,7 @@ export const useSheetSelectionChange = (
                     return;
                 }
 
-                // 通过比较选区数量判断是否是 ctrl 添加模式
+                // Determine if it is ctrl add mode by comparing selection count
                 const isCtrlAddMode = selections.length > prevSelectionsCount;
 
                 if (isEnd) {

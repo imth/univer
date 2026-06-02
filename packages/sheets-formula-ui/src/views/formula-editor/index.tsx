@@ -21,7 +21,18 @@ import type { CSSProperties, ReactNode, Ref } from 'react';
 import type { IUniverSheetsFormulaUIConfig } from '../../config/config';
 import type { FormulaSelectingType } from './hooks/use-formula-selection';
 import type { IRefSelection } from './hooks/use-highlight';
-import { BuildTextUtils, createInternalEditorID, generateRandomId, IConfigService, IUniverInstanceService, UniverInstanceType } from '@univerjs/core';
+import {
+    BuildTextUtils,
+    createInternalEditorID,
+    DocumentFlavor,
+    generateRandomId,
+    HorizontalAlign,
+    IConfigService,
+    IUniverInstanceService,
+    noop,
+    UniverInstanceType,
+    VerticalAlign,
+} from '@univerjs/core';
 import { clsx } from '@univerjs/design';
 import { DocBackScrollRenderController, DocSelectionRenderService, IEditorService, useKeyboardEvent, useResize } from '@univerjs/docs-ui';
 import { IRenderManagerService } from '@univerjs/engine-render';
@@ -72,9 +83,12 @@ export interface IFormulaEditorProps {
     disableSelectionOnClick?: boolean;
     disableContextMenu?: boolean;
     style?: CSSProperties;
+    borderless?: boolean;
+    canvasStyle?: {
+        backgroundColor?: string;
+        fontSize?: number;
+    };
 }
-
-const noop = () => { };
 
 export interface IFormulaEditorRef {
     isClickOutSide: (e: MouseEvent) => boolean;
@@ -105,6 +119,8 @@ export const FormulaEditor = forwardRef((props: IFormulaEditorProps, ref: Ref<IF
         autofocus = true,
         disableContextMenu,
         style,
+        borderless = false,
+        canvasStyle,
     } = props;
 
     const editorService = useDependency(IEditorService);
@@ -230,7 +246,26 @@ export const FormulaEditor = forwardRef((props: IFormulaEditorProps, ref: Ref<IF
                         customDecorations: [],
                         customRanges: [],
                     },
-                    documentStyle: {},
+                    documentStyle: {
+                        pageSize: {
+                            width: Number.POSITIVE_INFINITY,
+                            height: Number.POSITIVE_INFINITY,
+                        },
+                        documentFlavor: DocumentFlavor.UNSPECIFIED,
+                        marginTop: 0,
+                        marginBottom: 0,
+                        marginRight: 0,
+                        marginLeft: 0,
+                        paragraphLineGapDefault: 0,
+                        renderConfig: {
+                            horizontalAlign: HorizontalAlign.UNSPECIFIED,
+                            verticalAlign: VerticalAlign.TOP,
+                        },
+                    },
+                },
+                canvasStyle: {
+                    ...canvasStyle,
+                    backgroundColor: canvasStyle?.backgroundColor ?? '#fff',
                 },
             }, formulaEditorContainerRef.current);
             const editor = editorService.getEditor(editorId)! as Editor;
@@ -343,10 +378,11 @@ export const FormulaEditor = forwardRef((props: IFormulaEditorProps, ref: Ref<IF
                 ref={sheetEmbeddingRef}
                 className={clsx(`
                   univer-relative univer-box-border univer-flex univer-size-full univer-items-center
-                  univer-justify-around univer-gap-2 univer-rounded-none univer-p-0 univer-ring-1
+                  univer-justify-around univer-gap-2 univer-rounded-none univer-p-0
                 `, {
-                    'univer-ring-primary-500': isFocus,
-                    'univer-ring-red-500': isError,
+                    'univer-ring-1': !borderless,
+                    'univer-ring-primary-500': isFocus && !borderless,
+                    'univer-ring-red-500': isError && !borderless,
                 })}
             >
                 <div

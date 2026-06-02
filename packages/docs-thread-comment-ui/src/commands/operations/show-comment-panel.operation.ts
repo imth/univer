@@ -39,7 +39,7 @@ export const ShowCommentPanelOperation: ICommand<IShowCommentPanelOperationParam
 
         if (!panelService.panelVisible || sidebarService.options.children?.label !== DOCS_THREAD_COMMENT_PANEL) {
             sidebarService.open({
-                header: { title: 'threadCommentUI.panel.title' },
+                header: { title: 'docs-thread-comment-ui.panel.title' },
                 children: { label: DOCS_THREAD_COMMENT_PANEL },
                 width: 320,
                 onClose: () => panelService.setPanelVisible(false),
@@ -64,7 +64,7 @@ export const ToggleCommentPanelOperation: ICommand = {
 
         if (!panelService.panelVisible || sidebarService.options.children?.label !== DOCS_THREAD_COMMENT_PANEL) {
             sidebarService.open({
-                header: { title: 'threadCommentUI.panel.title' },
+                header: { title: 'docs-thread-comment-ui.panel.title' },
                 children: { label: DOCS_THREAD_COMMENT_PANEL },
                 width: 320,
                 onClose: () => panelService.setPanelVisible(false),
@@ -85,7 +85,7 @@ export const StartAddCommentOperation: ICommand = {
     handler(accessor) {
         const panelService = accessor.get(ThreadCommentPanelService);
         const univerInstanceService = accessor.get(IUniverInstanceService);
-        const doc = univerInstanceService.getCurrentUnitForType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
+        const doc = univerInstanceService.getCurrentUnitOfType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
         const docSelectionManagerService = accessor.get(DocSelectionManagerService);
         const renderManagerService = accessor.get(IRenderManagerService);
         const userManagerService = accessor.get(UserManagerService);

@@ -38,63 +38,63 @@ const commandList = [
 const commonSelections = [
     {
         label: {
-            name: 'sheet.cf.ruleType.highlightCell',
+            name: 'sheets-conditional-formatting-ui.ruleType.highlightCell',
             selectable: false,
         },
         value: CF_MENU_OPERATION.highlightCell,
     },
     {
         label: {
-            name: 'sheet.cf.panel.rankAndAverage',
+            name: 'sheets-conditional-formatting-ui.panel.rankAndAverage',
             selectable: false,
         },
         value: CF_MENU_OPERATION.rank,
     },
     {
         label: {
-            name: 'sheet.cf.ruleType.formula',
+            name: 'sheets-conditional-formatting-ui.ruleType.formula',
             selectable: false,
         },
         value: CF_MENU_OPERATION.formula,
     },
     {
         label: {
-            name: 'sheet.cf.ruleType.colorScale',
+            name: 'sheets-conditional-formatting-ui.ruleType.colorScale',
             selectable: false,
         },
         value: CF_MENU_OPERATION.colorScale,
     },
     {
         label: {
-            name: 'sheet.cf.ruleType.dataBar',
+            name: 'sheets-conditional-formatting-ui.ruleType.dataBar',
             selectable: false,
         },
         value: CF_MENU_OPERATION.dataBar,
     },
     {
         label: {
-            name: 'sheet.cf.ruleType.iconSet',
+            name: 'sheets-conditional-formatting-ui.ruleType.iconSet',
             selectable: false,
         },
         value: CF_MENU_OPERATION.icon,
     },
     {
         label: {
-            name: 'sheet.cf.menu.manageConditionalFormatting',
+            name: 'sheets-conditional-formatting-ui.menu.manageConditionalFormatting',
             selectable: false,
         },
         value: CF_MENU_OPERATION.viewRule,
     },
     {
         label: {
-            name: 'sheet.cf.menu.createConditionalFormatting',
+            name: 'sheets-conditional-formatting-ui.menu.createConditionalFormatting',
             selectable: false,
         },
         value: CF_MENU_OPERATION.createRule,
     },
     {
         label: {
-            name: 'sheet.cf.menu.clearRangeRules',
+            name: 'sheets-conditional-formatting-ui.menu.clearRangeRules',
             selectable: false,
         },
         value: CF_MENU_OPERATION.clearRangeRules,
@@ -102,7 +102,7 @@ const commonSelections = [
     },
     {
         label: {
-            name: 'sheet.cf.menu.clearWorkSheetRules',
+            name: 'sheets-conditional-formatting-ui.menu.clearWorkSheetRules',
             selectable: false,
         },
         value: CF_MENU_OPERATION.clearWorkSheetRules,
@@ -122,7 +122,7 @@ export const FactoryManageConditionalFormattingRule = (accessor: IAccessor): IMe
         new Observable<null>((commandSubscribe) => {
             const disposable = commandService.onCommandExecuted((commandInfo) => {
                 const { id, params } = commandInfo;
-                const unitId = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)?.getUnitId();
+                const unitId = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)?.getUnitId();
                 if (commandList.includes(id) && (params as { unitId: string }).unitId === unitId) {
                     commandSubscribe.next(null);
                 }
@@ -131,7 +131,7 @@ export const FactoryManageConditionalFormattingRule = (accessor: IAccessor): IMe
         })
     ).pipe(debounceTime(16)).subscribe(() => {
         const ranges = selectionManagerService.getCurrentSelections()?.map((selection) => selection.range) || [];
-        const workbook = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET);
+        const workbook = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET);
         if (!workbook) return;
         const worksheet = workbook.getActiveSheet();
         if (!worksheet) return;
@@ -147,14 +147,14 @@ export const FactoryManageConditionalFormattingRule = (accessor: IAccessor): IMe
         new Observable<null>((commandSubscribe) => {
             const disposable = commandService.onCommandExecuted((commandInfo) => {
                 const { id, params } = commandInfo;
-                const unitId = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)?.getUnitId();
+                const unitId = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)?.getUnitId();
                 if (commandList.includes(id) && (params as { unitId: string }).unitId === unitId) {
                     commandSubscribe.next(null);
                 }
             });
             return () => disposable.dispose();
         }).pipe(debounceTime(16)).subscribe(() => {
-            const workbook = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET);
+            const workbook = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET);
             if (!workbook) return;
             const worksheet = workbook.getActiveSheet();
             if (!worksheet) return;
@@ -192,7 +192,7 @@ export const FactoryManageConditionalFormattingRule = (accessor: IAccessor): IMe
         id: OpenConditionalFormattingOperator.id,
         type: MenuItemType.SELECTOR,
         icon: 'ConditionsDoubleIcon',
-        tooltip: 'sheet.cf.title',
+        tooltip: 'sheets-conditional-formatting-ui.title',
         selections: selections$,
         hidden$: getMenuHiddenObservable(accessor, UniverInstanceType.UNIVER_SHEET),
         disabled$: getCurrentRangeDisable$(accessor, { workbookTypes: [WorkbookEditablePermission], worksheetTypes: [WorksheetSetCellStylePermission, WorksheetEditPermission], rangeTypes: [RangeProtectionPermissionEditPoint] }),

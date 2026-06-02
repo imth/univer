@@ -244,11 +244,14 @@ export class SheetClipboardController extends RxDisposable {
             onCopyCellContent(row: number, col: number): string {
                 const cell = currentSheet!.getCell(row, col);
 
-                let content = '';
                 if (cell?.p?.body?.paragraphs || cell?.p?.body?.textRuns) {
-                    content = convertBodyToHtml(cell.p);
-                } else if (cell) {
-                    content = extractPureTextFromCell(cell);
+                    return convertBodyToHtml(cell.p);
+                }
+
+                const content = extractPureTextFromCell(cell);
+
+                if (content.trim() === '') {
+                    return content;
                 }
 
                 /**
@@ -348,7 +351,7 @@ export class SheetClipboardController extends RxDisposable {
                 if (maxConfig && endRow * endColumn > maxConfig) {
                     self._messageService.show({
                         type: MessageType.Error,
-                        content: self._localService.t('clipboard.paste.exceedMaxCells'),
+                        content: self._localService.t('sheets-ui.clipboard.paste.exceedMaxCells'),
                     }); // TODO: show error info
                     return false;
                 }
@@ -737,7 +740,7 @@ export class SheetClipboardController extends RxDisposable {
                 label: 'specialPaste.besidesBorder',
             },
             onPasteCells: (pasteFrom, pasteTo, matrix, payload) => {
-                const workbook = self._instanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
+                const workbook = self._instanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
                 const redoMutationsInfo: IMutationInfo[] = [];
                 const undoMutationsInfo: IMutationInfo[] = [];
                 const { range, unitId, subUnitId } = pasteTo;

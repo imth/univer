@@ -17,10 +17,11 @@
 import type enUS from './en-US';
 
 const locale: typeof enUS = {
-    'sheets-table': {
+    'sheets-table-ui': {
         title: '表格',
         selectRange: '选择表格范围',
         rename: '重命名表格',
+        renamePlaceholder: '输入表格名称',
         updateRange: '更新表格范围',
         tableRangeWithMergeError: '表格范围不能与合并单元格重叠',
         tableRangeWithOtherTableError: '表格范围不能与其他表格重叠',
@@ -41,6 +42,16 @@ const locale: typeof enUS = {
         columnPrefix: '列',
         tablePrefix: '表格',
         tableNameError: '表格名称不能包含空格， 不能以数字开头，不能和已有表格名称重复',
+        columnMenu: {
+            'insert-left': '向左插入 1 个表格列',
+            'insert-right': '向右插入 1 个表格列',
+            delete: '删除表格列',
+        },
+
+        sort: {
+            'sort-asc': '升序',
+            'sort-desc': '降序',
+        },
 
         insert: {
             main: '表格插入',

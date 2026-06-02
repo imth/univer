@@ -111,6 +111,11 @@ function createSpreadsheetSkeleton() {
 describe('font extension', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
+        vi.stubGlobal('Image', class {
+            complete = true;
+            naturalWidth = 1;
+            src = '';
+        });
     });
 
     it('covers fallback image draw branches', () => {
@@ -382,6 +387,97 @@ describe('font extension', () => {
         expect(ctx.rotate).toHaveBeenCalled();
     });
 
+    it('renders cell images from cell alignment, independent of document layout offsets', () => {
+        const font = new Font() as any;
+        const image = { complete: true, getAttribute: vi.fn(() => 'false') };
+
+        const createImageFontCache = (aLeft: number, wrapStrategy: WrapStrategy) => createFontCache({
+            verticalAlign: VerticalAlign.MIDDLE,
+            horizontalAlign: HorizontalAlign.CENTER,
+            wrapStrategy,
+            imageCacheMap: {
+                getImage: vi.fn(() => image),
+            },
+            documentSkeleton: {
+                getViewModel: vi.fn(() => ({
+                    getDataModel: vi.fn(() => ({
+                        getDrawings: vi.fn(() => ({
+                            d1: {
+                                imageSourceType: 'url',
+                                source: 'ok',
+                                docTransform: {
+                                    size: { width: 10, height: 6 },
+                                    angle: 0,
+                                },
+                            },
+                        })),
+                    })),
+                })),
+                getSkeletonData: vi.fn(() => ({
+                    pages: [{
+                        width: 40,
+                        height: 20,
+                        skeDrawings: [
+                            { drawingId: 'd1', aLeft, aTop: 4, width: 10, height: 6, angle: 0 },
+                        ],
+                    }],
+                })),
+            },
+        });
+
+        const overflowCtx = createCtx();
+        const wrapCtx = createCtx();
+
+        font._renderImages(overflowCtx, createImageFontCache(0, WrapStrategy.OVERFLOW), 0, 0, 40, 20);
+        font._renderImages(wrapCtx, createImageFontCache(12, WrapStrategy.WRAP), 0, 0, 40, 20);
+
+        expect(overflowCtx.translate).toHaveBeenCalledWith(20, 10);
+        expect(wrapCtx.translate).toHaveBeenCalledWith(20, 10);
+    });
+
+    it('renders cell images inside the cell padding box', () => {
+        const font = new Font() as any;
+        const ctx = createCtx();
+        const image = { complete: true, getAttribute: vi.fn(() => 'false') };
+        const fontCache = createFontCache({
+            verticalAlign: VerticalAlign.TOP,
+            horizontalAlign: HorizontalAlign.RIGHT,
+            style: {
+                pd: { l: 2, r: 8, t: 3, b: 5 },
+            },
+            imageCacheMap: {
+                getImage: vi.fn(() => image),
+            },
+            documentSkeleton: {
+                getViewModel: vi.fn(() => ({
+                    getDataModel: vi.fn(() => ({
+                        getDrawings: vi.fn(() => ({
+                            d1: {
+                                imageSourceType: 'url',
+                                source: 'ok',
+                                docTransform: {
+                                    size: { width: 10, height: 6 },
+                                    angle: 0,
+                                },
+                            },
+                        })),
+                    })),
+                })),
+                getSkeletonData: vi.fn(() => ({
+                    pages: [{
+                        skeDrawings: [
+                            { drawingId: 'd1', aLeft: 0, aTop: 0, width: 10, height: 6, angle: 0 },
+                        ],
+                    }],
+                })),
+            },
+        });
+
+        font._renderImages(ctx, fontCache, 0, 0, 40, 20);
+
+        expect(ctx.translate).toHaveBeenCalledWith(27, 6);
+    });
+
     it('covers draw and render-each-cell early/normal branches', () => {
         const font = new Font() as any;
         const ctx = createCtx();
@@ -503,5 +599,27 @@ describe('font extension', () => {
         } as any);
         expect(ctx.save).toHaveBeenCalled();
         expect(ctx.restore).toHaveBeenCalled();
+    });
+
+    it('does not mutate shared view ranges when expanding text overflow bounds', () => {
+        const font = new Font() as any;
+        const ctx = createCtx();
+        const spreadsheetSkeleton = createSpreadsheetSkeleton();
+        const fontMatrix = new ObjectMatrix<any>();
+        fontMatrix.setValue(0, 0, createFontCache());
+        spreadsheetSkeleton.stylesCache = { fontMatrix };
+        spreadsheetSkeleton.columnTotalWidth = 120;
+        spreadsheetSkeleton.rowTotalHeight = 60;
+        vi.spyOn(font, '_renderFontEachCell').mockReturnValue(true);
+
+        const viewRanges = [{ startRow: 0, endRow: 1, startColumn: 0, endColumn: 1 }];
+
+        font.draw(ctx, { scaleX: 1, scaleY: 1 } as any, spreadsheetSkeleton, [], {
+            viewRanges,
+            checkOutOfViewBound: true,
+            viewportKey: 'viewMain',
+        } as any);
+
+        expect(viewRanges).toEqual([{ startRow: 0, endRow: 1, startColumn: 0, endColumn: 1 }]);
     });
 });

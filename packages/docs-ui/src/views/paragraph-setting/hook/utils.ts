@@ -16,7 +16,7 @@
 
 import type { DocumentDataModel, IParagraph, ISectionBreak } from '@univerjs/core';
 import type { IDocParagraphSettingCommandParams } from '../../../commands/commands/doc-paragraph-setting.command';
-import { BuildTextUtils, ICommandService, IUniverInstanceService, SpacingRule, UniverInstanceType } from '@univerjs/core';
+import { BuildTextUtils, DEFAULT_DOCUMENT_PARAGRAPH_LINE_SPACING, DEFAULT_DOCUMENT_PARAGRAPH_SPACE_ABOVE, DEFAULT_DOCUMENT_PARAGRAPH_SPACE_BELOW, ICommandService, IUniverInstanceService, SpacingRule, UniverInstanceType } from '@univerjs/core';
 import { DocSelectionManagerService, DocSkeletonManagerService } from '@univerjs/docs';
 import { getNumberUnitValue, IRenderManagerService } from '@univerjs/engine-render';
 import { useDependency } from '@univerjs/ui';
@@ -49,7 +49,7 @@ const useDocRanges = () => {
 
 export const useCurrentParagraph = () => {
     const univerInstanceService = useDependency(IUniverInstanceService);
-    const docDataModel = univerInstanceService.getCurrentUnitForType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
+    const docDataModel = univerInstanceService.getCurrentUnitOfType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
     const docRanges = useDocRanges();
 
     if (!docDataModel || docRanges.length === 0) {
@@ -68,7 +68,7 @@ export const useCurrentParagraph = () => {
 
 export const useCurrentSections = (currentParagraphs: IParagraph[]) => {
     const univerInstanceService = useDependency(IUniverInstanceService);
-    const docDataModel = univerInstanceService.getCurrentUnitForType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
+    const docDataModel = univerInstanceService.getCurrentUnitOfType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
     const docRanges = useDocRanges();
 
     if (!docDataModel || docRanges.length === 0) {
@@ -200,7 +200,7 @@ export const useFirstParagraphIndentSpaceAbove = (paragraph: IParagraph[]) => {
         if (!firstParagraph) {
             return 0;
         }
-        return getNumberUnitValue(firstParagraph.paragraphStyle?.spaceAbove, 0);
+        return getNumberUnitValue(firstParagraph.paragraphStyle?.spaceAbove, DEFAULT_DOCUMENT_PARAGRAPH_SPACE_ABOVE);
     });
     const setSpaceAbove = (v: number) => {
         setSpaceAboveInternal(v);
@@ -219,7 +219,7 @@ export const useFirstParagraphSpaceBelow = (paragraph: IParagraph[]) => {
         if (!firstParagraph) {
             return 0;
         }
-        return getNumberUnitValue(firstParagraph.paragraphStyle?.spaceBelow, 0);
+        return getNumberUnitValue(firstParagraph.paragraphStyle?.spaceBelow, DEFAULT_DOCUMENT_PARAGRAPH_SPACE_BELOW);
     });
     const setSpaceBelow = (v: number) => {
         setSpaceBelowInternal(v);
@@ -237,7 +237,7 @@ export const useFirstParagraphLineSpacing = (paragraph: IParagraph[]) => {
     const univerInstanceService = useDependency(IUniverInstanceService);
 
     const skeleton = useMemo(() => {
-        const docDataModel = univerInstanceService.getCurrentUnitForType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
+        const docDataModel = univerInstanceService.getCurrentUnitOfType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC);
         if (!docDataModel) {
             return undefined;
         }
@@ -249,9 +249,9 @@ export const useFirstParagraphLineSpacing = (paragraph: IParagraph[]) => {
     const [lineSpacing, setLineSpacingInternal] = useState(() => {
         const firstParagraph = paragraph[0];
         if (!firstParagraph) {
-            return 1;
+            return 1.5;
         }
-        return firstParagraph.paragraphStyle?.lineSpacing ?? 1;
+        return firstParagraph.paragraphStyle?.lineSpacing ?? DEFAULT_DOCUMENT_PARAGRAPH_LINE_SPACING;
     });
 
     const lineSpacingCache = useRef<number>(lineSpacing);

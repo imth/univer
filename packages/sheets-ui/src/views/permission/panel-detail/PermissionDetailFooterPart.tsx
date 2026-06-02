@@ -49,7 +49,7 @@ export const PermissionDetailFooterPart = (props: IPermissionDetailFooterPartPro
     const sheetPermissionUserManagerService = useDependency(SheetPermissionUserManagerService);
     const univerInstanceService = useDependency(IUniverInstanceService);
 
-    const workbook = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET);
+    const workbook = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET);
     const worksheet = workbook?.getActiveSheet();
     if (!workbook || !worksheet) {
         return null;
@@ -199,7 +199,7 @@ export const PermissionDetailFooterPart = (props: IPermissionDetailFooterPartPro
                         }
                     }
                     const sidebarProps = {
-                        header: { title: `${localeService.t('permission.panel.title')}` },
+                        header: { title: `${localeService.t('sheets-ui.permission.panel.title')}` },
                         children: {
                             label: UNIVER_SHEET_PERMISSION_PANEL,
                             showDetail: false,
@@ -209,7 +209,7 @@ export const PermissionDetailFooterPart = (props: IPermissionDetailFooterPartPro
                     sidebarService.open(sidebarProps);
                 }}
             >
-                {localeService.t('permission.button.confirm')}
+                {localeService.t('sheets-ui.permission.button.confirm')}
             </Button>
             <Button
                 onClick={() => {
@@ -218,7 +218,7 @@ export const PermissionDetailFooterPart = (props: IPermissionDetailFooterPartPro
                     sidebarService.close();
                 }}
             >
-                {localeService.t('permission.button.cancel')}
+                {localeService.t('sheets-ui.permission.button.cancel')}
             </Button>
         </div>
     );

@@ -29,8 +29,10 @@ import { PRESET_LIST_TYPE, SectionType, Skeleton } from '@univerjs/core';
 import { Subject } from 'rxjs';
 import { DocumentSkeletonPageType, GlyphType, LineType, PageLayoutType } from '../../../basics/i-document-skeleton-cached';
 import { Liquid } from '../liquid';
+import { getDocsTableRenderViewport } from '../table-render-viewport';
 import { DocumentEditArea } from '../view-model/document-view-model';
 import { dealWithSection } from './block/section';
+import { getTableIdAndSliceIndex } from './block/table';
 import { Hyphen } from './hyphenation/hyphen';
 import { LanguageDetector } from './hyphenation/language-detector';
 import { createSkeletonPage } from './model/page';
@@ -884,11 +886,24 @@ export class DocumentSkeleton extends Skeleton {
 
         let exactMatch = null;
         if (skeTables.size > 0) {
+            const unitId = this._docViewModel.getDataModel().getUnitId?.() ?? '';
             for (const table of skeTables.values()) {
                 const { top: tableTop, left: tableLeft, rows } = table;
+                const sourceTableId = getTableIdAndSliceIndex(table.tableId).tableId;
+                const viewport = getDocsTableRenderViewport(unitId, sourceTableId);
 
                 this._findLiquid?.translateSave();
                 this._findLiquid?.translate(tableLeft, tableTop);
+                if (viewport && viewport.contentWidth > viewport.viewportWidth) {
+                    const visibleLeft = this._findLiquid.x;
+                    const visibleRight = visibleLeft + viewport.viewportWidth;
+                    if (x < visibleLeft || x > visibleRight) {
+                        this._findLiquid?.translateRestore();
+                        continue;
+                    }
+
+                    this._findLiquid?.translate(-viewport.scrollLeft, 0);
+                }
 
                 for (const row of rows) {
                     const { top: rowTop, cells, isRepeatRow } = row;
@@ -1148,7 +1163,7 @@ export class DocumentSkeleton extends Skeleton {
                 );
             }
 
-            // 计算页内布局，block 结构
+            // Calculate page layout, block structure
             const { pages } = dealWithSection(
                 ctx,
                 viewModel,
@@ -1173,7 +1188,7 @@ export class DocumentSkeleton extends Skeleton {
                 if (lastSection) balanceSectionColumns(lastSection);
             }
 
-            // todo: 当本节有多个列，且下一节为连续节类型的时候，需要按照列数分割，重新计算 lines
+            // todo: When this section has multiple columns and the next section is of continuous type, it needs to be split by column count and recalculate lines
             if (sectionTypeNext === SectionType.CONTINUOUS && columnProperties!.length > 0) {
                 // TODO
             }
@@ -1196,7 +1211,7 @@ export class DocumentSkeleton extends Skeleton {
             resetContext(ctx);
             return this._createSkeleton(ctx, _bounds);
         } else {
-            // 计算页和节的位置信息
+            // Calculate page and section position information
             this._iteratorCount = 0;
             removeDupPages(ctx);
             updateBlockIndex(skeleton.pages);
@@ -1218,7 +1233,7 @@ export class DocumentSkeleton extends Skeleton {
         }
     }
 
-    // 一页存在多个 section 的情况，仅在 SectionType.CONTINUOUS 的情况下出现
+    // A page with multiple sections only occurs in SectionType.CONTINUOUS
     private _addNewSectionByContinuous(
         curSkeletonPage: IDocumentSkeletonPage,
         columnProperties: ISectionColumnProperties[],

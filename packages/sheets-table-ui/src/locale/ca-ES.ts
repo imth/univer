@@ -17,10 +17,11 @@
 import type enUS from './en-US';
 
 const locale: typeof enUS = {
-    'sheets-table': {
+    'sheets-table-ui': {
         title: 'Taula',
         selectRange: 'Selecciona el rang de la taula',
         rename: 'Reanomena la taula',
+        renamePlaceholder: 'Enter table name',
         updateRange: 'Actualitza el rang de la taula',
         tableRangeWithMergeError: 'El rang de la taula no es pot superposar amb cel·les combinades',
         tableRangeWithOtherTableError: 'El rang de la taula no es pot superposar amb altres taules',
@@ -41,6 +42,16 @@ const locale: typeof enUS = {
         columnPrefix: 'Columna',
         tablePrefix: 'Taula',
         tableNameError: 'El nom de la taula no pot contenir espais, no pot començar amb un número i no pot ser idèntic a un nom de taula existent',
+        columnMenu: {
+            'insert-left': 'Insert 1 table column left',
+            'insert-right': 'Insert 1 table column right',
+            delete: 'Delete table column',
+        },
+
+        sort: {
+            'sort-asc': 'Ascendent',
+            'sort-desc': 'Descendent',
+        },
 
         insert: {
             main: 'Insereix una taula',

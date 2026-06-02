@@ -15,29 +15,18 @@
  */
 
 import type { Workbook } from '@univerjs/core';
-import type { IIconSet, IIconType } from '@univerjs/sheets-conditional-formatting';
+import type { IIconSet } from '@univerjs/sheets-conditional-formatting';
 import type { IFormulaEditorRef } from '@univerjs/sheets-formula-ui';
 import type { IStyleEditorProps } from './type';
 import { get, IUniverInstanceService, LocaleService, set, Tools, UniverInstanceType } from '@univerjs/core';
 import { borderClassName, Checkbox, clsx, Dropdown, InputNumber, Select } from '@univerjs/design';
 import { MoreDownIcon, SlashDoubleIcon } from '@univerjs/icons';
-import {
-    CFNumberOperator,
-    CFRuleType,
-    CFSubRuleType,
-    CFValueType,
-    compareWithNumber,
-    createDefaultValue,
-    EMPTY_ICON_TYPE,
-    getOppositeOperator,
-    iconGroup,
-    iconMap,
-} from '@univerjs/sheets-conditional-formatting';
+import { CFNumberOperator, CFRuleType, CFSubRuleType, CFValueType, compareWithNumber, createDefaultValue, getOppositeOperator, iconGroup, iconMap, IIconSetType } from '@univerjs/sheets-conditional-formatting';
 import { FormulaEditor } from '@univerjs/sheets-formula-ui';
 import { ILayoutService, useDependency, useScrollYOverContainer, useSidebarClick } from '@univerjs/ui';
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 
-const getIcon = (iconType: string, iconId: string | number) => {
+const getIcon = (iconType: IIconSetType, iconId: string | number) => {
     const arr = iconMap[iconType] || [];
     return arr[Number(iconId)] || '';
 };
@@ -46,8 +35,8 @@ const TextInput = (props: { id: number; type: CFValueType; value: number | strin
     const { error, type, onChange } = props;
 
     const univerInstanceService = useDependency(IUniverInstanceService);
-    const unitId = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)!.getUnitId();
-    const subUnitId = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)!.getActiveSheet()?.getSheetId();
+    const unitId = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)!.getUnitId();
+    const subUnitId = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)!.getActiveSheet()?.getSheetId();
 
     const formulaEditorRef = useRef<IFormulaEditorRef>(null);
     const [isFocusFormulaEditor, setIsFocusFormulaEditor] = useState(false);
@@ -102,7 +91,7 @@ const TextInput = (props: { id: number; type: CFValueType; value: number | strin
         </div>
     );
 };
-const createDefaultConfigItem = (iconType: IIconType, index: number, list: unknown[]): IIconSet['config'][number] => ({
+const createDefaultConfigItem = (iconType: IIconSetType, index: number, list: unknown[]): IIconSet['config'][number] => ({
     operator: CFNumberOperator.greaterThan,
     value: { type: CFValueType.num, value: (list.length - 1 - index) * 10 },
     iconType,
@@ -110,14 +99,14 @@ const createDefaultConfigItem = (iconType: IIconType, index: number, list: unkno
 });
 
 interface IIconGroupListProps {
-    onClick: (iconType: IIconType) => void;
-    iconType?: IIconType;
+    onClick: (iconType: IIconSetType) => void;
+    iconType?: IIconSetType;
 };
 const IconGroupList = forwardRef<HTMLDivElement, IIconGroupListProps>((props, ref) => {
     const { onClick } = props;
     const localeService = useDependency(LocaleService);
 
-    const handleClick = (iconType: IIconType) => {
+    const handleClick = (iconType: IIconSetType) => {
         onClick(iconType);
     };
     return (
@@ -162,14 +151,14 @@ const IconGroupList = forwardRef<HTMLDivElement, IIconGroupListProps>((props, re
     );
 });
 
-const IconItemList = (props: { onClick: (iconType: IIconType, iconId: string) => void; iconType?: IIconType; iconId: string }) => {
+const IconItemList = (props: { onClick: (iconType: IIconSetType, iconId: string) => void; iconType?: IIconSetType; iconId: string }) => {
     const { onClick } = props;
 
     const list = useMemo(() => {
-        const result: { iconType: IIconType; iconId: string; base64: string }[] = [];
+        const result: { iconType: IIconSetType; iconId: string; base64: string }[] = [];
         for (const key in iconMap) {
-            const list = iconMap[key as IIconType];
-            const iconType = key as IIconType;
+            const iconType = key as IIconSetType;
+            const list = iconMap[iconType];
             list.forEach((base64, index) => {
                 result.push({
                     iconType,
@@ -189,7 +178,7 @@ const IconItemList = (props: { onClick: (iconType: IIconType, iconId: string) =>
         <div>
             <div
                 className="univer-mb-2.5 univer-flex univer-cursor-pointer univer-items-center univer-pl-1"
-                onClick={() => handleClick({ iconType: EMPTY_ICON_TYPE as any, iconId: '', base64: '' })}
+                onClick={() => handleClick({ iconType: IIconSetType.empty, iconId: '', base64: '' })}
             >
                 <SlashDoubleIcon className="univer-size-5" />
                 <span className="univer-ml-2">无单元格图标</span>
@@ -226,12 +215,12 @@ const IconSetRuleEdit = (props: {
     const { onChange, configList, errorMap = {} } = props;
     const localeService = useDependency(LocaleService);
 
-    const options = [{ label: localeService.t(`sheet.cf.symbol.${CFNumberOperator.greaterThan}`), value: CFNumberOperator.greaterThan }, { label: localeService.t(`sheet.cf.symbol.${CFNumberOperator.greaterThanOrEqual}`), value: CFNumberOperator.greaterThanOrEqual }];
+    const options = [{ label: localeService.t(`sheets-conditional-formatting-ui.symbol.${CFNumberOperator.greaterThan}`), value: CFNumberOperator.greaterThan }, { label: localeService.t(`sheets-conditional-formatting-ui.symbol.${CFNumberOperator.greaterThanOrEqual}`), value: CFNumberOperator.greaterThanOrEqual }];
     const valueTypeOptions = [
-        { label: localeService.t(`sheet.cf.valueType.${CFValueType.num}`), value: CFValueType.num },
-        { label: localeService.t(`sheet.cf.valueType.${CFValueType.percent}`), value: CFValueType.percent },
-        { label: localeService.t(`sheet.cf.valueType.${CFValueType.percentile}`), value: CFValueType.percentile },
-        { label: localeService.t(`sheet.cf.valueType.${CFValueType.formula}`), value: CFValueType.formula },
+        { label: localeService.t(`sheets-conditional-formatting-ui.valueType.${CFValueType.num}`), value: CFValueType.num },
+        { label: localeService.t(`sheets-conditional-formatting-ui.valueType.${CFValueType.percent}`), value: CFValueType.percent },
+        { label: localeService.t(`sheets-conditional-formatting-ui.valueType.${CFValueType.percentile}`), value: CFValueType.percentile },
+        { label: localeService.t(`sheets-conditional-formatting-ui.valueType.${CFValueType.formula}`), value: CFValueType.formula },
     ];
     const handleValueValueChange = (v: number | string, index: number) => {
         onChange([String(index), 'value', 'value'], v);
@@ -256,9 +245,9 @@ const IconSetRuleEdit = (props: {
             const isEnd = index === configList.length - 1;
             const isFirst = index === 0;
             const preItem = configList[index - 1];
-            const lessThanText = preItem?.value.type === CFValueType.formula ? localeService.t('sheet.cf.valueType.formula') : preItem?.value.value;
+            const lessThanText = preItem?.value.type === CFValueType.formula ? localeService.t('sheets-conditional-formatting-ui.valueType.formula') : preItem?.value.value;
 
-            const handleIconClick = (iconType: IIconType, iconId: string) => {
+            const handleIconClick = (iconType: IIconSetType, iconId: string) => {
                 const value = { ...item, iconId, iconType } as typeof item;
                 onChange([String(index)], value);
             };
@@ -277,13 +266,13 @@ const IconSetRuleEdit = (props: {
                         <div
                             className="univer-w-[45%]"
                         >
-                            {localeService.t('sheet.cf.iconSet.icon')}
+                            {localeService.t('sheets-conditional-formatting-ui.iconSet.icon')}
                             {index + 1}
                         </div>
 
                         <div className="univer-w-[45%]">
                             <>
-                                {!isFirst && !isEnd && localeService.t('sheet.cf.iconSet.rule')}
+                                {!isFirst && !isEnd && localeService.t('sheets-conditional-formatting-ui.iconSet.rule')}
                                 {!isFirst && !isEnd && (
                                     <span
                                         className={`
@@ -291,10 +280,10 @@ const IconSetRuleEdit = (props: {
                                           dark:!univer-text-gray-200
                                         `}
                                     >
-                                        {localeService.t('sheet.cf.iconSet.when')}
-                                        {localeService.t(`sheet.cf.symbol.${getOppositeOperator(preItem.operator)}`)}
+                                        {localeService.t('sheets-conditional-formatting-ui.iconSet.when')}
+                                        {localeService.t(`sheets-conditional-formatting-ui.symbol.${getOppositeOperator(preItem.operator)}`)}
                                         {lessThanText}
-                                        {isEnd ? '' : ` ${localeService.t('sheet.cf.iconSet.and')} `}
+                                        {isEnd ? '' : ` ${localeService.t('sheets-conditional-formatting-ui.iconSet.and')} `}
                                     </span>
                                 )}
 
@@ -341,12 +330,12 @@ const IconSetRuleEdit = (props: {
                                       dark:!univer-text-gray-200
                                     `}
                                 >
-                                    {localeService.t('sheet.cf.iconSet.rule')}
+                                    {localeService.t('sheets-conditional-formatting-ui.iconSet.rule')}
                                     <span className="univer-font-medium">
-                                        {localeService.t('sheet.cf.iconSet.when')}
-                                        {localeService.t(`sheet.cf.symbol.${getOppositeOperator(preItem.operator)}`)}
+                                        {localeService.t('sheets-conditional-formatting-ui.iconSet.when')}
+                                        {localeService.t(`sheets-conditional-formatting-ui.symbol.${getOppositeOperator(preItem.operator)}`)}
                                         {lessThanText}
-                                        {isEnd ? '' : ` ${localeService.t('sheet.cf.iconSet.and')} `}
+                                        {isEnd ? '' : ` ${localeService.t('sheets-conditional-formatting-ui.iconSet.and')} `}
                                     </span>
                                 </div>
                             )}
@@ -361,8 +350,8 @@ const IconSetRuleEdit = (props: {
                                       dark:!univer-text-gray-200
                                     `}
                                 >
-                                    <div>{localeService.t('sheet.cf.iconSet.type')}</div>
-                                    <div>{localeService.t('sheet.cf.iconSet.value')}</div>
+                                    <div>{localeService.t('sheets-conditional-formatting-ui.iconSet.type')}</div>
+                                    <div>{localeService.t('sheets-conditional-formatting-ui.iconSet.value')}</div>
                                 </div>
                                 <div
                                     className="univer-mt-3 univer-grid univer-grid-cols-2 univer-gap-4"
@@ -398,8 +387,8 @@ export const IconSet = (props: IStyleEditorProps<unknown, IIconSet>) => {
     const rule = props.rule?.type === CFRuleType.iconSet ? props.rule : undefined;
     const localeService = useDependency(LocaleService);
     const [errorMap, setErrorMap] = useState<Record<string, string>>({});
-    const [currentIconType, setCurrentIconType] = useState<IIconType>(() => {
-        const defaultV = Object.keys(iconMap)[0] as IIconType;
+    const [currentIconType, setCurrentIconType] = useState<IIconSetType>(() => {
+        const defaultV = Object.keys(iconMap)[0] as IIconSetType;
         if (rule && rule.config.length) {
             const type = rule.config[0].iconType;
             const isNotSame = rule.config.some((item) => item.iconType !== type);
@@ -490,7 +479,7 @@ export const IconSet = (props: IStyleEditorProps<unknown, IIconSet>) => {
                 const preItem = _configList[index - 1];
                 const preOperator = getOppositeOperator(preItem.operator);
                 if (!compareWithNumber({ operator: preOperator, value: preItem.value.value as number }, item.value.value as number)) {
-                    result[index] = `${localeService.t(`sheet.cf.form.${preOperator}`, String(preItem.value.value))} `;
+                    result[index] = `${localeService.t(`sheets-conditional-formatting-ui.form.${preOperator}`, String(preItem.value.value))} `;
                 }
             });
             return result;
@@ -505,7 +494,7 @@ export const IconSet = (props: IStyleEditorProps<unknown, IIconSet>) => {
             setErrorMap(checkResult(configList));
         }
     };
-    const handleClickIconList = (iconType: IIconType) => {
+    const handleClickIconList = (iconType: IIconSetType) => {
         setCurrentIconType(iconType);
         const list = iconMap[iconType] || [];
         const config = new Array(list.length).fill('').map((_e, index, list) => createDefaultConfigItem(iconType, index, list));
@@ -555,7 +544,7 @@ export const IconSet = (props: IStyleEditorProps<unknown, IIconSet>) => {
     return (
         <div>
             <div className="univer-mt-4 univer-text-sm univer-text-gray-600">
-                {localeService.t('sheet.cf.panel.styleRule')}
+                {localeService.t('sheets-conditional-formatting-ui.panel.styleRule')}
             </div>
             <div className="univer-mt-3">
                 <Dropdown
@@ -587,11 +576,11 @@ export const IconSet = (props: IStyleEditorProps<unknown, IIconSet>) => {
             <div className="univer-mt-3 univer-flex univer-items-center univer-text-xs">
                 <div className="univer-flex univer-items-center univer-text-xs">
                     <Checkbox onChange={reverseIcon} />
-                    {localeService.t('sheet.cf.iconSet.reverseIconOrder')}
+                    {localeService.t('sheets-conditional-formatting-ui.iconSet.reverseIconOrder')}
                 </div>
                 <div className="univer-ml-6 univer-flex univer-items-center univer-text-xs">
                     <Checkbox checked={!isShowValue} onChange={(v) => { setIsShowValue(!v); }} />
-                    {localeService.t('sheet.cf.iconSet.onlyShowIcon')}
+                    {localeService.t('sheets-conditional-formatting-ui.iconSet.onlyShowIcon')}
                 </div>
             </div>
             <IconSetRuleEdit errorMap={errorMap} onChange={handleChange} configList={configList} />

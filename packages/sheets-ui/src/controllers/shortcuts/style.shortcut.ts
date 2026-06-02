@@ -23,36 +23,40 @@ import {
     SetRangeStrickThroughCommand,
     SetRangeUnderlineCommand,
 } from '../../commands/commands/inline-format.command';
-import { whenSheetEditorFocused } from './utils';
+import { whenSheetFocusedInlineFormat } from './utils';
 
 export const SetBoldShortcutItem: IShortcutItem = {
     id: SetRangeBoldCommand.id,
-    description: 'shortcut.sheet.set-bold',
+    description: 'sheets-ui.shortcut.sheet.set-bold',
     group: '4_sheet-edit',
-    preconditions: (contextService) => whenSheetEditorFocused(contextService),
+    groupTitle: 'sheets-ui.shortcut.sheet-edit',
+    preconditions: (contextService) => whenSheetFocusedInlineFormat(contextService),
     binding: KeyCode.B | MetaKeys.CTRL_COMMAND,
 };
 
 export const SetItalicShortcutItem: IShortcutItem = {
     id: SetRangeItalicCommand.id,
-    description: 'shortcut.sheet.set-italic',
+    description: 'sheets-ui.shortcut.sheet.set-italic',
     group: '4_sheet-edit',
-    preconditions: (contextService) => whenSheetEditorFocused(contextService),
+    groupTitle: 'sheets-ui.shortcut.sheet-edit',
+    preconditions: (contextService) => whenSheetFocusedInlineFormat(contextService),
     binding: KeyCode.I | MetaKeys.CTRL_COMMAND,
 };
 
 export const SetUnderlineShortcutItem: IShortcutItem = {
     id: SetRangeUnderlineCommand.id,
-    description: 'shortcut.sheet.set-underline',
+    description: 'sheets-ui.shortcut.sheet.set-underline',
     group: '4_sheet-edit',
-    preconditions: (contextService) => whenSheetEditorFocused(contextService),
+    groupTitle: 'sheets-ui.shortcut.sheet-edit',
+    preconditions: (contextService) => whenSheetFocusedInlineFormat(contextService),
     binding: KeyCode.U | MetaKeys.CTRL_COMMAND,
 };
 
 export const SetStrikeThroughShortcutItem: IShortcutItem = {
     id: SetRangeStrickThroughCommand.id,
-    description: 'shortcut.sheet.set-strike-through',
+    description: 'sheets-ui.shortcut.sheet.set-strike-through',
     group: '4_sheet-edit',
-    preconditions: (contextService) => whenSheetEditorFocused(contextService),
+    groupTitle: 'sheets-ui.shortcut.sheet-edit',
+    preconditions: (contextService) => whenSheetFocusedInlineFormat(contextService),
     binding: KeyCode.X | MetaKeys.SHIFT | MetaKeys.CTRL_COMMAND,
 };

@@ -91,6 +91,7 @@ const workbookDataFactory = (): IWorkbookData => ({
                     0: { v: 'A1' },
                     1: { v: 'very-long-text-for-overflow-path', s: 'style-bg-border' },
                     2: { v: 'wrapped line text', s: 'style-bg-border' },
+                    4: { s: 'style-bg-border', custom: { key: 'value' } },
                 },
                 1: {
                     1: { v: 'rotate-text', s: 'style-rotate' },
@@ -255,6 +256,9 @@ describe('spreadsheet integration', () => {
         }));
         expect(skeleton.rowColumnSegment.endRow).toBeGreaterThanOrEqual(0);
         expect(skeleton.stylesCache.fontMatrix.getSizeOf()).toBeGreaterThan(0);
+        expect(skeleton.stylesCache.border?.getValue(0, 4)).toBeTruthy();
+        expect(skeleton.stylesCache.fontMatrix.getValue(0, 4)).toBeUndefined();
+        expect(skeleton.overflowCache.getValue(0, 4)).toBeUndefined();
 
         const autoHeights = skeleton.calculateAutoHeightInRange([{ startRow: 0, endRow: 6, startColumn: 0, endColumn: 3, rangeType: RANGE_TYPE.NORMAL }]);
         expect(autoHeights.length).toBeGreaterThan(0);
@@ -355,6 +359,26 @@ describe('spreadsheet integration', () => {
         skeleton.dispose();
     });
 
+    it('renders sheet content from the header plus outline margin origin', () => {
+        const { spreadsheet, skeleton, scene, cacheCanvas, mainCanvas } = fixture;
+        const mainCtx = mainCanvas.getContext() as any;
+        const translateSpy = vi.spyOn(mainCtx, 'translateWithPrecision');
+        const transformerSpy = vi.spyOn(scene, 'updateTransformerZero');
+
+        skeleton.setMarginLeft(20);
+        skeleton.setMarginTop(16);
+
+        spreadsheet.render(mainCtx, createViewportInfo(scene, cacheCanvas, {
+            isDirty: 1,
+            isForceDirty: false,
+        }));
+
+        expect(translateSpy).toHaveBeenCalledWith(66, 44);
+        expect(transformerSpy).toHaveBeenCalledWith(66, 44);
+        expect(spreadsheet.isHit(Vector2.FromArray([65, 44]))).toBe(false);
+        expect(spreadsheet.isHit(Vector2.FromArray([67, 45]))).toBe(true);
+    });
+
     it('covers spreadsheet draw helpers and utility branches', () => {
         const { spreadsheet, skeleton, scene, cacheCanvas, mainCanvas } = fixture;
         const context = mainCanvas.getContext() as any;
@@ -377,6 +401,39 @@ describe('spreadsheet integration', () => {
         spreadsheet.draw(context, viewportInfo);
         expect(extensionDraw).toHaveBeenCalled();
 
+        (spreadsheet as any)._refreshIncrementalState = true;
+        spreadsheet.draw(context, viewportInfo);
+        const incrementalDrawInfo = extensionDraw.mock.calls.at(-1)?.[4];
+        expect(incrementalDrawInfo.viewRanges).toEqual(
+            viewportInfo.diffBounds.map((bound) => skeleton.getRangeByViewBound(bound))
+        );
+
+        const fontExtension = { uKey: 'DefaultFontExtension', draw: vi.fn() };
+        const borderExtension = { uKey: 'DefaultBorderExtension', draw: vi.fn() };
+        (spreadsheet as any)._fontExtension = fontExtension;
+        (spreadsheet as any)._borderExtension = borderExtension;
+        vi.spyOn(spreadsheet as any, 'getExtensionsByOrder').mockReturnValue([
+            fontExtension,
+            borderExtension,
+            {
+                uKey: 'MockSheetExtension',
+                draw: extensionDraw,
+            },
+        ]);
+        spreadsheet.draw(context, viewportInfo);
+        const cacheRange = skeleton.getCacheRangeByViewport(viewportInfo);
+        const overflowSafeRanges = viewportInfo.diffBounds.map((bound) => ({
+            ...skeleton.getRangeByViewBound(bound),
+            startColumn: cacheRange.startColumn,
+            endColumn: cacheRange.endColumn,
+        }));
+        expect(fontExtension.draw.mock.calls.at(-1)?.[4].viewRanges).toEqual(overflowSafeRanges);
+        expect(borderExtension.draw.mock.calls.at(-1)?.[4].viewRanges).toEqual(overflowSafeRanges);
+        expect(extensionDraw.mock.calls.at(-1)?.[4].viewRanges).toEqual(
+            viewportInfo.diffBounds.map((bound) => skeleton.getRangeByViewBound(bound))
+        );
+        (spreadsheet as any)._refreshIncrementalState = false;
+
         spreadsheet.paintNewAreaForScrolling(viewportInfo, {
             cacheCanvas,
             cacheCtx: cacheCanvas.getContext() as any,
@@ -385,8 +442,8 @@ describe('spreadsheet integration', () => {
             leftOrigin: 0,
             bufferEdgeX: 8,
             bufferEdgeY: 6,
-            rowHeaderWidth: skeleton.rowHeaderWidth,
-            columnHeaderHeight: skeleton.columnHeaderHeight,
+            rowHeaderWidthAndMarginLeft: skeleton.rowHeaderWidthAndMarginLeft,
+            columnHeaderHeightAndMarginTop: skeleton.columnHeaderHeightAndMarginTop,
             scaleX: 1,
             scaleY: 1,
         } as any);
@@ -422,6 +479,49 @@ describe('spreadsheet integration', () => {
             endY: 0,
         });
         noSkeletonSpreadsheet.dispose();
+    });
+
+    it('skips style cache cell visits when scrolling inside the existing cache area', () => {
+        const { skeleton, scene, cacheCanvas } = fixture;
+        const styleCellSpy = vi.spyOn(skeleton as any, '_setStylesCacheForOneCell');
+        const viewportInfo = createViewportInfo(scene, cacheCanvas, {
+            diffBounds: [createBound(100, 60, 220, 140)],
+            diffCacheBounds: [],
+            diffX: 0,
+            diffY: 12,
+            shouldCacheUpdate: 0,
+            isDirty: 0,
+            isForceDirty: false,
+        });
+
+        skeleton.setStylesCache(viewportInfo);
+
+        expect(styleCellSpy).not.toHaveBeenCalled();
+        expect(skeleton.rowColumnSegment).toEqual(skeleton.getCacheRangeByViewport(viewportInfo));
+    });
+
+    it('refreshes cache instead of incremental painting for large scroll jumps', () => {
+        const { spreadsheet, skeleton, mainCanvas, cacheCanvas, scene } = fixture;
+        const context = mainCanvas.getContext();
+        const viewportInfo = createViewportInfo(scene, cacheCanvas, {
+            diffBounds: [createBound(0, 10000, 460, 10280)],
+            diffCacheBounds: [createBound(0, 10000, 460, 10280)],
+            diffX: 0,
+            diffY: -10000,
+            isDirty: 0,
+            isForceDirty: false,
+            shouldCacheUpdate: 1,
+        });
+        spreadsheet.makeDirty(false);
+        spreadsheet.makeForceDirty(false);
+
+        const paintSpy = vi.spyOn(spreadsheet, 'paintNewAreaForScrolling');
+        const refreshSpy = vi.spyOn(spreadsheet, 'refreshCacheCanvas');
+
+        spreadsheet.renderByViewports(context, viewportInfo, skeleton);
+
+        expect(refreshSpy).toHaveBeenCalledOnce();
+        expect(paintSpy).not.toHaveBeenCalled();
     });
 
     it('draws row and column gap areas using defaults from gapConfig', () => {

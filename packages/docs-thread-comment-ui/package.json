@@ -1,9 +1,9 @@
 {
     "name": "@univerjs/docs-thread-comment-ui",
-    "version": "0.21.1",
+    "version": "0.25.0",
     "private": false,
-    "description": "Univer thread comment plugin",
-    "author": "DreamNum <developer@univer.ai>",
+    "description": "Thread comment UI integration for Univer Docs.",
+    "author": "DreamNum Co., Ltd. <developer@univer.ai>",
     "license": "Apache-2.0",
     "funding": {
         "type": "opencollective",
@@ -17,10 +17,17 @@
     "bugs": {
         "url": "https://github.com/dream-num/univer/issues"
     },
-    "keywords": [],
+    "keywords": [
+        "univer",
+        "docs",
+        "comment",
+        "thread-comment",
+        "ui"
+    ],
     "exports": {
         ".": "./src/index.ts",
-        "./*": "./src/*"
+        "./*": "./src/*",
+        "./locale/*": "./src/locale/*.ts"
     },
     "main": "./src/index.ts",
     "types": "./lib/types/index.d.ts",
@@ -38,6 +45,11 @@
                 "import": "./lib/es/*",
                 "require": "./lib/cjs/*",
                 "types": "./lib/types/index.d.ts"
+            },
+            "./locale/*": {
+                "import": "./lib/es/locale/*.js",
+                "require": "./lib/cjs/locale/*.js",
+                "types": "./lib/types/locale/*.d.ts"
             },
             "./lib/*": "./lib/*"
         }
@@ -66,18 +78,18 @@
         "@univerjs/docs": "workspace:*",
         "@univerjs/docs-ui": "workspace:*",
         "@univerjs/engine-render": "workspace:*",
-        "@univerjs/icons": "^1.1.1",
+        "@univerjs/icons": "1.4.0",
         "@univerjs/thread-comment": "workspace:*",
         "@univerjs/thread-comment-ui": "workspace:*",
         "@univerjs/ui": "workspace:*"
     },
     "devDependencies": {
         "@univerjs-infra/shared": "workspace:*",
-        "postcss": "^8.5.10",
+        "postcss": "^8.5.15",
         "react": "18.3.1",
         "rxjs": "^7.8.2",
         "tailwindcss": "3.4.18",
-        "typescript": "^6.0.2",
-        "vitest": "^4.1.4"
+        "typescript": "^6.0.3",
+        "vitest": "^4.1.7"
     }
 }

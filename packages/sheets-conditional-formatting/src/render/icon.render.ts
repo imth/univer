@@ -16,11 +16,10 @@
 
 import type { IRange, IScale } from '@univerjs/core';
 import type { SpreadsheetSkeleton, UniverRenderingContext } from '@univerjs/engine-render';
-import type { IIconType } from '../models/icon-map';
 import type { IIconSetCellData } from './type';
 import { Range } from '@univerjs/core';
 import { SheetExtension, SpreadsheetExtensionRegistry } from '@univerjs/engine-render';
-import { EMPTY_ICON_TYPE, iconMap } from '../models/icon-map';
+import { iconMap, IIconSetType } from '../models/icon-map';
 
 export const IconUKey = 'sheet-conditional-rule-icon';
 const EXTENSION_Z_INDEX = 35;
@@ -58,67 +57,70 @@ export class ConditionalFormattingIcon extends SheetExtension {
             return false;
         }
         const mergeCellRendered = new Set<string>();
+        const renderRanges = diffRanges?.length ? diffRanges : [spreadsheetSkeleton.rowColumnSegment];
         ctx.save();
         // ctx.globalCompositeOperation = 'destination-over';
-        Range.foreach(spreadsheetSkeleton.rowColumnSegment, (row, col) => {
-            if (!worksheet.getRowVisible(row) || !worksheet.getColVisible(col)) {
-                return;
-            }
-
-            const primaryWithCoord = spreadsheetSkeleton.getCellWithCoordByIndex(row, col, false);
-            const { isMerged, isMergedMainCell, mergeInfo } = primaryWithCoord;
-
-            let cellData = worksheet.getCell(row, col) as IIconSetCellData;
-            if (isMerged) {
-                cellData = worksheet.getCell(mergeInfo.startRow, mergeInfo.startColumn) as IIconSetCellData;
-            }
-
-            if (!cellData?.iconSet) {
-                return;
-            }
-
-            const { iconType, iconId } = cellData.iconSet;
-            if (iconType === EMPTY_ICON_TYPE) {
-                return;
-            }
-
-            const icon = this._imageMap.get(this._createKey(iconType, iconId));
-            if (!icon) {
-                return;
-            }
-
-            if (!this.isRenderDiffRangesByCell(mergeInfo, diffRanges)) {
-                return;
-            }
-
-            if (isMerged || isMergedMainCell) {
-                const rangeStr = stringifyRange(mergeInfo);
-                if (mergeCellRendered.has(rangeStr)) {
+        renderRanges.forEach((range) => {
+            Range.foreach(range, (row, col) => {
+                if (!worksheet.getRowVisible(row) || !worksheet.getColVisible(col)) {
                     return;
                 }
 
-                mergeCellRendered.add(rangeStr);
-            }
+                const primaryWithCoord = spreadsheetSkeleton.getCellWithCoordByIndex(row, col, false);
+                const { isMerged, isMergedMainCell, mergeInfo } = primaryWithCoord;
 
-            const { startX, endX, startY, endY } = (isMerged || isMergedMainCell) ? mergeInfo : primaryWithCoord;
-            const borderWidth = endX - startX;
-            const borderHeight = endY - startY;
-            if (this._width > borderHeight || this._width > borderWidth + this._paddingRightAndLeft * 2) {
-                return;
-            }
+                let cellData = worksheet.getCell(row, col) as IIconSetCellData;
+                if (isMerged) {
+                    cellData = worksheet.getCell(mergeInfo.startRow, mergeInfo.startColumn) as IIconSetCellData;
+                }
 
-            // Highly centered processing
-            const y = (borderHeight - this._width) / 2 + startY;
-            ctx.drawImage(icon, startX + this._paddingRightAndLeft, y, this._width, this._width);
+                if (!cellData?.iconSet) {
+                    return;
+                }
+
+                const { iconType, iconId } = cellData.iconSet;
+                if (iconType === IIconSetType.empty) {
+                    return;
+                }
+
+                const icon = this._imageMap.get(this._createKey(iconType, iconId));
+                if (!icon) {
+                    return;
+                }
+
+                if (!this.isRenderDiffRangesByCell(mergeInfo, diffRanges)) {
+                    return;
+                }
+
+                if (isMerged || isMergedMainCell) {
+                    const rangeStr = stringifyRange(mergeInfo);
+                    if (mergeCellRendered.has(rangeStr)) {
+                        return;
+                    }
+
+                    mergeCellRendered.add(rangeStr);
+                }
+
+                const { startX, endX, startY, endY } = (isMerged || isMergedMainCell) ? mergeInfo : primaryWithCoord;
+                const borderWidth = endX - startX;
+                const borderHeight = endY - startY;
+                if (this._width > borderHeight || this._width > borderWidth + this._paddingRightAndLeft * 2) {
+                    return;
+                }
+
+                // Highly centered processing
+                const y = (borderHeight - this._width) / 2 + startY;
+                ctx.drawImage(icon, startX + this._paddingRightAndLeft, y, this._width, this._width);
+            });
         });
         ctx.restore();
     }
 
     private _init() {
         for (const type in iconMap) {
-            const list = iconMap[type as IIconType];
+            const list = iconMap[type as IIconSetType];
             list.forEach((base64, index) => {
-                const key = this._createKey(type as IIconType, String(index));
+                const key = this._createKey(type as IIconSetType, String(index));
                 const image = new Image();
                 image.onload = () => {
                     this._imageMap.set(key, image);
@@ -128,7 +130,7 @@ export class ConditionalFormattingIcon extends SheetExtension {
         }
     }
 
-    private _createKey(iconType: IIconType, iconIndex: string) {
+    private _createKey(iconType: IIconSetType, iconIndex: string) {
         return `${iconType}_${iconIndex}`;
     }
 }

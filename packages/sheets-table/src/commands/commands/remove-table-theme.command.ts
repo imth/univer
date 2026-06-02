@@ -18,7 +18,7 @@ import type { ICommand } from '@univerjs/core';
 import { CommandType, ICommandService, IUndoRedoService, sequenceExecute } from '@univerjs/core';
 import { AddRangeThemeMutation, RemoveRangeThemeMutation, SheetRangeThemeModel } from '@univerjs/sheets';
 import { SHEET_TABLE_CUSTOM_THEME_PREFIX } from '../../const';
-import { TableManager } from '../../model/table-manager';
+import { TableManager } from '../../models/table-manager';
 import { SetSheetTableMutation } from '../mutations/set-sheet-table.mutation';
 
 export interface IRemoveTableThemeCommandParams {
@@ -65,15 +65,17 @@ export const RemoveTableThemeCommand: ICommand<IRemoveTableThemeCommandParams> =
 
         const commandService = accessor.get(ICommandService);
         const res = sequenceExecute(redos, commandService);
-        if (res) {
+        if (res.result) {
             const undoRedoService = accessor.get(IUndoRedoService);
             undoRedoService.pushUndoRedo({
                 unitID: unitId,
                 redoMutations: redos,
                 undoMutations: undos,
             });
+
+            return true;
         }
 
-        return true;
+        return false;
     },
 };

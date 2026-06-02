@@ -30,6 +30,7 @@ export interface IMenuSchema {
     key: string;
     order: number;
     title?: string;
+    contextual?: boolean;
     item?: IMenuItem;
     children?: IMenuSchema[];
     quickLayout?: ContextMenuQuickLayout;
@@ -52,7 +53,9 @@ export type MenuSchemaType = {
     order?: number;
     menuItemFactory?: (accessor: IAccessor) => IMenuItem;
     title?: string;
+    contextual?: boolean;
     quickLayout?: ContextMenuQuickLayout;
+    tiny?: boolean;
 } | {
     [key: string]: MenuSchemaType;
 };
@@ -64,6 +67,7 @@ export class MenuManagerService extends Disposable implements IMenuManagerServic
         [MenuManagerPosition.RIBBON]: {
             [RibbonPosition.START]: {
                 order: 0,
+                title: 'ui.ribbon.start',
                 [RibbonStartGroup.HISTORY]: {
                     order: 0,
                 },
@@ -79,6 +83,7 @@ export class MenuManagerService extends Disposable implements IMenuManagerServic
             },
             [RibbonPosition.INSERT]: {
                 order: 1,
+                title: 'ui.ribbon.insert',
                 [RibbonInsertGroup.EDIT]: {
                     order: 0,
                 },
@@ -91,6 +96,7 @@ export class MenuManagerService extends Disposable implements IMenuManagerServic
             },
             [RibbonPosition.FORMULAS]: {
                 order: 2,
+                title: 'ui.ribbon.formulas',
                 [RibbonFormulasGroup.BASIC]: {
                     order: 0,
                 },
@@ -100,6 +106,7 @@ export class MenuManagerService extends Disposable implements IMenuManagerServic
             },
             [RibbonPosition.DATA]: {
                 order: 3,
+                title: 'ui.ribbon.data',
                 [RibbonDataGroup.FORMULAS]: {
                     order: 0,
                 },
@@ -115,6 +122,7 @@ export class MenuManagerService extends Disposable implements IMenuManagerServic
             },
             [RibbonPosition.VIEW]: {
                 order: 4,
+                title: 'ui.ribbon.view',
                 [RibbonViewGroup.DISPLAY]: {
                     order: 0,
                 },
@@ -127,6 +135,7 @@ export class MenuManagerService extends Disposable implements IMenuManagerServic
             },
             [RibbonPosition.OTHERS]: {
                 order: 5,
+                title: 'ui.ribbon.others',
                 [RibbonOthersGroup.OTHERS]: {
                     order: 0,
                 },
@@ -283,7 +292,9 @@ export class MenuManagerService extends Disposable implements IMenuManagerServic
                 key,
                 order: value.order,
                 title: value.title,
+                contextual: value.contextual,
                 quickLayout: value.quickLayout,
+                tiny: value.tiny,
             };
 
             if (value.menuItemFactory) {
@@ -312,7 +323,7 @@ export class MenuManagerService extends Disposable implements IMenuManagerServic
             }
         }
 
-        return result;
+        return result.sort((a, b) => normalizeMenuOrder(a.order) - normalizeMenuOrder(b.order));
     }
 
     /**
@@ -361,4 +372,8 @@ export class MenuManagerService extends Disposable implements IMenuManagerServic
 
         return flatMenuItems(menu);
     }
+}
+
+function normalizeMenuOrder(order: number | undefined): number {
+    return order ?? 0;
 }

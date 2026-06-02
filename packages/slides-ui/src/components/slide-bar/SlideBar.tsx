@@ -35,7 +35,7 @@ export function SlideSideBar() {
     const localeService = useDependency(LocaleService);
 
     const slideBarRef = useRef<HTMLDivElement>(null);
-    const currentSlide = univerInstanceService.getCurrentUnitForType<SlideDataModel>(UniverInstanceType.UNIVER_SLIDE);
+    const currentSlide = univerInstanceService.getCurrentUnitOfType<SlideDataModel>(UniverInstanceType.UNIVER_SLIDE);
 
     // const currentSlide = useObservable(
     //     () => univerInstanceService.getCurrentTypeOfUnit$<SlideDataModel>(UniverInstanceType.UNIVER_SLIDE),
@@ -78,7 +78,7 @@ export function SlideSideBar() {
         if (divRefs.length > 0) {
             commandService.syncExecuteCommand(SetSlidePageThumbOperation.id, { unitId: currentSlide?.getUnitId() });
         }
-    }, [divRefs, slideList, renderManagerService, commandService, currentSlide]); // 依赖于divRefs数组的变化
+    }, [divRefs, slideList, renderManagerService, commandService, currentSlide]); // Depends on changes in divRefs array
 
     const activatePage = useCallback((page: string) => {
         commandService.syncExecuteCommand(ActivateSlidePageOperation.id, { id: page, unitId: currentSlide?.getUnitId() });
@@ -105,7 +105,7 @@ export function SlideSideBar() {
                         `, borderClassName)}
                         onClick={handleAppendSlide}
                     >
-                        {localeService.t('slide.append')}
+                        {localeService.t('slides-ui.append')}
                     </a>
                 </header>
 

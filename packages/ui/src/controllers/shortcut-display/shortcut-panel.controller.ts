@@ -29,8 +29,9 @@ import { ShortcutPanel } from '../../views/components/shortcut-panel/ShortcutPan
 const ToggleShortcutPanelShortcut: IShortcutItem = {
     id: ToggleShortcutPanelOperation.id,
     binding: MetaKeys.CTRL_COMMAND | KeyCode.BACK_SLASH,
-    description: 'shortcut.shortcut-panel',
+    description: 'ui.shortcut.shortcut-panel',
     group: '10_global-shortcut',
+    groupTitle: 'ui.global-shortcut',
 };
 
 /**

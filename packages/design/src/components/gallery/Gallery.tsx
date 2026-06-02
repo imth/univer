@@ -15,9 +15,10 @@
  */
 
 import { OneToOneIcon, ZoomInIcon, ZoomOutIcon } from '@univerjs/icons';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { clsx } from '../../helper/clsx';
+import { ConfigContext } from '../config-provider/ConfigProvider';
 import { Pager } from '../pager/Pager';
 
 export interface IGalleryProps {
@@ -38,19 +39,20 @@ export function Gallery(props: IGalleryProps) {
     const [isVisible, setIsVisible] = useState(false);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [zoomLevel, setZoomLevel] = useState(1);
+    const { direction } = useContext(ConfigContext);
 
     const dialogRef = useRef<HTMLDivElement>(null);
 
     const activeImage = useMemo(() => images[activeImageIndex], [activeImageIndex, images]);
 
-    // 聚焦管理
+    // Focus management
     useEffect(() => {
         if (open && dialogRef.current) {
             dialogRef.current.focus();
         }
     }, [open]);
 
-    // ESC 关闭支持
+    // ESC close support
     useEffect(() => {
         if (!open) return;
         const handler = (e: KeyboardEvent) => {
@@ -105,6 +107,7 @@ export function Gallery(props: IGalleryProps) {
     return createPortal(
         <div
             data-u-comp="gallery"
+            dir={direction}
             role="dialog"
             aria-modal="true"
             aria-label="Image gallery"

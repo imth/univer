@@ -17,10 +17,11 @@
 import type enUS from './en-US';
 
 const locale: typeof enUS = {
-    'sheets-table': {
+    'sheets-table-ui': {
         title: 'Tabuľka',
         selectRange: 'Vyberte rozsah tabuľky',
         rename: 'Premenovať tabuľku',
+        renamePlaceholder: 'Enter table name',
         updateRange: 'Aktualizovať rozsah tabuľky',
         tableRangeWithMergeError: 'Rozsah tabuľky sa nemôže prekrývať so zlúčenými bunkami',
         tableRangeWithOtherTableError: 'Rozsah tabuľky sa nemôže prekrývať s inými tabuľkami',
@@ -41,6 +42,16 @@ const locale: typeof enUS = {
         columnPrefix: 'Stĺpec',
         tablePrefix: 'Tabuľka',
         tableNameError: 'Názov tabuľky nesmie obsahovať medzery, nesmie začínať číslom a nesmie byť zhodný s existujúcim názvom tabuľky',
+        columnMenu: {
+            'insert-left': 'Insert 1 table column left',
+            'insert-right': 'Insert 1 table column right',
+            delete: 'Delete table column',
+        },
+
+        sort: {
+            'sort-asc': 'Vzostupne',
+            'sort-desc': 'Zostupne',
+        },
 
         insert: {
             main: 'Vložiť tabuľku',

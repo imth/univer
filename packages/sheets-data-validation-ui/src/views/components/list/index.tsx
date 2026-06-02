@@ -76,7 +76,7 @@ export function DataValidationList(props: { workbook: Workbook }) {
     };
 
     const getDvRulesByPermissionCorrect = (rules: ISheetDataValidationRule[]) => {
-        const workbook = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
+        const workbook = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
         const worksheet = workbook.getActiveSheet();
         const unitId = workbook.getUnitId();
         const subUnitId = worksheet.getSheetId();
@@ -119,12 +119,12 @@ export function DataValidationList(props: { workbook: Workbook }) {
                 {(rules.length && !hasDisableRule)
                     ? (
                         <Button onClick={handleRemoveAll}>
-                            {localeService.t('dataValidation.panel.removeAll')}
+                            {localeService.t('sheets-data-validation-ui.panel.removeAll')}
                         </Button>
                     )
                     : null}
                 <Button variant="primary" onClick={handleAddRule}>
-                    {localeService.t('dataValidation.panel.add')}
+                    {localeService.t('sheets-data-validation-ui.panel.add')}
                 </Button>
             </div>
         </div>
