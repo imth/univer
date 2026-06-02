@@ -109,13 +109,6 @@ export interface IDocumentSkeletonPage {
     type: DocumentSkeletonPageType; // page type: header, footer, body, or cell
     renderConfig?: IDocumentRenderConfig;
     parent?: IDocumentSkeletonCached | IDocumentSkeletonRow;
-    /**
-     * Table cell only. The cell's index into
-     * `parent.rowSource.tableCells[]` (which may differ from the cell's
-     * position in `parent.cells` when continuation slots are skipped by
-     * the layout pass). Renderer uses this to recover the cell config.
-     */
-    cellSourceIndex?: number;
 }
 
 export interface IDocumentSkeletonHeaderFooter extends IDocumentSkeletonPage {}
