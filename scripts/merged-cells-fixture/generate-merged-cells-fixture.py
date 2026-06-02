@@ -9,6 +9,12 @@ Three tables:
   2. vMerge: a 2-row vertical merge in column 0.
   3. gridSpan+vMerge: a 2x2 merged block (master at top-left).
 A paragraph after the tables provides an index-shift sanity anchor.
+
+This script is the source of truth; the committed .docx is the test input.
+Re-run it after editing to regenerate the fixture. The binary may differ on
+re-runs even when the OOXML is identical (zipfile DEFLATE is not guaranteed
+deterministic across Python versions) — that's harmless; the test validates
+the imported cell structure, not the archive bytes.
 """
 import os
 import zipfile
