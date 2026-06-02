@@ -1,9 +1,9 @@
 {
     "name": "@univerjs/sheets-table",
-    "version": "0.21.1",
+    "version": "0.25.0",
     "private": false,
-    "description": "A library for connect and bind data from other sources to Univer Sheets",
-    "author": "DreamNum <developer@univer.ai>",
+    "description": "Structured table model and commands for Univer Sheets.",
+    "author": "DreamNum Co., Ltd. <developer@univer.ai>",
     "license": "Apache-2.0",
     "funding": {
         "type": "opencollective",
@@ -20,12 +20,15 @@
     "keywords": [
         "univer",
         "sheets",
-        "table"
+        "table",
+        "structured-data",
+        "plugin"
     ],
     "exports": {
         ".": "./src/index.ts",
         "./*": "./src/*",
-        "./facade": "./src/facade/index.ts"
+        "./facade": "./src/facade/index.ts",
+        "./locale/*": "./src/locale/*.ts"
     },
     "main": "./src/index.ts",
     "types": "./lib/types/index.d.ts",
@@ -43,6 +46,11 @@
                 "import": "./lib/es/*",
                 "require": "./lib/cjs/*",
                 "types": "./lib/types/index.d.ts"
+            },
+            "./locale/*": {
+                "import": "./lib/es/locale/*.js",
+                "require": "./lib/cjs/locale/*.js",
+                "types": "./lib/types/locale/*.d.ts"
             },
             "./facade": {
                 "import": "./lib/es/facade.js",
@@ -82,8 +90,10 @@
     },
     "devDependencies": {
         "@univerjs-infra/shared": "workspace:*",
+        "@univerjs/engine-render": "workspace:*",
+        "@univerjs/sheets-formula": "workspace:*",
         "rxjs": "^7.8.2",
-        "typescript": "^6.0.2",
-        "vitest": "^4.1.4"
+        "typescript": "^6.0.3",
+        "vitest": "^4.1.7"
     }
 }

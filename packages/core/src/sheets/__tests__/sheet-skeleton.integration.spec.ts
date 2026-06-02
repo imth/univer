@@ -25,6 +25,7 @@ import { ThemeService } from '../../services/theme/theme.service';
 import { ColorKit } from '../../shared';
 import { BooleanNumber, HorizontalAlign } from '../../types/enum';
 import { LocaleType } from '../../types/enum/locale-type';
+import { DocumentFlavor } from '../../types/interfaces';
 import { createSheetGapTestConfig, SheetSkeleton } from '../sheet-skeleton';
 import { RANGE_TYPE } from '../typedef';
 import { createCoreTestBed } from './create-core-test-bed';
@@ -271,6 +272,8 @@ describe('SheetSkeleton integration', () => {
                     width: Number.POSITIVE_INFINITY,
                     height: Number.POSITIVE_INFINITY,
                 },
+                documentFlavor: DocumentFlavor.UNSPECIFIED,
+                paragraphLineGapDefault: 0,
                 renderConfig: {
                     horizontalAlign: HorizontalAlign.CENTER,
                 },
@@ -334,8 +337,8 @@ describe('SheetSkeleton integration', () => {
         const baseColor = themeService.getColorFromTheme('primary.500');
         const { r, g, b } = new ColorKit(baseColor).toRgb();
 
-        expect(skeleton.gapConfig.defaultBackgroundColor).toBe(`rgba(${r}, ${g}, ${b}, 0.08)`);
-        expect(skeleton.gapConfig.defaultStripeColor).toBe(`rgba(${r}, ${g}, ${b}, 0.25)`);
+        expect(skeleton.gapConfig.defaultBackgroundColor).toBe(`rgba(${r}, ${g}, ${b}, 0.025)`);
+        expect(skeleton.gapConfig.defaultStripeColor).toBe(`rgba(${r}, ${g}, ${b}, 0.08)`);
         expect(skeleton.getRowGapSize(1)).toBe(5);
         expect(skeleton.getColGapSize(2)).toBe(7);
 
@@ -490,12 +493,12 @@ describe('SheetSkeleton integration', () => {
             defaultBackgroundColor: '#abcdef',
         });
         expect(skeleton.gapConfig.defaultBackgroundColor).toBe('#abcdef');
-        expect(skeleton.gapConfig.defaultStripeColor).toBe(`rgba(${r}, ${g}, ${b}, 0.25)`);
+        expect(skeleton.gapConfig.defaultStripeColor).toBe(`rgba(${r}, ${g}, ${b}, 0.08)`);
 
         skeleton.setGapConfig({
             defaultStripeColor: '#fedcba',
         });
         expect(skeleton.gapConfig.defaultStripeColor).toBe('#fedcba');
-        expect(skeleton.gapConfig.defaultBackgroundColor).toBe(`rgba(${r}, ${g}, ${b}, 0.08)`);
+        expect(skeleton.gapConfig.defaultBackgroundColor).toBe(`rgba(${r}, ${g}, ${b}, 0.025)`);
     });
 });

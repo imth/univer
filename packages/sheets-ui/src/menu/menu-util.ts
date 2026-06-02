@@ -109,17 +109,17 @@ export function getCurrentRangeDisable$(accessor: IAccessor, permissionTypes: IP
 
     const editorVisible$ = _editorVisible$.pipe(
         startWith(null),
-        shareReplay(1)
+        shareReplay({ bufferSize: 1, refCount: true })
     );
 
     const formulaEditorFocus$ = contextService.subscribeContextValue$(FOCUSING_FX_BAR_EDITOR).pipe(
         startWith(false),
-        shareReplay(1)
+        shareReplay({ bufferSize: 1, refCount: true })
     );
 
     const focusingShapeTextEditor$ = contextService.subscribeContextValue$(FOCUSING_SHAPE_TEXT_EDITOR).pipe(
         startWith(false),
-        shareReplay(1)
+        shareReplay({ bufferSize: 1, refCount: true })
     );
 
     const observable = combineLatest([userManagerService.currentUser$, workbook$, editorVisible$, formulaEditorFocus$, focusingShapeTextEditor$]).pipe(
@@ -222,7 +222,7 @@ export function getBaseRangeMenuHidden$(accessor: IAccessor) {
             const range = selectionManagerService.getCurrentLastSelection()?.range;
             if (!range) return true;
 
-            const workbook = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET);
+            const workbook = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET);
             const worksheet = workbook?.getActiveSheet();
             if (!workbook || !worksheet) {
                 return true;
@@ -256,7 +256,7 @@ export function getInsertAfterMenuHidden$(accessor: IAccessor, type: 'row' | 'co
             const range = selectionManagerService.getCurrentLastSelection()?.range;
             if (!range) return true;
 
-            const workbook = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET);
+            const workbook = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET);
             const worksheet = workbook?.getActiveSheet();
             if (!workbook || !worksheet) {
                 return true;
@@ -298,7 +298,7 @@ export function getInsertBeforeMenuHidden$(accessor: IAccessor, type: 'row' | 'c
             const range = selectionManagerService.getCurrentLastSelection()?.range;
             if (!range) return true;
 
-            const workbook = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET);
+            const workbook = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET);
             const worksheet = workbook?.getActiveSheet();
             if (!workbook || !worksheet) {
                 return true;
@@ -341,7 +341,7 @@ export function getDeleteMenuHidden$(accessor: IAccessor, type: 'row' | 'col') {
             const range = selectionManagerService.getCurrentLastSelection()?.range;
             if (!range) return true;
 
-            const workbook = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET);
+            const workbook = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET);
             const worksheet = workbook?.getActiveSheet();
             if (!workbook || !worksheet) {
                 return true;
@@ -386,7 +386,7 @@ export function getCellMenuHidden$(accessor: IAccessor, type: 'row' | 'col') {
             const range = selectionManagerService.getCurrentLastSelection()?.range;
             if (!range) return true;
 
-            const workbook = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET);
+            const workbook = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET);
             const worksheet = workbook?.getActiveSheet();
             if (!workbook || !worksheet) {
                 return true;
@@ -418,8 +418,6 @@ export function getCellMenuHidden$(accessor: IAccessor, type: 'row' | 'col') {
 export function getWorkbookPermissionDisable$(accessor: IAccessor, workbookPermissionTypes: WorkbookPermissionPointConstructor[]) {
     const univerInstanceService = accessor.get(IUniverInstanceService);
     const workbook$ = univerInstanceService.getCurrentTypeOfUnit$<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
-    const worksheetRuleModel = accessor.get(WorksheetProtectionRuleModel);
-    const selectionRuleModel = accessor.get(RangeProtectionRuleModel);
     const permissionService = accessor.get(IPermissionService);
     const userManagerService = accessor.get(UserManagerService);
 
@@ -428,29 +426,42 @@ export function getWorkbookPermissionDisable$(accessor: IAccessor, workbookPermi
             if (!workbook) {
                 return of(true);
             }
+
             return workbook.activeSheet$.pipe(
-                switchMap((activeSheet) => {
-                    if (!activeSheet) {
+                switchMap((worksheet) => {
+                    if (!worksheet) {
                         return of(true);
                     }
+
                     const unitId = workbook.getUnitId();
+                    const subUnitId = worksheet.getSheetId();
+
+                    const selectionProtectionRuleModel = accessor.get(RangeProtectionRuleModel);
+                    const worksheetProtectionRuleModel = accessor.get(WorksheetProtectionRuleModel);
+
                     const workbookPermissionIds: string[] = [];
                     workbookPermissionTypes.forEach((F) => workbookPermissionIds.push(new F(unitId).id));
-                    const workbookPermission$ = permissionService.composePermission$(workbookPermissionIds).pipe(map((list) => list.every((item) => item.value === true)));
 
-                    return workbookPermission$.pipe(
-                        map((basePermission) => {
-                            if (!basePermission) {
-                                return true;
-                            }
+                    const permission$ = permissionService.composePermission$(workbookPermissionIds).pipe(
+                        map((list) => list.every((item) => item.value === true))
+                    ) ?? of(false);
 
-                            const subUnitId = activeSheet.getSheetId();
-                            const worksheetRule = worksheetRuleModel.getRule(unitId, subUnitId);
-                            const rangeRuleList = selectionRuleModel.getSubunitRuleList(unitId, subUnitId);
-                            if (worksheetRule || rangeRuleList.length) {
-                                return true;
-                            }
-                            return false;
+                    const ruleChange$ = merge(
+                        selectionProtectionRuleModel.ruleChange$,
+                        worksheetProtectionRuleModel.ruleChange$
+                    ).pipe(
+                        startWith(null)
+                    );
+
+                    return combineLatest([permission$, ruleChange$]).pipe(
+                        map(([permission, _]) => {
+                            if (!permission) return true;
+
+                            const worksheetRule = worksheetProtectionRuleModel.getRule(unitId, subUnitId);
+                            if (worksheetRule?.permissionId) return true;
+
+                            const subUnitRuleList = selectionProtectionRuleModel.getSubunitRuleList(unitId, subUnitId)?.filter((item) => item?.permissionId);
+                            return subUnitRuleList.length > 0;
                         })
                     );
                 })

@@ -17,7 +17,17 @@
 import type { IRange, Nullable, Styles, Workbook, Worksheet } from '@univerjs/core';
 import type { FilterColumn } from '@univerjs/sheets-filter';
 import type { IFilterByValueItem, IFilterByValueWithTreeItem } from '../services/sheets-filter-panel.service';
-import { createIdentifier, Disposable, extractPureTextFromCell, ILogService, Inject, IUniverInstanceService, LocaleService, numfmt } from '@univerjs/core';
+import {
+    createIdentifier,
+    Disposable,
+    extractPureTextFromCell,
+    ILogService,
+    Inject,
+    isNumeric,
+    IUniverInstanceService,
+    LocaleService,
+    numfmt,
+} from '@univerjs/core';
 import { FilterBy } from '@univerjs/sheets-filter';
 
 export interface ISheetsGenerateFilterValuesService {
@@ -135,7 +145,7 @@ export function getFilterByValueItems(
     const initialBlankChecked = filters ? blankChecked : true;
     if (emptyCount > 0) {
         const item: IFilterByValueItem = {
-            value: localeService.t('sheets-filter.panel.empty'),
+            value: localeService.t('sheets-filter-ui.panel.empty'),
             checked: initialBlankChecked,
             count: emptyCount,
             index,
@@ -229,7 +239,7 @@ export function getFilterTreeByValueItems(
                 let monthItem = yearItem.children?.find((item) => item.key === `${year}-${month}`);
                 if (!monthItem) {
                     monthItem = {
-                        title: localeService.t(`sheets-filter.date.${month}`),
+                        title: localeService.t(`sheets-filter-ui.date.${month}`),
                         key: `${year}-${month}`,
                         children: [],
                         count: 0,
@@ -294,7 +304,7 @@ export function getFilterTreeByValueItems(
             : true;
     if (emptyCount > 0) {
         const item: IFilterByValueWithTreeItem = {
-            title: localeService.t('sheets-filter.panel.empty'),
+            title: localeService.t('sheets-filter-ui.panel.empty'),
             count: emptyCount,
             leaf: true,
             checked: initialBlankChecked,
@@ -334,8 +344,6 @@ function generateFilterTreeBySort(tree: IFilterByValueWithTreeItem[]) {
         return yearItem;
     });
 }
-
-const isNumeric = (str: string) => !Number.isNaN(Number(str)) && !Number.isNaN(Number.parseFloat(str)); ;
 
 function compare(strA: string, strB: string) {
     const aIsNumeric = isNumeric(strA);

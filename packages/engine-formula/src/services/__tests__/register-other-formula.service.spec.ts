@@ -27,10 +27,13 @@ interface ICommandServiceMock {
     executeCommand: ReturnType<typeof vi.fn>;
     onCommandExecuted: (callback: (commandInfo: ICommandInfo) => void) => { dispose: () => void };
     emit: (id: string, params?: unknown) => void;
+    disposed: () => boolean;
+    dispose: () => void;
 }
 
 function createCommandServiceMock(): ICommandServiceMock {
     const callbacks = new Set<(commandInfo: ICommandInfo) => void>();
+    let disposed = false;
     return {
         executeCommand: vi.fn(async (id: string, params?: unknown) => {
             callbacks.forEach((callback) => callback({ id, params } as ICommandInfo));
@@ -44,6 +47,11 @@ function createCommandServiceMock(): ICommandServiceMock {
         },
         emit: (id: string, params?: unknown) => {
             callbacks.forEach((callback) => callback({ id, params } as ICommandInfo));
+        },
+        disposed: () => disposed,
+        dispose: () => {
+            disposed = true;
+            callbacks.clear();
         },
     };
 }
@@ -131,6 +139,55 @@ describe('RegisterOtherFormulaService', () => {
             }),
             { onlyLocal: true }
         );
+    });
+
+    it('should not mark formula dirty after disposed while formula registration is pending', async () => {
+        const commandService = createCommandServiceMock();
+        const activeDirtyManagerService = { register: vi.fn() } as unknown as IActiveDirtyManagerService;
+        const service = new RegisterOtherFormulaService(
+            commandService as never,
+            activeDirtyManagerService,
+            {} as LifecycleService
+        );
+        let resolveSetOtherFormula!: () => void;
+
+        commandService.executeCommand.mockImplementationOnce(() => new Promise<boolean>((resolve) => {
+            resolveSetOtherFormula = () => resolve(true);
+        }));
+
+        service.calculateStarted$.next(true);
+        service.registerFormulaWithRange('unit-1', 'sheet-1', '=A1');
+
+        expect(commandService.executeCommand).toHaveBeenCalledTimes(1);
+        service.dispose();
+        commandService.dispose();
+
+        resolveSetOtherFormula();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(commandService.executeCommand).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not recursively reopen buffer when calculation starts', () => {
+        const commandService = createCommandServiceMock();
+        const activeDirtyManagerService = { register: vi.fn() } as unknown as IActiveDirtyManagerService;
+        const service = new RegisterOtherFormulaService(
+            commandService as never,
+            activeDirtyManagerService,
+            {} as LifecycleService
+        );
+        let subscribeCount = 0;
+        const calculateStarted$ = service.calculateStarted$ as any;
+        const originalSubscribe = calculateStarted$._subscribe.bind(calculateStarted$);
+        calculateStarted$._subscribe = (...args: unknown[]) => {
+            subscribeCount++;
+            return originalSubscribe(...args);
+        };
+
+        service.calculateStarted$.next(true);
+
+        expect(subscribeCount).toBe(1);
     });
 
     it('should cache formula results and resolve pending getFormulaValue', async () => {

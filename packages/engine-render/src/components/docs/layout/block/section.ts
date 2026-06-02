@@ -65,7 +65,7 @@ export function dealWithSection(
         }
 
         if (paragraphNode.nodeType === DataStreamTreeNodeType.PARAGRAPH) {
-            // Paragraph 段落
+            // Paragraph
             if (ctx.paragraphsOpenNewPage.has(paragraphNode.endIndex)) {
                 // Forced page break from float-object collision: the new page is an
                 // overflow continuation of the current section, NOT a new section's

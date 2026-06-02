@@ -170,10 +170,19 @@ export function DropdownMenuWrapper({
 
     const menuManagerService = useDependency(IMenuManagerService);
     const [hiddenStates, setHiddenStates] = useState<Record<string, boolean>>({});
+    const [menuVersion, setMenuVersion] = useState(0);
+
+    useEffect(() => {
+        const subscription = menuManagerService.menuChanged$.subscribe(() => {
+            setMenuVersion((version) => version + 1);
+        });
+
+        return () => subscription.unsubscribe();
+    }, [menuManagerService]);
 
     const menuItems = useMemo(() => {
         return menuId ? menuManagerService.getMenuByPositionKey(menuId) : [];
-    }, [menuId]);
+    }, [menuId, menuManagerService, menuVersion]);
 
     const filteredMenuItems = useMemo(() => {
         return menuItems.filter((item) => {
@@ -188,6 +197,11 @@ export function DropdownMenuWrapper({
 
     function handleVisibleChange(visible: boolean) {
         setDropdownVisible(visible);
+    }
+
+    function handleOptionSelect(option: IValueOption) {
+        onOptionSelect(option);
+        setDropdownVisible(false);
     }
 
     useEffect(() => {
@@ -234,7 +248,7 @@ export function DropdownMenuWrapper({
                         key={index}
                         value={value}
                         option={option}
-                        onOptionSelect={onOptionSelect}
+                        onOptionSelect={handleOptionSelect}
                     />
                 ))}
             >
@@ -255,18 +269,24 @@ export function DropdownMenuWrapper({
                     icon={option.icon}
                     value={value}
                     option={option}
-                    onOptionSelect={onOptionSelect}
+                    onOptionSelect={handleOptionSelect}
                 />
             ),
             disabled: option.disabled,
             onSelect: () => {
                 if (typeof option.value === 'undefined') return;
 
-                onOptionSelect?.({
+                handleOptionSelect({
                     ...option,
                 });
             },
         }));
+
+        if (filteredMenuItems.length) {
+            items.push({
+                type: 'separator',
+            });
+        }
 
         for (const menuItem of filteredMenuItems) {
             if (!menuItem.item) continue;
@@ -292,7 +312,7 @@ export function DropdownMenuWrapper({
                     />
                 ),
                 onSelect: () => {
-                    onOptionSelect?.({
+                    handleOptionSelect({
                         commandId,
                         id,
                     });
@@ -337,7 +357,7 @@ export function DropdownMenuWrapper({
                         />
                     ),
                     onSelect: () => {
-                        onOptionSelect?.({
+                        handleOptionSelect({
                             commandId,
                             id,
                         });

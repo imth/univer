@@ -108,12 +108,12 @@ export class SheetRenderController extends RxDisposable implements IRenderModule
     private _initRenderMetricSubscriber() {
         const { engine } = this._context;
 
-        engine.beginFrame$.subscribe(() => {
+        this.disposeWithMe(engine.beginFrame$.subscribe(() => {
             this._renderFrameTimeMetric = null;
             this._renderFrameTags = {};
-        });
+        }));
 
-        engine.endFrame$.subscribe(() => {
+        this.disposeWithMe(engine.endFrame$.subscribe(() => {
             const validRenderInfo = this._renderFrameTimeMetric &&
                 Object.keys(this._renderFrameTimeMetric).filter((key) => key.startsWith(SHEET_EXTENSION_PREFIX)).length > 0;
 
@@ -123,22 +123,22 @@ export class SheetRenderController extends RxDisposable implements IRenderModule
                     tags: this._renderFrameTags,
                 } as IAfterRender$Info);
             }
-        });
+        }));
 
-        engine.renderFrameTimeMetric$.subscribe(([key, value]: ITimeMetric) => {
+        this.disposeWithMe(engine.renderFrameTimeMetric$.subscribe(([key, value]: ITimeMetric) => {
             if (!this._renderFrameTimeMetric) this._renderFrameTimeMetric = {};
             if (!this._renderFrameTimeMetric[key]) {
                 this._renderFrameTimeMetric[key] = [];
             }
             this._renderFrameTimeMetric[key].push(Math.round(value * 100) / 100);
-        });
+        }));
 
-        engine.renderFrameTags$.subscribe(([key, value]: [string, any]) => {
+        this.disposeWithMe(engine.renderFrameTags$.subscribe(([key, value]: [string, any]) => {
             this._renderFrameTags[key] = value;
-        });
+        }));
 
         const frameInfoList: IExtendFrameInfo[] = [];
-        this._afterRenderMetric$.pipe(withLatestFrom(engine.endFrame$)).subscribe(([sceneRenderDetail, basicFrameTimeInfo]: [IAfterRender$Info, IBasicFrameInfo]) => {
+        this.disposeWithMe(this._afterRenderMetric$.pipe(withLatestFrom(engine.endFrame$)).subscribe(([sceneRenderDetail, basicFrameTimeInfo]: [IAfterRender$Info, IBasicFrameInfo]) => {
             frameInfoList.push({
                 ...{
                     FPS: basicFrameTimeInfo.FPS,
@@ -152,7 +152,7 @@ export class SheetRenderController extends RxDisposable implements IRenderModule
                 this._captureRenderMetric(frameInfoList);
                 frameInfoList.length = 0;
             }
-        });
+        }));
     }
 
     /**
@@ -379,13 +379,13 @@ export class SheetRenderController extends RxDisposable implements IRenderModule
             const spreadsheetColumnHeader = components.get(SHEET_VIEW_KEY.COLUMN) as SpreadsheetColumnHeader;
             const spreadsheetLeftTopPlaceholder = components.get(SHEET_VIEW_KEY.LEFT_TOP) as Rect;
 
-            const { rowHeaderWidth, columnHeaderHeight } = spreadsheetSkeleton;
+            const leftTopPlaceholderSize = getLeftTopPlaceholderSize(spreadsheetSkeleton);
             spreadsheet?.updateSkeleton(spreadsheetSkeleton);
             spreadsheetRowHeader?.updateSkeleton(spreadsheetSkeleton);
             spreadsheetColumnHeader?.updateSkeleton(spreadsheetSkeleton);
             spreadsheetLeftTopPlaceholder?.transformByState({
-                width: rowHeaderWidth,
-                height: columnHeaderHeight,
+                width: leftTopPlaceholderSize.width,
+                height: leftTopPlaceholderSize.height,
             });
 
             // no need to update freezelineRect, freeze render controller has handled.
@@ -566,4 +566,16 @@ export class SheetRenderController extends RxDisposable implements IRenderModule
     private _spreadsheetViewports(scene: Scene) {
         return scene.getViewports().filter((v) => ['viewMain', 'viewMainLeftTop', 'viewMainTop', 'viewMainLeft'].includes(v.viewportKey));
     }
+}
+
+export function getLeftTopPlaceholderSize(skeleton: {
+    rowHeaderWidth: number;
+    columnHeaderHeight: number;
+    rowHeaderWidthAndMarginLeft?: number;
+    columnHeaderHeightAndMarginTop?: number;
+}): { width: number; height: number } {
+    return {
+        width: skeleton.rowHeaderWidthAndMarginLeft ?? skeleton.rowHeaderWidth,
+        height: skeleton.columnHeaderHeightAndMarginTop ?? skeleton.columnHeaderHeight,
+    };
 }

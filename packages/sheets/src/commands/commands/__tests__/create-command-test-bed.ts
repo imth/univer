@@ -30,7 +30,7 @@ import {
     UniverInstanceType,
 } from '@univerjs/core';
 import enUS from '../../../locale/en-US';
-import { RangeProtectionRuleModel } from '../../../model/range-protection-rule.model';
+import { RangeProtectionRuleModel } from '../../../models/range-protection-rule.model';
 import { BorderStyleManagerService } from '../../../services/border-style-manager.service';
 import { SheetLazyExecuteScheduleService } from '../../../services/lazy-execute-schedule.service';
 import { WorkbookPermissionService } from '../../../services/permission/workbook-permission/workbook-permission.service';
@@ -113,6 +113,7 @@ export function createCommandTestBed(workbookData?: IWorkbookData, dependencies?
             dependencies?.forEach((d) => injector.add(d));
 
             this._injector.get(SheetInterceptorService);
+            this._injector.get(SheetSkeletonService);
             this._injector.get(WorkbookPermissionService);
             this._injector.get(WorksheetPermissionService);
         }

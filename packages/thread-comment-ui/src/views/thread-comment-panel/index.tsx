@@ -18,6 +18,7 @@ import type { Nullable } from '@univerjs/core';
 import type { IThreadComment } from '@univerjs/thread-comment';
 import type { Observable } from 'rxjs';
 import type { IThreadCommentTreeProps } from '../thread-comment-tree';
+import type { ThreadCommentPanelSection } from './util';
 import { ICommandService, LocaleService, UniverInstanceType, UserManagerService } from '@univerjs/core';
 import { Button, Select } from '@univerjs/design';
 import { IncreaseIcon } from '@univerjs/icons';
@@ -27,6 +28,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { SetActiveCommentOperation } from '../../commands/operations/comment.operations';
 import { ThreadCommentPanelService } from '../../services/thread-comment-panel.service';
 import { ThreadCommentTree, ThreadCommentTreeLocation } from '../thread-comment-tree';
+import { getThreadCommentPanelItemKey } from './util';
 
 export interface IThreadCommentPanelProps {
     unitId: string;
@@ -158,11 +160,11 @@ export const ThreadCommentPanel = (props: IThreadCommentPanelProps) => {
         document.getElementById(id)?.scrollIntoView({ block: 'center' });
     }, [activeCommentId]);
 
-    const renderComment = (comment: IThreadComment) => (
+    const renderComment = (section: ThreadCommentPanelSection) => (comment: IThreadComment, index: number) => (
         <ThreadCommentTree
             location={location}
             getSubUnitName={getSubUnitName}
-            key={comment.id}
+            key={getThreadCommentPanelItemKey(comment, index, section)}
             id={comment.id}
             unitId={comment.unitId}
             subUnitId={comment.subUnitId}
@@ -205,11 +207,11 @@ export const ThreadCommentPanel = (props: IThreadCommentPanelProps) => {
                             options={[
                                 {
                                     value: 'current',
-                                    label: localeService.t('threadCommentUI.filter.sheet.current'),
+                                    label: localeService.t('thread-comment-ui.filter.sheet.current'),
                                 },
                                 {
                                     value: 'all',
-                                    label: localeService.t('threadCommentUI.filter.sheet.all'),
+                                    label: localeService.t('thread-comment-ui.filter.sheet.all'),
                                 },
                             ]}
                             onChange={setUnit}
@@ -222,19 +224,19 @@ export const ThreadCommentPanel = (props: IThreadCommentPanelProps) => {
                     options={[
                         {
                             value: 'all',
-                            label: localeService.t('threadCommentUI.filter.status.all'),
+                            label: localeService.t('thread-comment-ui.filter.status.all'),
                         },
                         {
                             value: 'resolved',
-                            label: localeService.t('threadCommentUI.filter.status.resolved'),
+                            label: localeService.t('thread-comment-ui.filter.status.resolved'),
                         },
                         {
                             value: 'unsolved',
-                            label: localeService.t('threadCommentUI.filter.status.unsolved'),
+                            label: localeService.t('thread-comment-ui.filter.status.unsolved'),
                         },
                         {
                             value: 'concern_me',
-                            label: localeService.t('threadCommentUI.filter.status.concernMe'),
+                            label: localeService.t('thread-comment-ui.filter.status.concernMe'),
                         },
                     ]}
                     onChange={setStatus}
@@ -249,12 +251,12 @@ export const ThreadCommentPanel = (props: IThreadCommentPanelProps) => {
                           dark:!univer-text-gray-200
                         `}
                     >
-                        {localeService.t('threadCommentUI.panel.empty')}
+                        {localeService.t('thread-comment-ui.panel.empty')}
                         {isFiltering
                             ? (
                                 <div className="univer-mt-2 univer-flex univer-flex-row">
                                     <Button onClick={onReset}>
-                                        {localeService.t('threadCommentUI.panel.reset')}
+                                        {localeService.t('thread-comment-ui.panel.reset')}
                                     </Button>
                                 </div>
                             )
@@ -263,7 +265,7 @@ export const ThreadCommentPanel = (props: IThreadCommentPanelProps) => {
                                     <div className="univer-mt-2 univer-flex univer-flex-row">
                                         <Button onClick={onAdd}>
                                             <IncreaseIcon className="univer-mr-1.5" />
-                                            {localeService.t('threadCommentUI.panel.addComment')}
+                                            {localeService.t('thread-comment-ui.panel.addComment')}
                                         </Button>
                                     </div>
                                 )
@@ -272,13 +274,13 @@ export const ThreadCommentPanel = (props: IThreadCommentPanelProps) => {
                 )
                 : (
                     <div className="univer-mt-3 univer-flex univer-flex-col univer-gap-3">
-                        {unSolvedComments.map(renderComment)}
+                        {unSolvedComments.map(renderComment('unsolved'))}
                         {solvedComments.length > 0 && (
                             <div className="univer-text-xs">
-                                {localeService.t('threadCommentUI.panel.solved')}
+                                {localeService.t('thread-comment-ui.panel.solved')}
                             </div>
                         )}
-                        {solvedComments.map(renderComment)}
+                        {solvedComments.map(renderComment('solved'))}
                     </div>
                 )}
         </div>

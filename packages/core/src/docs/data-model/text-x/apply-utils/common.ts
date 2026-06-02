@@ -20,6 +20,7 @@ import type {
     ICustomDecoration,
     ICustomRange,
     ICustomTable,
+    IDocumentBlockRange,
     IDocumentBody,
     IParagraph,
     ISectionBreak,
@@ -315,6 +316,41 @@ export function insertTables(body: IDocumentBody, insertBody: IDocumentBody, tex
     }
 }
 
+export function insertBlockRanges(body: IDocumentBody, insertBody: IDocumentBody, textLength: number, currentIndex: number) {
+    if (!body.blockRanges && !insertBody.blockRanges?.length) {
+        return;
+    }
+
+    if (!body.blockRanges) {
+        body.blockRanges = [];
+    }
+
+    const { blockRanges } = body;
+    for (let i = 0, len = blockRanges.length; i < len; i++) {
+        const blockRange = blockRanges[i];
+        const { startIndex, endIndex } = blockRange;
+
+        if (startIndex >= currentIndex) {
+            blockRange.startIndex += textLength;
+            blockRange.endIndex += textLength;
+        } else if (endIndex >= currentIndex) {
+            blockRange.endIndex += textLength;
+        }
+    }
+
+    const insertBlockRanges = insertBody.blockRanges;
+    if (insertBlockRanges) {
+        for (let i = 0, len = insertBlockRanges.length; i < len; i++) {
+            const blockRange = insertBlockRanges[i];
+            blockRange.startIndex += currentIndex;
+            blockRange.endIndex += currentIndex;
+        }
+
+        blockRanges.push(...insertBlockRanges);
+        blockRanges.sort(sortRulesFactory('startIndex'));
+    }
+}
+
 export function sliceByParagraph(body: IDocumentBody) {
     const { dataStream, paragraphs = [] } = body;
     const ranges = [];
@@ -504,13 +540,13 @@ interface IIndexRange {
 }
 
 function mergeRanges<T extends IIndexRange>(lineSegments: T[]): T[] {
-    lineSegments.sort((a, b) => a.startIndex - b.startIndex); // 按照起始值排序
+    lineSegments.sort((a, b) => a.startIndex - b.startIndex); // Sort by start value
 
     const mergedSegments: T[] = [];
     let currentSegment = lineSegments[0];
 
     for (let i = 1; i < lineSegments.length; i++) {
-        if (currentSegment.endIndex + 1 >= lineSegments[i].startIndex) { // 判断是否连续
+        if (currentSegment.endIndex + 1 >= lineSegments[i].startIndex) { // Check if continuous
             currentSegment.endIndex = Math.max(currentSegment.endIndex, lineSegments[i].endIndex);
         } else {
             mergedSegments.push(currentSegment);
@@ -871,6 +907,44 @@ export function deleteCustomRanges(body: IDocumentBody, textLength: number, curr
     }
 
     return removeCustomRanges;
+}
+
+export function deleteBlockRanges(body: IDocumentBody, textLength: number, currentIndex: number) {
+    const { blockRanges } = body;
+
+    const startIndex = currentIndex;
+    const endIndex = currentIndex + textLength - 1;
+    const removeBlockRanges: IDocumentBlockRange[] = [];
+
+    if (blockRanges) {
+        const newBlockRanges = [];
+        for (let i = 0, len = blockRanges.length; i < len; i++) {
+            const blockRange = blockRanges[i];
+            const { startIndex: st, endIndex: ed } = blockRange;
+            if (st >= startIndex && ed <= endIndex) {
+                removeBlockRanges.push(blockRange);
+                continue;
+            } else if (Math.max(startIndex, st) <= Math.min(endIndex, ed)) {
+                const segments = horizontalLineSegmentsSubtraction(st, ed, startIndex, endIndex);
+
+                if (segments.length === 0) {
+                    removeBlockRanges.push(blockRange);
+                    continue;
+                }
+
+                blockRange.startIndex = segments[0];
+                blockRange.endIndex = segments[1];
+            } else if (endIndex < st) {
+                blockRange.startIndex -= textLength;
+                blockRange.endIndex -= textLength;
+            }
+            newBlockRanges.push(blockRange);
+        }
+
+        body.blockRanges = newBlockRanges;
+    }
+
+    return removeBlockRanges;
 }
 
 export function deleteCustomDecorations(body: IDocumentBody, textLength: number, currentIndex: number, needOffset = true) {

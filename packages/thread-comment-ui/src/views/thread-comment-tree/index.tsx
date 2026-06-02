@@ -18,7 +18,7 @@ import type { IUser, UniverInstanceType } from '@univerjs/core';
 import type { IAddCommentCommandParams, IThreadComment, IUpdateCommentCommandParams } from '@univerjs/thread-comment';
 import type { IUniverUIConfig } from '@univerjs/ui';
 import type { IThreadCommentEditorInstance } from '../thread-comment-editor';
-import { DOCS_COMMENT_EDITOR_UNIT_ID_KEY, generateRandomId, ICommandService, LocaleService, UserManagerService } from '@univerjs/core';
+import { generateRandomId, ICommandService, LocaleService, UserManagerService } from '@univerjs/core';
 import { borderClassName, clsx, Dropdown, scrollbarClassName, Tooltip } from '@univerjs/design';
 import { DeleteIcon, MoreHorizontalIcon, ReplyToCommentIcon, ResolvedIcon, SolveIcon } from '@univerjs/icons';
 import {
@@ -36,6 +36,7 @@ import { debounceTime } from 'rxjs';
 import { SetActiveCommentOperation } from '../../commands/operations/comment.operations';
 import { ThreadCommentEditor } from '../thread-comment-editor';
 import { transformDocument2TextNodes, transformTextNodes2Document } from '../thread-comment-editor/util';
+import { getThreadCommentEditorId } from './util';
 
 export enum ThreadCommentTreeLocation {
     CELL = 'CELL',
@@ -143,6 +144,7 @@ const ThreadCommentItem = (props: IThreadCommentItemProps) => {
                                                   univer-items-center univer-justify-center univer-rounded-sm
                                                   univer-text-base
                                                   hover:univer-bg-gray-50
+                                                  dark:hover:!univer-bg-gray-800
                                                 `}
                                                 onClick={() => onReply(user)}
                                             >
@@ -170,7 +172,7 @@ const ThreadCommentItem = (props: IThreadCommentItemProps) => {
                                                             className="hover:univer-bg-gray-200"
                                                             onClick={() => onEditingChange?.(true)}
                                                         >
-                                                            {localeService.t('threadCommentUI.item.edit')}
+                                                            {localeService.t('thread-comment-ui.item.edit')}
                                                         </a>
                                                     </li>
                                                     <li>
@@ -178,7 +180,7 @@ const ThreadCommentItem = (props: IThreadCommentItemProps) => {
                                                             className="hover:univer-bg-gray-200"
                                                             onClick={handleDeleteItem}
                                                         >
-                                                            {localeService.t('threadCommentUI.item.delete')}
+                                                            {localeService.t('thread-comment-ui.item.delete')}
                                                         </a>
                                                     </li>
                                                 </ul>
@@ -191,6 +193,7 @@ const ThreadCommentItem = (props: IThreadCommentItemProps) => {
                                               univer-items-center univer-justify-center univer-rounded-sm
                                               univer-text-base
                                               hover:univer-bg-gray-50
+                                              dark:hover:!univer-bg-gray-800
                                             `}
                                         >
                                             <MoreHorizontalIcon />
@@ -301,6 +304,7 @@ export const ThreadCommentTree = (props: IThreadCommentTreeProps) => {
     const resolved = comments?.root.resolved;
     const currentUser = useObservable(userManagerService.currentUser$);
     const editorRef = useRef<IThreadCommentEditorInstance>(null);
+    const fallbackEditorId = useMemo(() => generateRandomId(6), []);
     const renderComments: IThreadComment[] = [
         ...comments ?
             [comments.root] :
@@ -367,7 +371,13 @@ export const ThreadCommentTree = (props: IThreadCommentTreeProps) => {
     const subUnitName = getSubUnitName(comments?.root.subUnitId ?? subUnitId);
     const editorVisible = showEdit && !editingId && !resolved;
     const title = `${refStr || comments?.root.ref || ''}${subUnitName ? ' · ' : ''}${subUnitName}`;
-    const threadCommentEditorId = `${DOCS_COMMENT_EDITOR_UNIT_ID_KEY}_${location}`;
+    const threadCommentEditorId = getThreadCommentEditorId({
+        location,
+        unitId,
+        subUnitId,
+        commentId: id,
+        fallbackId: fallbackEditorId,
+    });
 
     return (
         <div

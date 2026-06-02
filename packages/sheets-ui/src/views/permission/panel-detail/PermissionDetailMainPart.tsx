@@ -43,7 +43,7 @@ export const PermissionDetailMainPart = (props: IPermissionDetailMainPartProps) 
     const localeService = useDependency(LocaleService);
     const injector = useDependency(Injector);
 
-    const workbook = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET);
+    const workbook = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET);
     const worksheet = workbook?.getActiveSheet();
     if (!workbook || !worksheet) {
         return null;
@@ -57,7 +57,7 @@ export const PermissionDetailMainPart = (props: IPermissionDetailMainPartProps) 
             return;
         }
 
-        const workbook = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET);
+        const workbook = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET);
         const worksheet = workbook?.getActiveSheet();
         if (!workbook || !worksheet) {
             return;
@@ -78,7 +78,7 @@ export const PermissionDetailMainPart = (props: IPermissionDetailMainPartProps) 
         <>
             <FormLayout
                 className="univer-font-medium"
-                label={localeService.t('permission.panel.protectedRange')}
+                label={localeService.t('sheets-ui.permission.panel.protectedRange')}
                 error={rangesErrMsg}
             >
                 {RangeSelector && (
@@ -90,11 +90,11 @@ export const PermissionDetailMainPart = (props: IPermissionDetailMainPartProps) 
                     />
                 )}
             </FormLayout>
-            <FormLayout className="univer-font-medium" label={localeService.t('permission.panel.permissionDirection')}>
+            <FormLayout className="univer-font-medium" label={localeService.t('sheets-ui.permission.panel.permissionDirection')}>
                 <Input
                     value={desc}
                     onChange={(v) => onDescChange(v)}
-                    placeholder={localeService.t('permission.panel.permissionDirectionPlaceholder')}
+                    placeholder={localeService.t('sheets-ui.permission.panel.permissionDirectionPlaceholder')}
                 />
             </FormLayout>
         </>

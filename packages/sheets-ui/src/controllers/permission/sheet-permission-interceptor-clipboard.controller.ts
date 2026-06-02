@@ -55,7 +55,7 @@ export class SheetPermissionInterceptorClipboardController extends Disposable {
                         endColumn: startRange.startColumn + ranges.endColumn,
                     };
 
-                    const workbook = this._univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
+                    const workbook = this._univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
                     const worksheet = workbook.getActiveSheet();
                     if (!worksheet) {
                         return false;
@@ -76,7 +76,7 @@ export class SheetPermissionInterceptorClipboardController extends Disposable {
                     }
 
                     if (!hasPermission) {
-                        this._sheetPermissionCheckController.blockExecuteWithoutPermission(this._localService.t('permission.dialog.pasteErr'));
+                        this._sheetPermissionCheckController.blockExecuteWithoutPermission(this._localService.t('sheets-ui.permission.dialog.pasteErr'));
                     }
 
                     return hasPermission;

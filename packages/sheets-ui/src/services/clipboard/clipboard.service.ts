@@ -24,7 +24,12 @@ import type {
     Workbook,
     Worksheet,
 } from '@univerjs/core';
-import type { IDiscreteRange, ISetRangeValuesMutationParams, ISetSelectionsOperationParams, ISetWorksheetRowAutoHeightMutationParams } from '@univerjs/sheets';
+import type {
+    IDiscreteRange,
+    ISetRangeValuesMutationParams,
+    ISetSelectionsOperationParams,
+    ISetWorksheetRowAutoHeightMutationParams,
+} from '@univerjs/sheets';
 import type { Observable } from 'rxjs';
 import type {
     ICellDataWithSpanInfo,
@@ -46,6 +51,7 @@ import {
     Disposable,
     ErrorService,
     extractPureTextFromCell,
+    generateRandomId,
     getEmptyCell,
     ICommandService,
     ILogService,
@@ -71,21 +77,40 @@ import {
     SetWorksheetRowAutoHeightMutationFactory,
     SheetsSelectionsService,
 } from '@univerjs/sheets';
-import { FILE__BMP_CLIPBOARD_MIME_TYPE, FILE__JPEG_CLIPBOARD_MIME_TYPE, FILE__WEBP_CLIPBOARD_MIME_TYPE, FILE_PNG_CLIPBOARD_MIME_TYPE, HTML_CLIPBOARD_MIME_TYPE, IClipboardInterfaceService, imageMimeTypeSet, INotificationService, IPlatformService, PLAIN_TEXT_CLIPBOARD_MIME_TYPE } from '@univerjs/ui';
+import {
+    FILE__BMP_CLIPBOARD_MIME_TYPE,
+    FILE__JPEG_CLIPBOARD_MIME_TYPE,
+    FILE__WEBP_CLIPBOARD_MIME_TYPE,
+    FILE_PNG_CLIPBOARD_MIME_TYPE,
+    HTML_CLIPBOARD_MIME_TYPE,
+    IClipboardInterfaceService,
+    imageMimeTypeSet,
+    INotificationService,
+    IPlatformService,
+    PLAIN_TEXT_CLIPBOARD_MIME_TYPE,
+} from '@univerjs/ui';
 import { BehaviorSubject } from 'rxjs';
 import { virtualizeDiscreteRanges } from '../../controllers/utils/range-tools';
 import { IMarkSelectionService } from '../mark-selection/mark-selection.service';
 import { SheetSkeletonManagerService } from '../sheet-skeleton-manager.service';
 import { createCopyPasteSelectionStyle } from '../utils/selection-util';
 import { cloneCellDataWithSpanInfo } from './clone';
-import { CopyContentCache, extractId, genId } from './copy-content-cache';
+import { CopyContentCache, extractId } from './copy-content-cache';
 import { HtmlToUSMService } from './html-to-usm/converter';
 import { LarkPastePlugin } from './html-to-usm/paste-plugins/plugin-lark';
 import { UniverPastePlugin } from './html-to-usm/paste-plugins/plugin-univer';
 import { WordPastePlugin } from './html-to-usm/paste-plugins/plugin-word';
 import { COPY_TYPE } from './type';
 import { USMToHtmlService } from './usm-to-html/convertor';
-import { convertTextToTable, discreteRangeContainsRange, htmlContainsImage, htmlIsFromExcel, mergeSetRangeValues, rangeIntersectWithDiscreteRange, spilitLargeSetRangeValuesMutations } from './utils';
+import {
+    convertTextToTable,
+    discreteRangeContainsRange,
+    htmlContainsImage,
+    htmlIsFromExcel,
+    mergeSetRangeValues,
+    rangeIntersectWithDiscreteRange,
+    spilitLargeSetRangeValuesMutations,
+} from './utils';
 
 export const PREDEFINED_HOOK_NAME_COPY = {
     DEFAULT_COPY: 'default-copy',
@@ -247,7 +272,7 @@ export class SheetClipboardService extends Disposable implements ISheetClipboard
             return false; // maybe we should notify user that there is no selection
         }
 
-        const workbook = this._univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET);
+        const workbook = this._univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET);
         const worksheet = workbook?.getActiveSheet();
         if (!workbook || !worksheet) {
             return false;
@@ -312,8 +337,8 @@ export class SheetClipboardService extends Disposable implements ISheetClipboard
             if (this._platformService.isWindows && htmlIsFromExcel(html)) {
                 this._notificationService.show({
                     type: 'warning',
-                    title: this._localeService.t('clipboard.shortCutNotify.title'),
-                    content: this._localeService.t('clipboard.shortCutNotify.useShortCutInstead'),
+                    title: this._localeService.t('sheets-ui.clipboard.shortCutNotify.title'),
+                    content: this._localeService.t('sheets-ui.clipboard.shortCutNotify.useShortCutInstead'),
                 });
                 // Pasting should not be allowed here.
                 // After the pop-up window prompts, can paste the contents of the clipboard as much as possible.
@@ -381,7 +406,7 @@ export class SheetClipboardService extends Disposable implements ISheetClipboard
         const element = undoRedoService.pitchTopUndoElement();
         if (element) {
             const result = sequenceExecute(element.undoMutations, this._commandService);
-            if (result) {
+            if (result.result) {
                 undoRedoService.popUndoToRedo();
             }
         }
@@ -498,7 +523,7 @@ export class SheetClipboardService extends Disposable implements ISheetClipboard
         }
 
         // convert matrix to html
-        const copyId = genId();
+        const copyId = generateRandomId(6);
         const html = this._usmToHtml.convert(matrix, discreteRange, hooks, copyId);
         const plain = getMatrixPlainText(plainMatrix);
 
@@ -562,7 +587,7 @@ export class SheetClipboardService extends Disposable implements ISheetClipboard
         if (result) {
             // add to undo redo services
             this._undoRedoService.pushUndoRedo({
-                unitID: this._univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)!.getUnitId(),
+                unitID: this._univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)!.getUnitId(),
                 undoMutations: undoMutationsInfo,
                 redoMutations: redoMutationsInfo,
             });
@@ -641,7 +666,7 @@ export class SheetClipboardService extends Disposable implements ISheetClipboard
                 return rangeIntersectWithDiscreteRange(m, pasteTarget.pastedRange) && !discreteRangeContainsRange(pasteTarget.pastedRange, m);
             });
             if (pastedRangeLapWithMergedCell) {
-                this._errorService.emit(this._localeService.t('clipboard.paste.overlappingMergedCells'));
+                this._errorService.emit(this._localeService.t('sheets-ui.clipboard.paste.overlappingMergedCells'));
                 return false;
             }
         }
@@ -717,7 +742,7 @@ export class SheetClipboardService extends Disposable implements ISheetClipboard
                 return rangeIntersectWithDiscreteRange(m, pasteTarget.pastedRange) && !discreteRangeContainsRange(pasteTarget.pastedRange, m);
             });
             if (pastedRangeLapWithMergedCell) {
-                this._errorService.emit(this._localeService.t('clipboard.paste.overlappingMergedCells'));
+                this._errorService.emit(this._localeService.t('sheets-ui.clipboard.paste.overlappingMergedCells'));
                 return false;
             }
         }
@@ -1055,7 +1080,7 @@ export class SheetClipboardService extends Disposable implements ISheetClipboard
     }
 
     private _getPastingTarget() {
-        const workbook = this._univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
+        const workbook = this._univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
         const worksheet = workbook.getActiveSheet();
         const selection = this._selectionManagerService.getCurrentLastSelection();
         return {
@@ -1133,7 +1158,7 @@ export class SheetClipboardService extends Disposable implements ISheetClipboard
         const destinationRows = endRow - startRow + 1;
         const destinationColumns = endColumn - startColumn + 1;
 
-        const workbook = this._univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET);
+        const workbook = this._univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET);
         const worksheet = workbook?.getActiveSheet();
         if (!worksheet) {
             return null;
@@ -1343,7 +1368,7 @@ export class SheetClipboardService extends Disposable implements ISheetClipboard
      * @param range
      */
     private _topLeftCellsMatch(rowCount: number, colCount: number, range: { topRow: number; leftCol: number }): boolean {
-        const workbook = this._univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
+        const workbook = this._univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
         const worksheet = workbook?.getActiveSheet();
         if (!worksheet) {
             return false;

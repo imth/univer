@@ -36,7 +36,7 @@ export function ClearSelectionMenuItemFactory(accessor: IAccessor): IMenuSelecto
         id: CLEAR_SELECTION_MENU_ID,
         type: MenuItemType.SUBITEMS,
         icon: 'ClearFormatDoubleIcon',
-        title: 'rightClick.clearSelection',
+        title: 'sheets-ui.rightClick.clearSelection',
         hidden$: getMenuHiddenObservable(accessor, UniverInstanceType.UNIVER_SHEET),
     };
 }
@@ -45,8 +45,7 @@ export function ClearSelectionContentMenuItemFactory(accessor: IAccessor): IMenu
     return {
         id: ClearSelectionContentCommand.id,
         type: MenuItemType.BUTTON,
-        icon: 'ClearFormatDoubleIcon',
-        title: 'rightClick.clearContent',
+        title: 'sheets-ui.rightClick.clearContent',
         disabled$: getObservableWithExclusiveRange$(accessor, getCurrentRangeDisable$(accessor, {
             workbookTypes: [WorkbookEditablePermission],
             worksheetTypes: [WorksheetEditPermission, WorksheetSetCellValuePermission],
@@ -55,12 +54,12 @@ export function ClearSelectionContentMenuItemFactory(accessor: IAccessor): IMenu
         hidden$: getMenuHiddenObservable(accessor, UniverInstanceType.UNIVER_SHEET),
     };
 }
+
 export function ClearSelectionFormatMenuItemFactory(accessor: IAccessor): IMenuButtonItem {
     return {
         id: ClearSelectionFormatCommand.id,
         type: MenuItemType.BUTTON,
-        icon: 'ClearFormatDoubleIcon',
-        title: 'rightClick.clearFormat',
+        title: 'sheets-ui.rightClick.clearFormat',
         disabled$: getCurrentRangeDisable$(accessor, {
             workbookTypes: [WorkbookEditablePermission],
             worksheetTypes: [WorksheetEditPermission, WorksheetSetCellStylePermission],
@@ -69,13 +68,28 @@ export function ClearSelectionFormatMenuItemFactory(accessor: IAccessor): IMenuB
         hidden$: getMenuHiddenObservable(accessor, UniverInstanceType.UNIVER_SHEET),
     };
 }
-export function ClearSelectionAllMenuItemFactory(accessor: IAccessor): IMenuButtonItem {
+
+export function ClearSelectionAllToolbarMenuItemFactory(accessor: IAccessor): IMenuButtonItem {
     return {
         id: ClearSelectionAllCommand.id,
         type: MenuItemType.BUTTON,
         icon: 'ClearFormatDoubleIcon',
-        title: 'rightClick.clearAll',
-        tooltip: 'rightClick.clearAll',
+        tooltip: 'sheets-ui.rightClick.clearAll',
+        disabled$: getObservableWithExclusiveRange$(accessor, getCurrentRangeDisable$(accessor, {
+            workbookTypes: [WorkbookEditablePermission],
+            worksheetTypes: [WorksheetEditPermission, WorksheetSetCellValuePermission, WorksheetSetCellStylePermission],
+            rangeTypes: [RangeProtectionPermissionEditPoint],
+        })),
+        hidden$: getMenuHiddenObservable(accessor, UniverInstanceType.UNIVER_SHEET),
+    };
+}
+
+export function ClearSelectionAllMenuItemFactory(accessor: IAccessor): IMenuButtonItem {
+    return {
+        id: ClearSelectionAllCommand.id,
+        type: MenuItemType.BUTTON,
+        title: 'sheets-ui.rightClick.clearAll',
+        tooltip: 'sheets-ui.rightClick.clearAll',
         disabled$: getObservableWithExclusiveRange$(accessor, getCurrentRangeDisable$(accessor, {
             workbookTypes: [WorkbookEditablePermission],
             worksheetTypes: [WorksheetEditPermission, WorksheetSetCellValuePermission, WorksheetSetCellStylePermission],

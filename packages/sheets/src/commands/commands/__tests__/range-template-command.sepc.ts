@@ -15,12 +15,12 @@
  */
 
 import type { IColorStyle, Injector, Univer, Workbook } from '@univerjs/core';
-import type { RangeThemeStyle } from '../../../model/range-theme-util';
+import type { RangeThemeStyle } from '../../../models/range-theme-util';
 import type { ISetStyleCommandParams } from '../set-style.command';
 
 import { ICommandService, IUniverInstanceService, UndoCommand, UniverInstanceType } from '@univerjs/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { SheetRangeThemeModel } from '../../../model/range-theme-model';
+import { SheetRangeThemeModel } from '../../../models/range-theme-model';
 import { SetWorksheetRangeThemeStyleMutation } from '../../mutations/add-worksheet-range-theme.mutation';
 import { DeleteWorksheetRangeThemeStyleMutation } from '../../mutations/delete-worksheet-range-theme.mutation';
 import { SetWorksheetRangeThemeStyleCommand } from '../add-worksheet-range-theme.command';
@@ -57,7 +57,7 @@ describe('Test set worksheet default style commands', () => {
 
     describe('set worksheet range style', () => {
         it('correct situation', async () => {
-            const workbook = get(IUniverInstanceService).getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
+            const workbook = get(IUniverInstanceService).getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
             const worksheet = workbook.getSheetBySheetId('sheet1');
             if (!workbook) throw new Error('This is an error');
 
@@ -87,7 +87,7 @@ describe('Test set worksheet default style commands', () => {
         });
 
         it('ensure range theme style can not overwrite cell style', async () => {
-            const workbook = get(IUniverInstanceService).getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
+            const workbook = get(IUniverInstanceService).getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
             if (!workbook) throw new Error('This is an error');
 
             await commandService.executeCommand(SetStyleCommand.id, {

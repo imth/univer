@@ -27,7 +27,6 @@ import { ThemeSwitcherService } from '../../services/theme-switcher/theme-switch
 import { useDependency } from '../../utils/di';
 import { ComponentContainer, useComponentsOfPart } from '../components/ComponentContainer';
 import { DesktopContextMenu } from '../components/context-menu/ContextMenu';
-import { GlobalZone } from '../components/global-zone/GlobalZone';
 import { Sidebar } from '../components/sidebar/Sidebar';
 import { ZenZone } from '../components/zen-zone/ZenZone';
 
@@ -105,6 +104,7 @@ export function DesktopWorkbenchContent(props: IUniverWorkbenchProps) {
     }, [onRendered]);
 
     const [locale, setLocale] = useState(localeService.getLocales());
+    const [direction, setDirection] = useState(localeService.getDirection());
 
     // Create a portal container for injecting global component themes.
     const portalContainer = useMemo<HTMLElement>(() => document.createElement('div'), []);
@@ -115,6 +115,9 @@ export function DesktopWorkbenchContent(props: IUniverWorkbenchProps) {
         const subscriptions = [
             localeService.localeChanged$.subscribe(() => {
                 setLocale(localeService.getLocales());
+            }),
+            localeService.direction$.subscribe(() => {
+                setDirection(localeService.getDirection());
             }),
         ];
 
@@ -127,8 +130,12 @@ export function DesktopWorkbenchContent(props: IUniverWorkbenchProps) {
         };
     }, [localeService, mountContainer, portalContainer]);
 
+    useEffect(() => {
+        portalContainer.dir = direction;
+    }, [direction, portalContainer]);
+
     return (
-        <ConfigProvider locale={locale?.design} mountContainer={portalContainer}>
+        <ConfigProvider locale={locale?.design} direction={direction} mountContainer={portalContainer}>
             {/**
               * IMPORTANT! This `tabIndex` should not be moved. This attribute allows the element to catch
               * all focusin event merged from its descendants. The DesktopLayoutService would listen to focusin events
@@ -145,6 +152,7 @@ export function DesktopWorkbenchContent(props: IUniverWorkbenchProps) {
                 tabIndex={-1}
                 onBlur={(e) => e.stopPropagation()}
                 onContextMenu={(e) => e.preventDefault()}
+                dir={direction}
             >
                 {/* user header */}
                 <div
@@ -223,14 +231,15 @@ export function DesktopWorkbenchContent(props: IUniverWorkbenchProps) {
                         </footer>
                     )}
                     <ZenZone />
-
                 </section>
             </div>
-            <ComponentContainer key="global" components={globalComponents} />
-            <GlobalZone />
-            {contextMenu && <DesktopContextMenu />}
-            <FloatingContainer />
-            <div id={popupRootId} />
+
+            <div dir={direction}>
+                <ComponentContainer key="global" components={globalComponents} />
+                {contextMenu && <DesktopContextMenu />}
+                <FloatingContainer />
+                <div id={popupRootId} />
+            </div>
         </ConfigProvider>
     );
 }

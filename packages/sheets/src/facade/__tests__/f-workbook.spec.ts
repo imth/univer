@@ -109,11 +109,48 @@ describe('Test FWorkbook', () => {
         activeSpreadsheet.setActiveSheet(activeSpreadsheet.getSheets()[0]);
         await activeSpreadsheet.duplicateActiveSheet();
         expect(activeSpreadsheet.getNumSheets()).toBe(2);
-        activeSpreadsheet.setLocale(LocaleType.RU_RU);
-        expect(activeSpreadsheet.getLocale()).toBe(LocaleType.RU_RU);
+        univerAPI.setLocale(LocaleType.RU_RU);
+        expect(univerAPI.getCurrentLocale()).toBe(LocaleType.RU_RU);
         const worksheet = activeSpreadsheet.getActiveSheet();
         expect(worksheet.getIndex()).toBe(0);
         await activeSpreadsheet.moveActiveSheet(1);
         expect(worksheet.getIndex()).toBe(1);
+    });
+
+    it('Workbook insertSheet should auto-generate incremental names when name is not provided', () => {
+        const workbook = univerAPI.getActiveWorkbook()!;
+        const initialCount = workbook.getNumSheets();
+
+        const sheet1 = workbook.insertSheet();
+        expect(workbook.getNumSheets()).toBe(initialCount + 1);
+
+        const sheet2 = workbook.insertSheet();
+        expect(workbook.getNumSheets()).toBe(initialCount + 2);
+
+        expect(sheet1.getSheetName()).not.toBe(sheet2.getSheetName());
+    });
+
+    it('Workbook insertSheet should use provided unique name directly', () => {
+        const workbook = univerAPI.getActiveWorkbook()!;
+        const sheet = workbook.insertSheet('MyUniqueSheet');
+        expect(sheet.getSheetName()).toBe('MyUniqueSheet');
+    });
+
+    it('Workbook insertSheet should deduplicate when provided name already exists', () => {
+        const workbook = univerAPI.getActiveWorkbook()!;
+        const sheet = workbook.insertSheet('sheet1');
+        expect(sheet.getSheetName()).not.toBe('sheet1');
+    });
+
+    it('Workbook create should use provided unique name directly', () => {
+        const workbook = univerAPI.getActiveWorkbook()!;
+        const sheet = workbook.create('MyCreatedSheet', 10, 10);
+        expect(sheet.getSheetName()).toBe('MyCreatedSheet');
+    });
+
+    it('Workbook create should deduplicate when provided name already exists', () => {
+        const workbook = univerAPI.getActiveWorkbook()!;
+        const sheet = workbook.create('sheet1', 10, 10);
+        expect(sheet.getSheetName()).not.toBe('sheet1');
     });
 });

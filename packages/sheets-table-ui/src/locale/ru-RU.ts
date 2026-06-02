@@ -17,10 +17,11 @@
 import type enUS from './en-US';
 
 const locale: typeof enUS = {
-    'sheets-table': {
+    'sheets-table-ui': {
         title: 'Таблица',
         selectRange: 'Выбрать диапазон таблицы',
         rename: 'Переименовать таблицу',
+        renamePlaceholder: 'Enter table name',
         updateRange: 'Обновить диапазон таблицы',
         tableRangeWithMergeError: 'Диапазон таблицы не может перекрываться с объединенными ячейками',
         tableRangeWithOtherTableError: 'Диапазон таблицы не может перекрываться с другими таблицами',
@@ -41,6 +42,16 @@ const locale: typeof enUS = {
         columnPrefix: 'Столбец',
         tablePrefix: 'Таблица',
         tableNameError: 'Имя таблицы не может содержать пробелы, не может начинаться с цифры и не может совпадать с именем существующей таблицы',
+        columnMenu: {
+            'insert-left': 'Insert 1 table column left',
+            'insert-right': 'Insert 1 table column right',
+            delete: 'Delete table column',
+        },
+
+        sort: {
+            'sort-asc': 'По возрастанию',
+            'sort-desc': 'По убыванию',
+        },
 
         insert: {
             main: 'Вставить таблицу',

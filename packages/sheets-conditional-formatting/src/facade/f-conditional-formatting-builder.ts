@@ -35,7 +35,7 @@ import type {
     IValueConfig,
 } from '@univerjs/sheets-conditional-formatting';
 import { BooleanNumber, ColorKit, Tools } from '@univerjs/core';
-import { CFNumberOperator, CFRuleType, CFSubRuleType, CFTextOperator, CFValueType, createCfId, EMPTY_ICON_TYPE, iconMap } from '@univerjs/sheets-conditional-formatting';
+import { CFNumberOperator, CFRuleType, CFSubRuleType, CFTextOperator, CFValueType, createCfId, iconMap, IIconSetType } from '@univerjs/sheets-conditional-formatting';
 
 /**
  * @ignore
@@ -82,17 +82,17 @@ class ConditionalFormatRuleBaseBuilder {
                     config: [{
                         operator: CFNumberOperator.greaterThanOrEqual,
                         value: { type: CFValueType.min },
-                        iconType: EMPTY_ICON_TYPE,
+                        iconType: IIconSetType.empty,
                         iconId: '',
                     }, {
                         operator: CFNumberOperator.greaterThanOrEqual,
                         value: { type: CFValueType.percentile, value: 0.5 },
-                        iconType: EMPTY_ICON_TYPE,
+                        iconType: IIconSetType.empty,
                         iconId: '',
                     }, {
                         operator: CFNumberOperator.lessThanOrEqual,
                         value: { type: CFValueType.max },
-                        iconType: EMPTY_ICON_TYPE,
+                        iconType: IIconSetType.empty,
                         iconId: '',
                     }],
                 } as IIconSet;
@@ -122,7 +122,8 @@ class ConditionalFormatRuleBaseBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with no content in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -159,7 +160,8 @@ class ConditionalFormatRuleBaseBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with no content in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -216,7 +218,8 @@ class ConditionalFormatRuleBaseBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with no content in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -249,7 +252,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with no content in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -282,7 +286,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with greater than average values in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -308,7 +313,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with unique values in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -333,7 +339,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with duplicate values in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -362,7 +369,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights the bottom 10% of values in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -391,7 +399,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with no content in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -423,7 +432,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that bolds the text for cells with not empty content in the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -451,7 +461,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that changes the font color to red for cells with not empty content in the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -483,7 +494,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that italicizes the text for cells with not empty content in the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -510,7 +522,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that set text strikethrough for cells with not empty content in the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -537,7 +550,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that underlines the text for cells with not empty content in the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -563,7 +577,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with no content in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -590,7 +605,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that changes the font color to red for cells with not empty content in the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -618,7 +634,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with dates in the last 7 days in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -645,7 +662,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values greater than 10 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -673,7 +691,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values between 10 and 20 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -703,7 +722,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values equal to 10 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -731,7 +751,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values greater than 10 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -759,7 +780,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values greater than or equal to 10 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -787,7 +809,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values less than 10 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -815,7 +838,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values less than or equal to 10 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -844,7 +868,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values not between 10 and 20 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -874,7 +899,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values not equal to 10 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -902,7 +928,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with text containing 'apple' in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -930,7 +957,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with text not containing 'apple' in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -958,7 +986,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with text ending with '.ai' in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -986,7 +1015,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with text equal to 'apple' in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1014,7 +1044,8 @@ class ConditionalFormatHighlightRuleBuilder extends ConditionalFormatRuleBaseBui
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with text starting with 'https://' in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1043,7 +1074,8 @@ class ConditionalFormatDataBarRuleBuilder extends ConditionalFormatRuleBaseBuild
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that adds a data bar to cells with values between -100 and 100 in the range A1:D10.
      * // positive values are green and negative values are red.
@@ -1094,7 +1126,8 @@ class ConditionalFormatDataBarRuleBuilder extends ConditionalFormatRuleBaseBuild
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that adds a data bar to cells with values between -100 and 100 in the range A1:D10.
      * // positive values are green and negative values are red.
@@ -1141,7 +1174,8 @@ class ConditionalFormatColorScaleRuleBuilder extends ConditionalFormatRuleBaseBu
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that adds a color scale to cells with values between 0 and 100 in the range A1:D10.
      * // The color scale is green for 0, yellow for 50, and red for 100.
@@ -1180,7 +1214,8 @@ class ConditionalFormatColorScaleRuleBuilder extends ConditionalFormatRuleBaseBu
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that adds a color scale to cells with values between 0 and 100 in the range A1:D10.
      * // The color scale is green for 0, yellow for 50, and red for 100.
@@ -1211,7 +1246,8 @@ class ConditionalFormatIconSetRuleBuilder extends ConditionalFormatRuleBaseBuild
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a 3-arrow icon set conditional formatting rule in the range A1:D10.
      * // The first arrow is green for values greater than 20.
@@ -1221,9 +1257,33 @@ class ConditionalFormatIconSetRuleBuilder extends ConditionalFormatRuleBaseBuild
      * const builder = fWorksheet.newConditionalFormattingRule()
      *   .setIconSet({
      *     iconConfigs: [
-     *       { iconType: '3Arrows', iconId: '0', operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.greaterThan, value: { type: 'num', value: 20 } },
-     *       { iconType: '3Arrows', iconId: '1', operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.greaterThan, value: { type: 'num', value: 10 } },
-     *       { iconType: '3Arrows', iconId: '2', operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.lessThanOrEqual, value: { type: 'num', value: 10 } }
+     *       {
+     *         iconType: univerAPI.Enum.ConditionFormatIconSetTypeEnum.threeArrows,
+     *         iconId: '0',
+     *         operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.greaterThan,
+     *         value: {
+     *           type: univerAPI.Enum.ConditionFormatValueTypeEnum.num,
+     *           value: 20
+     *         }
+     *       },
+     *       {
+     *         iconType: univerAPI.Enum.ConditionFormatIconSetTypeEnum.threeArrows,
+     *         iconId: '1',
+     *         operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.greaterThan,
+     *         value: {
+     *           type: univerAPI.Enum.ConditionFormatValueTypeEnum.num,
+     *           value: 10
+     *         }
+     *       },
+     *       {
+     *         iconType: univerAPI.Enum.ConditionFormatIconSetTypeEnum.threeArrows,
+     *         iconId: '2',
+     *         operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.lessThanOrEqual,
+     *         value: {
+     *           type: univerAPI.Enum.ConditionFormatValueTypeEnum.num,
+     *           value: 10
+     *         }
+     *       }
      *     ],
      *     isShowValue: true,
      *   })
@@ -1254,7 +1314,8 @@ class ConditionalFormatIconSetRuleBuilder extends ConditionalFormatRuleBaseBuild
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a 3-arrow icon set conditional formatting rule in the range A1:D10.
      * // The first arrow is green for values greater than 20.
@@ -1265,9 +1326,33 @@ class ConditionalFormatIconSetRuleBuilder extends ConditionalFormatRuleBaseBuild
      * console.log(builder.getIconMap()); // icons key-value map
      * const rule = builder.setIconSet({
      *     iconConfigs: [
-     *       { iconType: '3Arrows', iconId: '0', operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.greaterThan, value: { type: 'num', value: 20 } },
-     *       { iconType: '3Arrows', iconId: '1', operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.greaterThan, value: { type: 'num', value: 10 } },
-     *       { iconType: '3Arrows', iconId: '2', operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.lessThanOrEqual, value: { type: 'num', value: 10 } }
+     *       {
+     *         iconType: univerAPI.Enum.ConditionFormatIconSetTypeEnum.threeArrows,
+     *         iconId: '0',
+     *         operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.greaterThan,
+     *         value: {
+     *           type: univerAPI.Enum.ConditionFormatValueTypeEnum.num,
+     *           value: 20
+     *         }
+     *       },
+     *       {
+     *         iconType: univerAPI.Enum.ConditionFormatIconSetTypeEnum.threeArrows,
+     *         iconId: '1',
+     *         operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.greaterThan,
+     *         value: {
+     *           type: univerAPI.Enum.ConditionFormatValueTypeEnum.num,
+     *           value: 10
+     *         }
+     *       },
+     *       {
+     *         iconType: univerAPI.Enum.ConditionFormatIconSetTypeEnum.threeArrows,
+     *         iconId: '2',
+     *         operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.lessThanOrEqual,
+     *         value: {
+     *           type: univerAPI.Enum.ConditionFormatValueTypeEnum.num,
+     *           value: 10
+     *         }
+     *       }
      *     ],
      *     isShowValue: true,
      *   })
@@ -1299,7 +1384,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values greater than 10 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1322,7 +1408,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with greater than average values in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1344,7 +1431,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with unique values in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1366,7 +1454,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with duplicate values in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1392,7 +1481,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights the bottom 10% of values in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1414,7 +1504,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      * console.log(fWorksheet.newConditionalFormattingRule().getIconMap()); // icons key-value map
      * ```
      */
@@ -1431,7 +1522,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a 3-arrow icon set conditional formatting rule in the range A1:D10.
      * // The first arrow is green for values greater than 20.
@@ -1442,9 +1534,33 @@ export class FConditionalFormattingBuilder {
      * console.log(builder.getIconMap()); // icons key-value map
      * const rule = builder.setIconSet({
      *     iconConfigs: [
-     *       { iconType: '3Arrows', iconId: '0', operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.greaterThan, value: { type: 'num', value: 20 } },
-     *       { iconType: '3Arrows', iconId: '1', operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.greaterThan, value: { type: 'num', value: 10 } },
-     *       { iconType: '3Arrows', iconId: '2', operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.lessThanOrEqual, value: { type: 'num', value: 10 } }
+     *       {
+     *         iconType: univerAPI.Enum.ConditionFormatIconSetTypeEnum.threeArrows,
+     *         iconId: '0',
+     *         operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.greaterThan,
+     *         value: {
+     *           type: univerAPI.Enum.ConditionFormatValueTypeEnum.num,
+     *           value: 20
+     *         }
+     *       },
+     *       {
+     *         iconType: univerAPI.Enum.ConditionFormatIconSetTypeEnum.threeArrows,
+     *         iconId: '1',
+     *         operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.greaterThan,
+     *         value: {
+     *           type: univerAPI.Enum.ConditionFormatValueTypeEnum.num,
+     *           value: 10
+     *         }
+     *       },
+     *       {
+     *         iconType: univerAPI.Enum.ConditionFormatIconSetTypeEnum.threeArrows,
+     *         iconId: '2',
+     *         operator: univerAPI.Enum.ConditionFormatNumberOperatorEnum.lessThanOrEqual,
+     *         value: {
+     *           type: univerAPI.Enum.ConditionFormatValueTypeEnum.num,
+     *           value: 10
+     *         }
+     *       }
      *     ],
      *     isShowValue: true,
      *   })
@@ -1467,7 +1583,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that adds a color scale to cells with values between 0 and 100 in the range A1:D10.
      * // The color scale is green for 0, yellow for 50, and red for 100.
@@ -1507,7 +1624,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that adds a data bar to cells with values between -100 and 100 in the range A1:D10.
      * // positive values are green and negative values are red.
@@ -1543,7 +1661,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with no content in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1566,7 +1685,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that bolds the text for cells with not empty content in the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1589,7 +1709,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that changes the font color to red for cells with not empty content in the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1612,7 +1733,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that italicizes the text for cells with not empty content in the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1635,7 +1757,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that set text strikethrough for cells with not empty content in the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1658,7 +1781,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that underlines the text for cells with not empty content in the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1680,7 +1804,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with no content in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1702,7 +1827,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that changes the font color to red for cells with not empty content in the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1725,7 +1851,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with dates in the last 7 days in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1748,7 +1875,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values greater than 10 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1772,7 +1900,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values between 10 and 20 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1795,7 +1924,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values equal to 10 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1818,7 +1948,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values greater than 10 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1841,7 +1972,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values greater than or equal to 10 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1864,7 +1996,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values less than 10 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1887,7 +2020,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values less than or equal to 10 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1911,7 +2045,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values not between 10 and 20 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1934,7 +2069,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with values not equal to 10 in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1957,7 +2093,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with text containing 'apple' in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -1980,7 +2117,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with text not containing 'apple' in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -2003,7 +2141,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with text ending with '.ai' in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -2026,7 +2165,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with text equal to 'apple' in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');
@@ -2049,7 +2189,8 @@ export class FConditionalFormattingBuilder {
      * @example
      * ```typescript
      * const fWorkbook = univerAPI.getActiveWorkbook();
-     * const fWorksheet = fWorkbook.getActiveSheet();
+     * const fWorksheet = fWorkbook.getSheetByName('Sheet1');
+     * if (!fWorksheet) return;
      *
      * // Create a conditional formatting rule that highlights cells with text starting with 'https://' in red for the range A1:D10.
      * const fRange = fWorksheet.getRange('A1:D10');

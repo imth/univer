@@ -245,7 +245,6 @@ export function fixLineWidthByScale(num: number, scale: number) {
     return Math.round(num * scale) / scale;
 }
 
-// eslint-disable-next-line max-lines-per-function
 export function getFontStyleString(
     textStyle?: Nullable<IStyleBase>
 ): IDocumentSkeletonFontStyle {
@@ -287,26 +286,7 @@ export function getFontStyleString(
     }
     let fontSize = originFontSize;
 
-    let fontFamilyResult = defaultFont;
-    if (textStyle.ff) {
-        let fontFamily = textStyle.ff;
-
-        fontFamily = fontFamily.replace(/"/g, '').replace(/'/g, '');
-
-        if (fontFamily.indexOf(' ') > -1) {
-            fontFamily = `"${fontFamily}"`;
-        }
-
-        // if (fontFamily != null && document.fonts && !document.fonts.check('12px ' + fontFamily)) {
-        //     menuButton.addFontToList(fontFamily);
-        // }
-
-        if (fontFamily == null) {
-            fontFamily = defaultFont;
-        }
-
-        fontFamilyResult = fontFamily;
-    }
+    const fontFamilyResult = normalizeFontFamily(textStyle.ff, defaultFont);
 
     const { va: baselineOffset } = textStyle;
 
@@ -333,13 +313,28 @@ export function getFontStyleString(
     };
 }
 
-// 是否有中文、日文、韩文等，不包括符号
+function normalizeFontFamily(fontFamily: Nullable<string>, defaultFont: string): string {
+    if (!fontFamily?.trim()) {
+        return defaultFont;
+    }
+
+    return fontFamily
+        .split(',')
+        .map((item) => {
+            const family = item.trim().replace(/^['"]|['"]$/g, '');
+            return family.includes(' ') ? `"${family}"` : family;
+        })
+        .filter(Boolean)
+        .join(', ');
+}
+
+// Whether it contains CJK characters, excluding symbols
 const CJK_LETTER_REG = cjk.letters().toRegExp();
 export function hasCJKText(text: string) {
     return CJK_LETTER_REG.test(text);
 }
 
-// 是否有中文、日文、韩文等可以垂直布局的文字，包括标点符号
+// Whether it contains CJK characters that support vertical layout, including punctuation
 const CJK_ALL_REG = cjk.all().toRegExp();
 export function hasCJK(text: string) {
     return CJK_ALL_REG.test(text);
@@ -434,6 +429,12 @@ export function hasTibetan(text: string) {
     return pattern.test(text);
 }
 
+export function hasThai(text: string) {
+    const pattern = /[\u0E00-\u0E7F]/;
+
+    return pattern.test(text);
+}
+
 export function hasSpace(text: string) {
     const pattern = /\s+/g;
 
@@ -465,7 +466,7 @@ export function isCjkCenterAlignedPunctuation(text: string) {
 
 const one_thousand = 1000;
 
-// 返回屏幕 DPI
+// Return screen DPI
 let dpi_cache: Nullable<number>;
 export function getDPI() {
     if (dpi_cache) {

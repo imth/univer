@@ -24,7 +24,7 @@ import type { IAddRangeProtectionMutationParams } from '../../../commands/mutati
 import type { IDeleteRangeProtectionMutationParams } from '../../../commands/mutations/delete-range-protection.mutation';
 import type { IMoveRowsMutationParams } from '../../../commands/mutations/move-rows-cols.mutation';
 import type { ISetRangeProtectionMutationParams } from '../../../commands/mutations/set-range-protection.mutation';
-import type { IRangeProtectionRule } from '../../../model/range-protection-rule.model';
+import type { IRangeProtectionRule } from '../../../models/range-protection-rule.model';
 import type { EffectRefRangeParams } from '../../ref-range/type';
 import { Disposable, DisposableCollection, ICommandService, Inject, IUniverInstanceService, Rectangle, Tools, UniverInstanceType } from '@univerjs/core';
 import { InsertColCommand, InsertRowCommand } from '../../../commands/commands/insert-row-col.command';
@@ -38,9 +38,9 @@ import { InsertColMutation, InsertRowMutation } from '../../../commands/mutation
 import { MoveColsMutation, MoveRowsMutation } from '../../../commands/mutations/move-rows-cols.mutation';
 import { RemoveColMutation, RemoveRowMutation } from '../../../commands/mutations/remove-row-col.mutation';
 import { SetRangeProtectionMutation } from '../../../commands/mutations/set-range-protection.mutation';
-import { RangeProtectionRenderModel } from '../../../model/range-protection-render.model';
-import { RangeProtectionRuleModel } from '../../../model/range-protection-rule.model';
-import { RangeProtectionCache } from '../../../model/range-protection.cache';
+import { RangeProtectionRenderModel } from '../../../models/range-protection-render.model';
+import { RangeProtectionRuleModel } from '../../../models/range-protection-rule.model';
+import { RangeProtectionCache } from '../../../models/range-protection.cache';
 import { RefRangeService } from '../../ref-range/ref-range.service';
 import { SheetInterceptorService } from '../../sheet-interceptor/sheet-interceptor.service';
 
@@ -71,7 +71,7 @@ export class RangeProtectionRefRangeService extends Disposable {
 
     private _onRefRangeChange() {
         const registerRefRange = (unitId: string, subUnitId: string) => {
-            const workbook = this._univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET);
+            const workbook = this._univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET);
             if (!workbook) {
                 return;
             }
@@ -117,7 +117,7 @@ export class RangeProtectionRefRangeService extends Disposable {
             })
         );
 
-        const workbook = this._univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
+        const workbook = this._univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
         if (workbook) {
             const sheet = workbook.getActiveSheet();
             if (!sheet) return;
@@ -389,7 +389,7 @@ export class RangeProtectionRefRangeService extends Disposable {
         this.disposeWithMe(this._commandService.onCommandExecuted((command: ICommandInfo) => {
             if (mutationIdArrByMove.includes(command.id)) {
                 if (!command.params) return;
-                const workbook = this._univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
+                const workbook = this._univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
                 if (!workbook) return;
                 const worksheet = workbook.getSheetBySheetId((command.params as IMoveRowsMutationParams).subUnitId);
                 if (!worksheet) return;

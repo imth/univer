@@ -19,14 +19,14 @@ import type { ITableConditionFilterItem, ITableManualFilterItem } from '@univerj
 import type { IConditionInfo } from './type';
 import { ICommandService, IPermissionService, LocaleService } from '@univerjs/core';
 import { Button, ButtonGroup, Segmented } from '@univerjs/design';
-import { AscendingIcon, DescendingIcon } from '@univerjs/icons';
+import { AscendingIcon, DeleteColumnDoubleIcon, DescendingIcon, LeftInsertColumnDoubleIcon, RightInsertColumnDoubleIcon } from '@univerjs/icons';
 import { WorkbookEditablePermission } from '@univerjs/sheets';
 import { SortRangeCommand, SortType } from '@univerjs/sheets-sort';
-import { SheetsTableSortStateEnum, TableColumnFilterTypeEnum, TableDateCompareTypeEnum, TableManager } from '@univerjs/sheets-table';
+import { SheetsTableSortStateEnum, SheetTableInsertColumnAtCommand, SheetTableRemoveColumnAtCommand, TABLE_FILTER_EMPTY_VALUE, TableColumnFilterTypeEnum, TableDateCompareTypeEnum, TableManager } from '@univerjs/sheets-table';
 import { useDependency } from '@univerjs/ui';
 import { useMemo, useState } from 'react';
 import { SheetsTableComponentController } from '../../controllers/sheet-table-component.controller';
-import { SheetsTableUiService } from '../../services/sheets-table-ui-service';
+import { SheetsTableUiService } from '../../services/sheets-table-ui.service';
 import { FilterByEnum } from '../../types';
 import { SheetTableConditionPanel } from './SheetTableConditionPanel';
 import { SheetTableItemsFilterPanel } from './SheetTableItemsFilterPanel';
@@ -61,9 +61,12 @@ export function SheetTableFilterPanel() {
     if (!table) return null;
 
     const tableFilters = table.getTableFilters();
+    const tableRange = table.getRange();
     const sortState = tableFilters.getSortState();
     const isAsc = sortState.columnIndex === columnIndex && sortState.sortState === SheetsTableSortStateEnum.Asc;
     const isDesc = sortState.columnIndex === columnIndex && sortState.sortState === SheetsTableSortStateEnum.Desc;
+    const absoluteColumn = tableFilterPanelInfo.column;
+    const canDeleteColumn = tableRange.endColumn > tableRange.startColumn;
 
     const closeDialog = (): void => {
         sheetsTableComponentController.closeFilterPanel();
@@ -87,13 +90,40 @@ export function SheetTableFilterPanel() {
         closeDialog();
     };
 
+    const insertColumn = (side: 'left' | 'right') => {
+        commandService.executeCommand(SheetTableInsertColumnAtCommand.id, {
+            unitId,
+            subUnitId,
+            tableId,
+            index: side === 'left' ? absoluteColumn : absoluteColumn + 1,
+            count: 1,
+        });
+        closeDialog();
+    };
+
+    const deleteColumn = () => {
+        if (!canDeleteColumn) {
+            return;
+        }
+
+        commandService.executeCommand(SheetTableRemoveColumnAtCommand.id, {
+            unitId,
+            subUnitId,
+            tableId,
+            index: absoluteColumn,
+            count: 1,
+        });
+        closeDialog();
+    };
+
     const onApply = () => {
         if (filterBy === FilterByEnum.Items) {
             // do items
             const filteredItems: string[] = [];
+            const emptyLabel = localeService.t('sheets-table-ui.condition.empty');
             for (const itemInfo of data) {
                 if (checkedItemSet.has(itemInfo.title)) {
-                    filteredItems.push(itemInfo.title);
+                    filteredItems.push(itemInfo.title === emptyLabel ? TABLE_FILTER_EMPTY_VALUE : itemInfo.title);
                 }
             }
             const originFilter = table.getTableFilterColumn(columnIndex) as ITableManualFilterItem | undefined;
@@ -146,24 +176,82 @@ export function SheetTableFilterPanel() {
     return (
         <div
             className={`
-              univer-box-border univer-flex univer-min-w-[312px] univer-flex-col univer-rounded-[10px] univer-bg-white
+              univer-box-border univer-flex univer-w-[400px] univer-flex-col univer-rounded-[10px] univer-bg-white
               univer-p-4 univer-shadow-lg
               dark:!univer-border-gray-600 dark:!univer-bg-gray-700
             `}
         >
             {editable && (
-                <div className="univer-mb-3 univer-flex">
-                    <ButtonGroup className="univer-mb-3 !univer-flex univer-w-full">
-                        <Button className="univer-w-1/2" onClick={() => applySort(true)}>
-                            <AscendingIcon className="univer-mr-1" />
-                            {localeService.t('sheets-sort.general.sort-asc')}
-                        </Button>
-                        <Button className="univer-w-1/2" onClick={() => applySort(false)}>
-                            <DescendingIcon className="univer-mr-1" />
-                            {localeService.t('sheets-sort.general.sort-desc')}
-                        </Button>
-                    </ButtonGroup>
-                </div>
+                <>
+                    <div
+                        className={`
+                          -univer-mx-4 -univer-mt-2 univer-mb-3 univer-border-0 univer-border-b univer-border-solid
+                          univer-border-gray-200 univer-py-1
+                        `}
+                    >
+                        <button
+                            type="button"
+                            className={`
+                              univer-box-border univer-flex univer-h-10 univer-w-full univer-cursor-pointer
+                              univer-items-center univer-gap-3 univer-border-none univer-bg-transparent univer-px-4
+                              univer-text-left univer-text-sm univer-text-gray-900
+                              hover:univer-bg-gray-100
+                              disabled:univer-cursor-not-allowed disabled:univer-text-gray-400
+                              dark:!univer-text-white
+                              dark:hover:!univer-bg-gray-600
+                            `}
+                            onClick={() => insertColumn('left')}
+                        >
+                            <LeftInsertColumnDoubleIcon className="univer-size-5" extend={{ colorChannel1: 'var(--univer-primary-600)' }} />
+                            <span>{localeService.t('sheets-table-ui.columnMenu.insert-left')}</span>
+                        </button>
+                        <button
+                            type="button"
+                            className={`
+                              univer-box-border univer-flex univer-h-10 univer-w-full univer-cursor-pointer
+                              univer-items-center univer-gap-3 univer-border-none univer-bg-transparent univer-px-4
+                              univer-text-left univer-text-sm univer-text-gray-900
+                              hover:univer-bg-gray-100
+                              disabled:univer-cursor-not-allowed disabled:univer-text-gray-400
+                              dark:!univer-text-white
+                              dark:hover:!univer-bg-gray-600
+                            `}
+                            onClick={() => insertColumn('right')}
+                        >
+                            <RightInsertColumnDoubleIcon className="univer-size-5" extend={{ colorChannel1: 'var(--univer-primary-600)' }} />
+                            <span>{localeService.t('sheets-table-ui.columnMenu.insert-right')}</span>
+                        </button>
+                        <button
+                            type="button"
+                            className={`
+                              univer-box-border univer-flex univer-h-10 univer-w-full univer-cursor-pointer
+                              univer-items-center univer-gap-3 univer-border-none univer-bg-transparent univer-px-4
+                              univer-text-left univer-text-sm univer-text-gray-900
+                              hover:univer-bg-gray-100
+                              disabled:univer-cursor-not-allowed disabled:univer-text-gray-400
+                              dark:!univer-text-white
+                              dark:hover:!univer-bg-gray-600
+                            `}
+                            disabled={!canDeleteColumn}
+                            onClick={deleteColumn}
+                        >
+                            <DeleteColumnDoubleIcon className="univer-size-5" extend={{ colorChannel1: 'var(--univer-primary-600)' }} />
+                            <span>{localeService.t('sheets-table-ui.columnMenu.delete')}</span>
+                        </button>
+                    </div>
+                    <div className="univer-mb-3 univer-flex">
+                        <ButtonGroup className="univer-mb-3 !univer-flex univer-w-full">
+                            <Button className="univer-w-1/2" onClick={() => applySort(true)}>
+                                <AscendingIcon className="univer-mr-1" />
+                                {localeService.t('sheets-table-ui.sort.sort-asc')}
+                            </Button>
+                            <Button className="univer-w-1/2" onClick={() => applySort(false)}>
+                                <DescendingIcon className="univer-mr-1" />
+                                {localeService.t('sheets-table-ui.sort.sort-desc')}
+                            </Button>
+                        </ButtonGroup>
+                    </div>
+                </>
             )}
             <div className="univer-w-full">
                 <Segmented
@@ -209,11 +297,11 @@ export function SheetTableFilterPanel() {
                     disabled={tableFilter === undefined}
                     onClick={onClearFilter}
                 >
-                    {localeService.t('sheets-table.filter.clear-filter')}
+                    {localeService.t('sheets-table-ui.filter.clear-filter')}
                 </Button>
                 <div>
-                    <Button className="univer-mr-2" onClick={onCancel}>{localeService.t('sheets-table.filter.cancel')}</Button>
-                    <Button variant="primary" onClick={onApply}>{localeService.t('sheets-table.filter.confirm')}</Button>
+                    <Button className="univer-mr-2" onClick={onCancel}>{localeService.t('sheets-table-ui.filter.cancel')}</Button>
+                    <Button variant="primary" onClick={onApply}>{localeService.t('sheets-table-ui.filter.confirm')}</Button>
                 </div>
             </div>
         </div>
@@ -223,7 +311,7 @@ export function SheetTableFilterPanel() {
 function useFilterByOptions(localeService: LocaleService) {
     const locale = localeService.getCurrentLocale();
     return useMemo(() => [
-        { label: localeService.t('sheets-table.filter.by-values'), value: FilterByEnum.Items },
-        { label: localeService.t('sheets-table.filter.by-conditions'), value: FilterByEnum.Condition },
+        { label: localeService.t('sheets-table-ui.filter.by-values'), value: FilterByEnum.Items },
+        { label: localeService.t('sheets-table-ui.filter.by-conditions'), value: FilterByEnum.Condition },
     ], [locale, localeService]);
 }

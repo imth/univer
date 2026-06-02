@@ -17,14 +17,14 @@
 import type { IMutation } from '@univerjs/core';
 import type { ITableOptions, ITableRange } from '../../types/type';
 import { CommandType } from '@univerjs/core';
-import { SheetTableService } from '../../services/table-service';
+import { SheetTableService } from '../../services/table.service';
 
 export interface IAddSheetTableParams {
     unitId: string;
     subUnitId: string;
     name: string;
     range: ITableRange;
-    // TODO 这里的参数应该聚合 Meta Columns Options 等信息
+    // TODO: Parameters here should be aggregated with Meta, Columns, Options, etc.
     options?: ITableOptions;
     tableId?: string;
     header?: string[];

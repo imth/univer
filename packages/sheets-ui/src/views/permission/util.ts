@@ -26,7 +26,7 @@ export const checkRangeValid = (injector: Injector, permissionRanges: IRange[], 
 
     let rangeErrorString = '';
     if (permissionRanges.length === 0) {
-        rangeErrorString = localeService.t('permission.panel.emptyRangeError');
+        rangeErrorString = localeService.t('sheets-ui.permission.panel.emptyRangeError');
     } else if (permissionRanges.length > 1) {
         let hasLap = false;
         for (let i = 0; i < permissionRanges.length; i++) {
@@ -41,13 +41,13 @@ export const checkRangeValid = (injector: Injector, permissionRanges: IRange[], 
             }
         }
         if (hasLap) {
-            rangeErrorString = localeService.t('permission.panel.rangeOverlapError');
+            rangeErrorString = localeService.t('sheets-ui.permission.panel.rangeOverlapError');
         }
     }
     if (!rangeErrorString) {
         const worksheetRule = worksheetRuleModel.getRule(unitId, subUnitId);
         if (worksheetRule && !permissionId) {
-            rangeErrorString = localeService.t('permission.panel.rangeOverlapOverPermissionError');
+            rangeErrorString = localeService.t('sheets-ui.permission.panel.rangeOverlapOverPermissionError');
             return rangeErrorString;
         }
         const lapRule = rangeProtectionRuleModel.getSubunitRuleList(unitId, subUnitId).filter((rule) => {
@@ -61,7 +61,7 @@ export const checkRangeValid = (injector: Injector, permissionRanges: IRange[], 
             return permissionRanges.some((r) => Rectangle.intersects(range, r));
         });
         if (lapRange) {
-            rangeErrorString = localeService.t('permission.panel.rangeOverlapOverPermissionError');
+            rangeErrorString = localeService.t('sheets-ui.permission.panel.rangeOverlapOverPermissionError');
         }
     }
     return rangeErrorString === '' ? undefined : rangeErrorString;
@@ -83,7 +83,7 @@ export const checkRangesIsWholeSheet = (ranges: IRange[], sheet: Worksheet) => {
 export const generateDefaultRule = (injector: Injector, fromSheetBar: boolean) => {
     const univerInstanceService = injector.get(IUniverInstanceService);
     const selectionManagerService = injector.get(SheetsSelectionsService);
-    const workbook = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
+    const workbook = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
     const worksheet = workbook.getActiveSheet();
 
     let unitType = UnitObject.SelectRange;
@@ -115,7 +115,7 @@ export const generateDefaultRule = (injector: Injector, fromSheetBar: boolean) =
 
 export const generateRuleByUnitType = (injector: Injector, rule: IPermissionPanelRule) => {
     const univerInstanceService = injector.get(IUniverInstanceService);
-    const workbook = univerInstanceService.getCurrentUnitForType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
+    const workbook = univerInstanceService.getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)!;
     const worksheet = workbook.getActiveSheet();
     const { unitType } = rule;
 

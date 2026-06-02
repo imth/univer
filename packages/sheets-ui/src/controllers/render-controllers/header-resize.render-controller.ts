@@ -72,6 +72,13 @@ enum HEADER_RESIZE_TYPE {
 
 export const HEADER_RESIZE_PERMISSION_CHECK = createInterceptorKey<boolean, { row?: number; col?: number }>('headerResizePermissionCheck');
 
+interface IHeaderBaseLayout {
+    rowBaseWidth: number;
+    rowGutterWidth: number;
+    columnBaseHeight: number;
+    columnGutterHeight: number;
+}
+
 export class HeaderResizeRenderController extends Disposable implements IRenderModule {
     private _currentRow: number = 0;
 
@@ -167,7 +174,7 @@ export class HeaderResizeRenderController extends Disposable implements IRenderM
                 return;
             }
 
-            const { rowHeaderWidth, columnHeaderHeight } = skeleton;
+            const { rowBaseWidth, rowGutterWidth, columnBaseHeight, columnGutterHeight } = getHeaderBaseLayout(skeleton);
 
             const { startX, startY, endX, endY, row, column } = getCoordByOffset(
                 evt.offsetX,
@@ -175,6 +182,8 @@ export class HeaderResizeRenderController extends Disposable implements IRenderM
                 scene,
                 skeleton
             );
+            const isLastRow = row === skeleton.worksheet.getRowCount() - 1;
+            const isLastColumn = column === skeleton.worksheet.getColumnCount() - 1;
 
             const transformCoord = getTransformCoord(evt.offsetX, evt.offsetY, scene, skeleton);
 
@@ -187,7 +196,9 @@ export class HeaderResizeRenderController extends Disposable implements IRenderM
             if (initialType === HEADER_RESIZE_TYPE.ROW) {
                 let top = startY - HEADER_MENU_SHAPE_WIDTH_HEIGHT_SCALE / 2;
 
-                if (
+                if (isLastRow && (endY - startY) <= HEADER_MENU_SHAPE_WIDTH_HEIGHT_SCALE / 2) {
+                    this._currentRow = row;
+                } else if (
                     transformCoord.y <= startY + HEADER_MENU_SHAPE_WIDTH_HEIGHT_SCALE / 2 &&
                     transformCoord.y >= startY
                 ) {
@@ -212,10 +223,10 @@ export class HeaderResizeRenderController extends Disposable implements IRenderM
                     return false;
                 }
 
-                const rowSize = Math.min(MAX_HEADER_MENU_SHAPE_SIZE, rowHeaderWidth / 3);
+                const rowSize = Math.min(MAX_HEADER_MENU_SHAPE_SIZE, rowBaseWidth / 3);
 
                 this._rowResizeRect.transformByState({
-                    left: rowHeaderWidth / 2 - rowSize / 2,
+                    left: rowGutterWidth + rowBaseWidth / 2 - rowSize / 2,
                     top,
                 });
 
@@ -227,7 +238,9 @@ export class HeaderResizeRenderController extends Disposable implements IRenderM
             } else {
                 let left = startX - HEADER_MENU_SHAPE_WIDTH_HEIGHT_SCALE / 2;
 
-                if (
+                if (isLastColumn && (endX - startX) <= HEADER_MENU_SHAPE_WIDTH_HEIGHT_SCALE / 2) {
+                    this._currentColumn = column;
+                } else if (
                     transformCoord.x <= startX + HEADER_MENU_SHAPE_WIDTH_HEIGHT_SCALE / 2 &&
                     transformCoord.x >= startX
                 ) {
@@ -253,11 +266,11 @@ export class HeaderResizeRenderController extends Disposable implements IRenderM
                 }
 
                 // TODO: @jocs remove magic number.
-                const columnSize = columnHeaderHeight * 0.7;
+                const columnSize = columnBaseHeight * 0.7;
 
                 this._columnResizeRect.transformByState({
                     left,
-                    top: columnHeaderHeight / 2 - columnSize / 2,
+                    top: columnGutterHeight + columnBaseHeight / 2 - columnSize / 2,
                 });
                 this._columnResizeRect.setShapeProps({
                     size: columnSize,
@@ -336,15 +349,15 @@ export class HeaderResizeRenderController extends Disposable implements IRenderM
                 let moveChangeX = 0;
                 let moveChangeY = 0;
 
-                const { columnTotalWidth, rowHeaderWidth, rowTotalHeight, columnHeaderHeight } = skeleton;
+                const { columnTotalWidth, rowHeaderWidthAndMarginLeft, rowTotalHeight, columnHeaderHeightAndMarginTop } = skeleton;
 
-                const shapeWidth = canvasMaxWidth > columnTotalWidth + rowHeaderWidth
+                const shapeWidth = canvasMaxWidth > columnTotalWidth + rowHeaderWidthAndMarginLeft
                     ? canvasMaxWidth
-                    : columnTotalWidth + rowHeaderWidth;
+                    : columnTotalWidth + rowHeaderWidthAndMarginLeft;
 
-                const shapeHeight = canvasMaxHeight > rowTotalHeight + columnHeaderHeight
+                const shapeHeight = canvasMaxHeight > rowTotalHeight + columnHeaderHeightAndMarginTop
                     ? canvasMaxHeight
-                    : rowTotalHeight + columnHeaderHeight;
+                    : rowTotalHeight + columnHeaderHeightAndMarginTop;
 
                 const scale = Math.max(scaleX, scaleY);
 
@@ -554,4 +567,29 @@ export class HeaderResizeRenderController extends Disposable implements IRenderM
         this._scenePointerMoveSub = null;
         this._scenePointerUpSub = null;
     }
+}
+
+function getHeaderBaseLayout(skeleton: {
+    rowHeaderWidth: number;
+    rowHeaderWidthAndMarginLeft: number;
+    columnHeaderHeight: number;
+    columnHeaderHeightAndMarginTop: number;
+    worksheet: { getConfig?: () => { rowHeader?: { width?: number }; columnHeader?: { height?: number } } };
+}): IHeaderBaseLayout {
+    const config = skeleton.worksheet.getConfig?.();
+    const configuredRowWidth = config?.rowHeader?.width;
+    const configuredColumnHeight = config?.columnHeader?.height;
+    const rowBaseWidth = typeof configuredRowWidth === 'number' && configuredRowWidth > 0
+        ? Math.min(configuredRowWidth, skeleton.rowHeaderWidth)
+        : skeleton.rowHeaderWidth;
+    const columnBaseHeight = typeof configuredColumnHeight === 'number' && configuredColumnHeight > 0
+        ? Math.min(configuredColumnHeight, skeleton.columnHeaderHeight)
+        : skeleton.columnHeaderHeight;
+
+    return {
+        rowBaseWidth,
+        rowGutterWidth: Math.max(0, skeleton.rowHeaderWidthAndMarginLeft - rowBaseWidth),
+        columnBaseHeight,
+        columnGutterHeight: Math.max(0, skeleton.columnHeaderHeightAndMarginTop - columnBaseHeight),
+    };
 }

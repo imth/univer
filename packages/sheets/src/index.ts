@@ -56,7 +56,7 @@ export {
 } from './basics/selection';
 export { SplitDelimiterEnum, splitRangeText } from './basics/split-range-text';
 export { findFirstNonEmptyCell } from './basics/utils';
-export { discreteRangeToRange, generateNullCell, generateNullCellValue, getVisibleRanges, rangeToDiscreteRange } from './basics/utils';
+export { deserializeListOptions, discreteRangeToRange, generateNullCell, generateNullCellValue, getVisibleRanges, rangeToDiscreteRange, serializeListOptions } from './basics/utils';
 export { AddRangeProtectionCommand, type IAddRangeProtectionCommandParams } from './commands/commands/add-range-protection.command';
 export {
     addMergeCellsUtil,
@@ -129,7 +129,7 @@ export {
     SetBorderCommand,
     SetBorderPositionCommand,
     SetBorderStyleCommand,
-} from './commands/commands/set-border-command';
+} from './commands/commands/set-border.command';
 export { type ISetColDataCommandParams, SetColDataCommand } from './commands/commands/set-col-data.command';
 export {
     type ISetColHiddenCommandParams,
@@ -250,7 +250,7 @@ export {
     RemoveNumfmtMutation,
     SetNumfmtMutation,
     transformCellsToRange,
-} from './commands/mutations/numfmt-mutation';
+} from './commands/mutations/numfmt.mutation';
 export { type IRegisterWorksheetRangeThemeStyleMutationParams, RegisterWorksheetRangeThemeStyleMutation } from './commands/mutations/register-range-theme.mutation';
 export { RemoveRangeThemeMutation } from './commands/mutations/remove-range-theme.mutation';
 export type { IRemoveRangeThemeMutationParams } from './commands/mutations/remove-range-theme.mutation';
@@ -328,13 +328,14 @@ export { type IScrollToCellOperationParams, ScrollToCellOperation } from './comm
 export { type ISelectRangeCommandParams, type ISetSelectionsOperationParams, SelectRangeCommand, SetSelectionsOperation } from './commands/operations/selection.operation';
 export { type ISetWorksheetActiveOperationParams, SetWorksheetActiveOperation } from './commands/operations/set-worksheet-active.operation';
 export { AddMergeRedoSelectionsOperationFactory, AddMergeUndoSelectionsOperationFactory } from './commands/utils/handle-merge-operation';
-export { handleDeleteRangeMutation } from './commands/utils/handle-range-mutation';
-export { getInsertRangeMutations, getRemoveRangeMutations } from './commands/utils/handle-range-mutation';
-export { handleInsertRangeMutation } from './commands/utils/handle-range-mutation';
+export { handleDeleteRangeMutation } from './commands/utils/handle-range.mutation';
+export { getInsertRangeMutations, getRemoveRangeMutations } from './commands/utils/handle-range.mutation';
+export { handleInsertRangeMutation } from './commands/utils/handle-range.mutation';
 export { type ISheetCommandSharedParams } from './commands/utils/interface';
 export { getSelectionsService } from './commands/utils/selection-command-util';
 export { defaultLargeSheetOperationConfig, type ILargeSheetOperationConfig, type IUniverSheetsConfig, SHEETS_PLUGIN_CONFIG_KEY } from './config/config';
 export { AutoFillController } from './controllers/auto-fill.controller';
+export { CalculateResultApplyController } from './controllers/calculate-result-apply.controller';
 export { MAX_CELL_PER_SHEET_KEY } from './controllers/config/config';
 export { DefinedNameDataController } from './controllers/defined-name-data.controller';
 export { SCOPE_WORKBOOK_VALUE_DEFINED_NAME } from './controllers/defined-name-data.controller';
@@ -344,13 +345,13 @@ export { MERGE_CELL_INTERCEPTOR_CHECK, MergeCellController } from './controllers
 export { SheetPermissionCheckController } from './controllers/permission/sheet-permission-check.controller';
 export { SheetPermissionInitController } from './controllers/permission/sheet-permission-init.controller';
 export { ZebraCrossingCacheController } from './controllers/zebar-crossing.controller';
-export { type ICellPermission, RangeProtectionRenderModel } from './model/range-protection-render.model';
-export { EditStateEnum, type IModel, type IObjectModel, type IRangeProtectionRule, RangeProtectionRuleModel, ViewStateEnum } from './model/range-protection-rule.model';
-export { RangeProtectionCache } from './model/range-protection.cache';
-export { SheetRangeThemeModel } from './model/range-theme-model';
-export type { IRangeThemeStyleJSON } from './model/range-theme-util';
-export { RangeThemeStyle } from './model/range-theme-util';
-export type { IRangeThemeStyleItem } from './model/range-theme-util';
+export { type ICellPermission, RangeProtectionRenderModel } from './models/range-protection-render.model';
+export { EditStateEnum, type IModel, type IObjectModel, type IRangeProtectionRule, RangeProtectionRuleModel, ViewStateEnum } from './models/range-protection-rule.model';
+export { RangeProtectionCache } from './models/range-protection.cache';
+export { SheetRangeThemeModel } from './models/range-theme-model';
+export type { IRangeThemeStyleJSON } from './models/range-theme-util';
+export { RangeThemeStyle } from './models/range-theme-util';
+export type { IRangeThemeStyleItem } from './models/range-theme-util';
 export { UniverSheetsPlugin } from './plugin';
 export { AutoFillService, IAutoFillService } from './services/auto-fill/auto-fill.service';
 export { default as AutoFillRules } from './services/auto-fill/rules';
@@ -369,7 +370,7 @@ export {
     type ISheetAutoFillHook,
 } from './services/auto-fill/type';
 export { BorderStyleManagerService, type IBorderInfo } from './services/border-style-manager.service';
-export { ExclusiveRangeService, IExclusiveRangeService } from './services/exclusive-range/exclusive-range-service';
+export { ExclusiveRangeService, IExclusiveRangeService } from './services/exclusive-range/exclusive-range.service';
 export { SheetLazyExecuteScheduleService } from './services/lazy-execute-schedule.service';
 export { NumfmtService } from './services/numfmt/numfmt.service';
 export type { INumfmtItem, INumfmtItemWithCache } from './services/numfmt/type';
@@ -436,7 +437,7 @@ export { WorkbookPermissionService } from './services/permission/workbook-permis
 export { WorksheetProtectionPointModel, WorksheetProtectionRuleModel } from './services/permission/worksheet-permission';
 export type { IWorksheetProtectionRenderCellData } from './services/permission/worksheet-permission/type';
 export { WorksheetPermissionService } from './services/permission/worksheet-permission/worksheet-permission.service';
-export { SheetRangeThemeService } from './services/range-theme-service';
+export { SheetRangeThemeService } from './services/range-theme.service';
 export { RefRangeService } from './services/ref-range/ref-range.service';
 export type { EffectRefRangeParams, IOperator } from './services/ref-range/type';
 export { EffectRefRangId, OperatorType } from './services/ref-range/type';

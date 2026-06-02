@@ -1,6 +1,6 @@
 {
     "name": "@univerjs/docs-watermark",
-    "version": "0.21.1",
+    "version": "0.25.0",
     "private": false,
     "description": "Per-document watermark plugin for Univer docs (renders Word-style page watermarks).",
     "author": "DreamNum <developer@univer.ai>",

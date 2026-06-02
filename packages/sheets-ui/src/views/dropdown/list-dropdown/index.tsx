@@ -26,20 +26,14 @@ import { borderClassName, borderTopClassName, clsx, scrollbarClassName } from '@
 import { CheckMarkIcon } from '@univerjs/icons';
 import {
     RangeProtectionPermissionEditPoint,
+    serializeListOptions,
     SheetPermissionCheckController,
     WorkbookEditablePermission,
     WorksheetEditPermission,
 } from '@univerjs/sheets';
 import { useDependency } from '@univerjs/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
-
-function serializeListOptions(options: string[]) {
-    return options.filter(Boolean).join(',');
-}
-
-function deserializeListOptions(optionsStr: string) {
-    return optionsStr.split(',').filter(Boolean);
-}
+import { getListDropdownValue } from './utils';
 
 interface ISelectListProps {
     value: string[];
@@ -207,7 +201,7 @@ function SelectList(props: ISelectListProps) {
                         `}
                         onClick={onEdit}
                     >
-                        {localeService.t('dataValidation.list.edit')}
+                        {localeService.t('sheets-ui.data-validation.list.edit')}
                     </a>
                 </div>
             )}
@@ -239,11 +233,11 @@ export function ListDropDown(props: { popup: IPopup<IListDropdownProps & IBaseDr
     return (
         <SelectList
             style={{ minWidth: cellWidth, maxWidth: Math.max(cellWidth, 200) }}
-            title={multiple ? localeService.t('dataValidation.listMultiple.dropdown') : localeService.t('dataValidation.list.dropdown')}
-            value={deserializeListOptions(localValue ?? '')}
+            title={multiple ? localeService.t('sheets-ui.data-validation.listMultiple.dropdown') : localeService.t('sheets-ui.data-validation.list.dropdown')}
+            value={getListDropdownValue(localValue, multiple)}
             multiple={multiple}
             onChange={async (newValue) => {
-                const str = serializeListOptions(newValue);
+                const str = multiple ? serializeListOptions(newValue) : (newValue[0] ?? '');
                 setLocalValue(str);
                 const success = await onChange?.(newValue);
                 if (!(success === false)) {

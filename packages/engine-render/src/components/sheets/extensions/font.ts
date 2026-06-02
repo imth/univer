@@ -25,7 +25,7 @@ import type { IDrawInfo } from '../../extension';
 import type { IFontCacheItem } from '../interfaces';
 import type { SheetComponent } from '../sheet-component';
 import type { SpreadsheetSkeleton } from '../sheet.render-skeleton';
-import { CellValueType, extractPureTextFromCell, HorizontalAlign, Range, Tools, VerticalAlign, WrapStrategy } from '@univerjs/core';
+import { CellValueType, getDisplayValueFromCell, HorizontalAlign, Range, Tools, VerticalAlign, WrapStrategy } from '@univerjs/core';
 import { FIX_ONE_PIXEL_BLUR_OFFSET } from '../../../basics';
 import { VERTICAL_ROTATE_ANGLE } from '../../../basics/text-rotation';
 import { clampRange, inViewRanges } from '../../../basics/tools';
@@ -40,7 +40,7 @@ const UNIQUE_KEY = 'DefaultFontExtension';
 const IMAGE_FALLBACK_SRC = 'data:image/svg+xml;base64,PHN2ZyBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHBhdGggZD0iTTMwNC4xMjggNDU2LjE5MmM0OC42NCAwIDg4LjA2NC0zOS40MjQgODguMDY0LTg4LjA2NHMtMzkuNDI0LTg4LjA2NC04OC4wNjQtODguMDY0LTg4LjA2NCAzOS40MjQtODguMDY0IDg4LjA2NCAzOS40MjQgODguMDY0IDg4LjA2NCA4OC4wNjR6bTAtMTE2LjIyNGMxNS4zNiAwIDI4LjE2IDEyLjI4OCAyOC4xNiAyOC4xNnMtMTIuMjg4IDI4LjE2LTI4LjE2IDI4LjE2LTI4LjE2LTEyLjI4OC0yOC4xNi0yOC4xNiAxMi4yODgtMjguMTYgMjguMTYtMjguMTZ6IiBmaWxsPSIjZTZlNmU2Ii8+PHBhdGggZD0iTTg4Ny4yOTYgMTU5Ljc0NEgxMzYuNzA0Qzk2Ljc2OCAxNTkuNzQ0IDY0IDE5MiA2NCAyMzIuNDQ4djU1OS4xMDRjMCAzOS45MzYgMzIuMjU2IDcyLjcwNCA3Mi43MDQgNzIuNzA0aDE5OC4xNDRMNTAwLjIyNCA2ODguNjRsLTM2LjM1Mi0yMjIuNzIgMTYyLjMwNC0xMzAuNTYtNjEuNDQgMTQzLjg3MiA5Mi42NzIgMjE0LjAxNi0xMDUuNDcyIDE3MS4wMDhoMzM1LjM2QzkyNy4yMzIgODY0LjI1NiA5NjAgODMyIDk2MCA3OTEuNTUyVjIzMi40NDhjMC0zOS45MzYtMzIuMjU2LTcyLjcwNC03Mi43MDQtNzIuNzA0em0tMTM4Ljc1MiA3MS42OHYuNTEySDg1Ny42YzE2LjM4NCAwIDMwLjIwOCAxMy4zMTIgMzAuMjA4IDMwLjIwOHYzOTkuODcyTDY3My4yOCA0MDguMDY0bDc1LjI2NC0xNzYuNjR6TTMwNC42NCA3OTIuMDY0SDE2NS44ODhjLTE2LjM4NCAwLTMwLjIwOC0xMy4zMTItMzAuMjA4LTMwLjIwOHYtOS43MjhsMTM4Ljc1Mi0xNjQuMzUyIDEwNC45NiAxMjQuNDE2LTc0Ljc1MiA3OS44NzJ6bTgxLjkyLTM1NS44NGwzNy4zNzYgMjI4Ljg2NC0uNTEyLjUxMi0xNDIuODQ4LTE2OS45ODRjLTMuMDcyLTMuNTg0LTkuMjE2LTMuNTg0LTEyLjI4OCAwTDEzNS42OCA2NTIuOFYyNjIuMTQ0YzAtMTYuMzg0IDEzLjMxMi0zMC4yMDggMzAuMjA4LTMwLjIwOGg0NzQuNjI0TDM4Ni41NiA0MzYuMjI0em01MDEuMjQ4IDMyNS42MzJjMCAxNi44OTYtMTMuMzEyIDMwLjIwOC0yOS42OTYgMzAuMjA4SDY4MC45Nmw1Ny4zNDQtOTMuMTg0LTg3LjU1Mi0yMDIuMjQgNy4xNjgtNy42OCAyMjkuODg4IDI3Mi44OTZ6IiBmaWxsPSIjZTZlNmU2Ii8+PC9zdmc+';
 
 function rotatedBoundingBox(width: number, height: number, angleDegrees: number) {
-    const angle = angleDegrees * Math.PI / 180; // 将角度转换为弧度
+    const angle = angleDegrees * Math.PI / 180; // Convert angle to radians
     const rotatedWidth = Math.abs(width * Math.cos(angle)) + Math.abs(height * Math.sin(angle));
     const rotatedHeight = Math.abs(width * Math.sin(angle)) + Math.abs(height * Math.cos(angle));
     return { rotatedWidth, rotatedHeight };
@@ -137,6 +137,13 @@ export class Font extends SheetExtension {
 
         const scale = this._getScale(parentScale);
         const { viewRanges = [], checkOutOfViewBound } = moreBoundsInfo;
+        const lastRowIndex = spreadsheetSkeleton.getRowCount() - 1;
+        const lastColIndex = spreadsheetSkeleton.getColumnCount() - 1;
+        const expandedViewRanges = viewRanges.map((range) => clampRange({
+            ...range,
+            startColumn: range.startColumn - EXPAND_SIZE_FOR_RENDER_OVERFLOW,
+            endColumn: range.endColumn + EXPAND_SIZE_FOR_RENDER_OVERFLOW,
+        }, lastRowIndex, lastColIndex));
         const renderFontContext = {
             ctx,
             scale,
@@ -144,7 +151,7 @@ export class Font extends SheetExtension {
             columnTotalWidth,
             // columnWidthAccumulation,
             rowTotalHeight,
-            viewRanges,
+            viewRanges: expandedViewRanges,
             checkOutOfViewBound: checkOutOfViewBound || true,
             diffRanges,
             spreadsheetSkeleton,
@@ -154,15 +161,8 @@ export class Font extends SheetExtension {
         const uniqueMergeRanges: IRange[] = [];
         const mergeRangeIDSet = new Set();
 
-        const lastRowIndex = spreadsheetSkeleton.getRowCount() - 1;
-        const lastColIndex = spreadsheetSkeleton.getColumnCount() - 1;
-
         // Currently, viewRanges has only one range.
-        viewRanges.forEach((range) => {
-            range.startColumn -= EXPAND_SIZE_FOR_RENDER_OVERFLOW;
-            range.endColumn += EXPAND_SIZE_FOR_RENDER_OVERFLOW;
-            range = clampRange(range, lastRowIndex, lastColIndex);
-
+        expandedViewRanges.forEach((range) => {
             // collect unique merge ranges intersect with view range.
             // The ranges in mergeRanges must be unique. Otherwise, the font will render, text redrawing causes jagged edges or artifacts.
             const intersectMergeRangesWithViewRanges = spreadsheetSkeleton.worksheet.getMergedCellRange(range.startRow, range.startColumn, range.endRow, range.endColumn);
@@ -180,7 +180,9 @@ export class Font extends SheetExtension {
                     return;
                 }
                 const cellInfo = spreadsheetSkeleton.getCellWithCoordByIndex(row, col, false);
-                if (!cellInfo) return;
+                if (!cellInfo) {
+                    return;
+                }
 
                 renderFontContext.cellInfo = cellInfo;
                 this._renderFontEachCell(renderFontContext, row, col, fontMatrix);
@@ -323,34 +325,16 @@ export class Font extends SheetExtension {
 
     private _renderImages(ctx: UniverRenderingContext, fontsConfig: IFontCacheItem, startX: number, startY: number, endX: number, endY: number) {
         const { documentSkeleton, verticalAlign, horizontalAlign } = fontsConfig;
-        const fontHeight = documentSkeleton!.getSkeletonData()!.pages[0].height;
-        const fontWidth = documentSkeleton!.getSkeletonData()!.pages[0].width;
         const PADDING = 2;
-        let fontX = startX;
-        let fontY = startY;
-        switch (verticalAlign) {
-            case VerticalAlign.TOP:
-                fontY = startY + PADDING;
-                break;
-            case VerticalAlign.MIDDLE:
-                fontY = (startY + endY) / 2 - fontHeight / 2;
-                break;
-            default:
-                fontY = endY - fontHeight - PADDING;
-                break;
-        }
-
-        switch (horizontalAlign) {
-            case HorizontalAlign.RIGHT:
-                fontX = endX - fontWidth - PADDING;
-                break;
-            case HorizontalAlign.CENTER:
-                fontX = (startX + endX) / 2 - fontWidth / 2;
-                break;
-            default:
-                fontX = startX + PADDING;
-                break;
-        }
+        const padding = fontsConfig.style?.pd;
+        const paddingLeft = padding?.l ?? PADDING;
+        const paddingRight = padding?.r ?? PADDING;
+        const paddingTop = padding?.t ?? PADDING;
+        const paddingBottom = padding?.b ?? PADDING;
+        const contentStartX = startX + paddingLeft;
+        const contentEndX = endX - paddingRight;
+        const contentStartY = startY + paddingTop;
+        const contentEndY = endY - paddingBottom;
 
         const documentDataModel = documentSkeleton!.getViewModel().getDataModel();
         const drawingDatas = documentDataModel.getDrawings();
@@ -369,11 +353,36 @@ export class Font extends SheetExtension {
                     }
                 );
 
-                const x = fontX + drawing.aLeft;
-                const y = fontY + drawing.aTop;
-                const width = drawing.width;
-                const height = drawing.height;
-                const angle = drawing.angle;
+                const width = drawingData.docTransform?.size.width ?? drawing.width;
+                const height = drawingData.docTransform?.size.height ?? drawing.height;
+                const angle = drawingData.docTransform?.angle ?? drawing.angle;
+                let x = startX;
+                let y = startY;
+
+                switch (verticalAlign) {
+                    case VerticalAlign.TOP:
+                        y = contentStartY;
+                        break;
+                    case VerticalAlign.MIDDLE:
+                        y = (contentStartY + contentEndY) / 2 - height / 2;
+                        break;
+                    default:
+                        y = contentEndY - height;
+                        break;
+                }
+
+                switch (horizontalAlign) {
+                    case HorizontalAlign.RIGHT:
+                        x = contentEndX - width;
+                        break;
+                    case HorizontalAlign.CENTER:
+                        x = (contentStartX + contentEndX) / 2 - width / 2;
+                        break;
+                    default:
+                        x = contentStartX;
+                        break;
+                }
+
                 const { rotatedHeight, rotatedWidth } = rotatedBoundingBox(width, height, angle);
 
                 if (image && image.complete) {
@@ -516,7 +525,7 @@ export class Font extends SheetExtension {
         const paddingBottom = padding.b ?? DEFAULT_PADDING_DATA.b;
         const { vertexAngle = 0, wrapStrategy, cellData } = fontCache;
         if (cellData?.v === undefined || cellData?.v === null) return;
-        const text = extractPureTextFromCell(cellData);
+        const text = getDisplayValueFromCell(cellData);
         const { startX, startY, endX, endY } = renderFontCtx;
         const cellWidth = endX - startX - paddingLeft - paddingRight;
         const cellHeight = endY - startY - paddingTop - paddingBottom;

@@ -42,7 +42,7 @@ describe('SheetsHyperLinkResolverService', () => {
 
         const resolver = new SheetsHyperLinkResolverService(
             {
-                getCurrentUnitForType: () => workbook,
+                getCurrentUnitOfType: () => workbook,
                 getUnit: () => workbook,
             } as any,
             { executeCommand } as any,
@@ -87,7 +87,7 @@ describe('SheetsHyperLinkResolverService', () => {
 
         const resolver = new SheetsHyperLinkResolverService(
             {
-                getCurrentUnitForType: () => workbook,
+                getCurrentUnitOfType: () => workbook,
                 getUnit: () => workbook,
             } as any,
             { executeCommand } as any,
@@ -108,9 +108,9 @@ describe('SheetsHyperLinkResolverService', () => {
         await resolver.navigateToSheetById('unit-1', 'sheet-missing');
         await resolver.navigateToSheetById('unit-1', 'sheet-hidden');
 
-        expect(show).toHaveBeenCalledWith({ content: 'hyperLink.message.refError', type: 'error' });
-        expect(show).toHaveBeenCalledWith({ content: 'hyperLink.message.hiddenSheet', type: 'error' });
-        expect(show).toHaveBeenCalledWith({ content: 'hyperLink.message.noSheet', type: 'error' });
+        expect(show).toHaveBeenCalledWith({ content: 'sheets-hyper-link-ui.message.refError', type: 'error' });
+        expect(show).toHaveBeenCalledWith({ content: 'sheets-hyper-link-ui.message.hiddenSheet', type: 'error' });
+        expect(show).toHaveBeenCalledWith({ content: 'sheets-hyper-link-ui.message.noSheet', type: 'error' });
         expect(focusRange).toHaveBeenCalledWith('unit-1', 'named-range');
     });
 
@@ -121,7 +121,7 @@ describe('SheetsHyperLinkResolverService', () => {
 
         const resolver = new SheetsHyperLinkResolverService(
             {
-                getCurrentUnitForType: () => null,
+                getCurrentUnitOfType: () => null,
                 getUnit: () => null,
             } as any,
             { executeCommand: vi.fn() } as any,
@@ -161,7 +161,7 @@ describe('SheetsHyperLinkResolverService', () => {
         };
         const resolver = new SheetsHyperLinkResolverService(
             {
-                getCurrentUnitForType: () => workbook,
+                getCurrentUnitOfType: () => workbook,
                 getUnit: () => workbook,
             } as any,
             { executeCommand } as any,

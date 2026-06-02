@@ -55,6 +55,9 @@ import {
     GridType,
     HorizontalAlign,
     mergeWith,
+    MODERN_DOCUMENT_DEFAULT_MARGIN,
+    MODERN_DOCUMENT_WIDTH,
+    ModernDocumentWidthMode,
     NAMED_STYLE_MAP,
     NumberUnitType,
     ObjectMatrix,
@@ -68,7 +71,7 @@ import {
 } from '@univerjs/core';
 import { DEFAULT_DOCUMENT_FONTSIZE } from '../../../basics/const';
 import { GlyphType } from '../../../basics/i-document-skeleton-cached';
-import { getFontStyleString, isFunction, ptToPixel } from '../../../basics/tools';
+import { getFontStyleString, isFunction } from '../../../basics/tools';
 import { updateInlineDrawingPosition } from './block/paragraph/layout-ruler';
 import { getCustomDecorationStyle } from './style/custom-decoration';
 import { getCustomRangeStyle } from './style/custom-range';
@@ -1111,8 +1114,8 @@ export function getNullSkeleton(): IDocumentSkeletonCached {
         st: 0,
         skeHeaders: new Map(),
         skeFooters: new Map(),
-        skeListLevel: new Map(), // TODO: 移到 context 中管理？
-        drawingAnchor: new Map(), // TODO: 移到 context 中管理
+        skeListLevel: new Map(), // TODO: Move to context management?
+        drawingAnchor: new Map(), // TODO: Move to context management
     };
 }
 
@@ -1188,13 +1191,13 @@ export const DEFAULT_PAGE_SIZE = { width: Number.POSITIVE_INFINITY, height: Numb
 const DEFAULT_MODERN_DOCUMENT_STYLE: IDocumentStyle = {
     pageNumberStart: 1,
     pageSize: {
-        width: ptToPixel(595),
+        width: MODERN_DOCUMENT_WIDTH[ModernDocumentWidthMode.MEDIUM],
         height: Number.POSITIVE_INFINITY,
     },
-    marginTop: ptToPixel(50),
-    marginBottom: ptToPixel(50),
-    marginRight: ptToPixel(50),
-    marginLeft: ptToPixel(50),
+    marginTop: MODERN_DOCUMENT_DEFAULT_MARGIN,
+    marginBottom: MODERN_DOCUMENT_DEFAULT_MARGIN,
+    marginRight: MODERN_DOCUMENT_DEFAULT_MARGIN,
+    marginLeft: MODERN_DOCUMENT_DEFAULT_MARGIN,
     renderConfig: {
         vertexAngle: 0,
         centerAngle: 0,
@@ -1230,8 +1233,14 @@ export function prepareSectionBreakConfig(ctx: ILayoutContext, nodeIndex: number
     // If the configuration is in modern mode, use the style configuration of modern mode to overwrite the original configuration.
     // In modern mode, there are no pages, no sections, no columns. There are no headers and footers, and margins are all defaults.
     if (documentFlavor === DocumentFlavor.MODERN) {
+        const modernPageWidth = documentStyle.pageSize?.width ?? DEFAULT_MODERN_DOCUMENT_STYLE.pageSize!.width;
         sectionBreak = Object.assign({}, sectionBreak, DEFAULT_MODERN_SECTION_BREAK);
-        documentStyle = Object.assign({}, documentStyle, DEFAULT_MODERN_DOCUMENT_STYLE);
+        documentStyle = Object.assign({}, documentStyle, DEFAULT_MODERN_DOCUMENT_STYLE, {
+            pageSize: {
+                ...DEFAULT_MODERN_DOCUMENT_STYLE.pageSize!,
+                width: modernPageWidth,
+            },
+        });
     }
 
     const {

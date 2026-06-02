@@ -34,6 +34,7 @@ const anotherCommandID = 'another-command';
 describe('Test CommandService', () => {
     let injector: Injector;
     let commandService: ICommandService;
+    let logService: ILogService;
 
     beforeEach(() => {
         injector = new Injector();
@@ -43,6 +44,7 @@ describe('Test CommandService', () => {
         injector.add([IConfigService, { useClass: ConfigService }]);
 
         commandService = injector.get(ICommandService);
+        logService = injector.get(ILogService);
         commandService.registerCommand({
             id: commandID,
             type: CommandType.COMMAND,
@@ -142,7 +144,7 @@ describe('Test CommandService', () => {
                         return true;
                     },
                 });
-            }).toThrowError(`[CommandRegistry]: command "${commandID}" has been registered before.`);
+            }).toThrow(`[CommandRegistry]: command "${commandID}" has been registered before.`);
         });
 
         it('Should return an disposable to unregister command', async () => {
@@ -159,9 +161,9 @@ describe('Test CommandService', () => {
 
             expect(() => {
                 commandService.syncExecuteCommand(anotherCommandID);
-            }).toThrowError(`[CommandService]: command "${anotherCommandID}" is not registered.`);
+            }).toThrow(`[CommandService]: command "${anotherCommandID}" is not registered.`);
 
-            await expect(commandService.executeCommand(anotherCommandID)).rejects.toThrowError(
+            await expect(commandService.executeCommand(anotherCommandID)).rejects.toThrow(
                 `[CommandService]: command "${anotherCommandID}" is not registered.`
             );
         });
@@ -182,12 +184,12 @@ describe('Test CommandService', () => {
 
             const beforeListener = () => numbers.push(-1);
             const beforeDisposable = commandService.beforeCommandExecuted(beforeListener);
-            expect(() => commandService.beforeCommandExecuted(beforeListener)).toThrowError(
+            expect(() => commandService.beforeCommandExecuted(beforeListener)).toThrow(
                 '[CommandService]: could not add a listener twice.'
             );
             const listener = () => numbers.push(1);
             const disposable = commandService.onCommandExecuted(listener);
-            expect(() => commandService.onCommandExecuted(listener)).toThrowError(
+            expect(() => commandService.onCommandExecuted(listener)).toThrow(
                 '[CommandService]: could not add a listener twice.'
             );
 
@@ -201,6 +203,58 @@ describe('Test CommandService', () => {
             disposable.dispose();
             commandService.syncExecuteCommand(pushValCommandID);
             expect(numbers).toEqual([-1, 0, 1, -1, 0, 1, 0]);
+        });
+
+        it('Should skip command execution after the command service is disposed', async () => {
+            const handler = vi.fn(() => true);
+            const beforeListener = vi.fn();
+            const listener = vi.fn();
+            const warn = vi.spyOn(logService, 'warn');
+            const pushValCommandID = 'push-val-after-dispose';
+            commandService.registerCommand({
+                id: pushValCommandID,
+                type: CommandType.COMMAND,
+                handler,
+            });
+            commandService.beforeCommandExecuted(beforeListener);
+            commandService.onCommandExecuted(listener);
+
+            injector.dispose();
+
+            expect(commandService.syncExecuteCommand(pushValCommandID)).toBe(false);
+            await expect(commandService.executeCommand(pushValCommandID)).resolves.toBe(false);
+            expect(handler).not.toHaveBeenCalled();
+            expect(beforeListener).not.toHaveBeenCalled();
+            expect(listener).not.toHaveBeenCalled();
+            expect(warn).toHaveBeenCalledTimes(2);
+            expect(warn).toHaveBeenCalledWith(
+                '[CommandService]',
+                `command "${pushValCommandID}" skipped because CommandService is disposed.`
+            );
+        });
+
+        it('Should stop before invoking command handler when disposed by a before hook', async () => {
+            const handler = vi.fn(() => true);
+            const listener = vi.fn();
+            const warn = vi.spyOn(logService, 'warn');
+            const beforeListener = vi.fn(() => (commandService as CommandService).dispose());
+            const pushValCommandID = 'push-val-dispose-before-hook';
+            commandService.registerCommand({
+                id: pushValCommandID,
+                type: CommandType.COMMAND,
+                handler,
+            });
+            commandService.beforeCommandExecuted(beforeListener);
+            commandService.onCommandExecuted(listener);
+
+            expect(await commandService.executeCommand(pushValCommandID)).toBe(false);
+            expect(beforeListener).toHaveBeenCalledTimes(1);
+            expect(handler).not.toHaveBeenCalled();
+            expect(listener).not.toHaveBeenCalled();
+            expect(warn).toHaveBeenCalledWith(
+                '[CommandService]',
+                `command "${pushValCommandID}" skipped because CommandService is disposed.`
+            );
         });
     });
 
@@ -249,7 +303,7 @@ describe('Test CommandService', () => {
             expect(str).toEqual(['A', 'B', 'B']);
 
             secondDisposable.dispose();
-            await expect(commandService.executeCommand(commandID)).rejects.toThrowError(
+            await expect(commandService.executeCommand(commandID)).rejects.toThrow(
                 `[CommandService]: command "${commandID}" is not registered.`
             );
         });

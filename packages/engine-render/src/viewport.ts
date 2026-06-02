@@ -108,6 +108,7 @@ export interface IViewportReSizeParam {
 }
 
 const MOUSE_WHEEL_SPEED_SMOOTHING_FACTOR = 3;
+const WHEEL_CROSS_AXIS_LOCK_RATIO = 2;
 
 export class Viewport {
     private _viewportKey: string = '';
@@ -623,7 +624,7 @@ export class Viewport {
         if (this._scrollBar) {
             const { scaleX, scaleY } = this.scene;
             if (this._scrollBar.ratioScrollX !== 0) {
-                x /= this._scrollBar.ratioScrollX; // 转换为内容区实际滚动距离
+                x /= this._scrollBar.ratioScrollX; // Convert to actual scroll distance in content area
                 x /= scaleX;
             } else if (this.viewportScrollX !== undefined) {
                 x = this.viewportScrollX;
@@ -858,7 +859,7 @@ export class Viewport {
         const yFrom: number = this.top;
         const yTo: number = ((height || 0) + this.top);
 
-        // this.getRelativeVector 加上了 scroll 后的坐标
+        // this.getRelativeVector adds coordinates after scroll
         const topLeft = this.transformVector2SceneCoord(Vector2.FromArray([xFrom, yFrom]));
         const bottomRight = this.transformVector2SceneCoord(Vector2.FromArray([xTo, yTo]));
 
@@ -974,14 +975,26 @@ export class Viewport {
         let offsetY = 0;
         const allWidth = this._scene.width;
         const viewWidth = this.width || 1;
-        offsetX = (viewWidth / allWidth) * evt.deltaX;
+        const scaleX = Math.abs(this._scene.scaleX) || 1;
+        const scaleY = Math.abs(this._scene.scaleY) || 1;
+        const rawOffsetX = evt.deltaX / scaleX;
+        const rawOffsetY = evt.deltaY / scaleY;
+        offsetX = (viewWidth / allWidth) * rawOffsetX;
 
         const allHeight = this._scene.height;
         const viewHeight = this.height || 1;
         if (evt.shiftKey) {
-            offsetX = (viewHeight / allHeight) * evt.deltaY * MOUSE_WHEEL_SPEED_SMOOTHING_FACTOR;
+            offsetX = ((viewHeight / allHeight) * evt.deltaY * MOUSE_WHEEL_SPEED_SMOOTHING_FACTOR) / scaleX;
         } else {
-            offsetY = (viewHeight / allHeight) * evt.deltaY;
+            offsetY = (viewHeight / allHeight) * rawOffsetY;
+
+            const absOffsetX = Math.abs(rawOffsetX);
+            const absOffsetY = Math.abs(rawOffsetY);
+            if (absOffsetY >= absOffsetX * WHEEL_CROSS_AXIS_LOCK_RATIO) {
+                offsetX = 0;
+            } else if (absOffsetX >= absOffsetY * WHEEL_CROSS_AXIS_LOCK_RATIO) {
+                offsetY = 0;
+            }
         }
 
         const isLimitedStore = this.scrollByBarDeltaValue({
@@ -1458,6 +1471,15 @@ export class Viewport {
         if (!prevBound) {
             return [currBound];
         }
+        if (
+            prevBound.right <= currBound.left ||
+            currBound.right <= prevBound.left ||
+            prevBound.bottom <= currBound.top ||
+            currBound.bottom <= prevBound.top
+        ) {
+            return [currBound];
+        }
+
         const additionalAreas: IBoundRectNoAngle[] = [];
 
         // curr has an extra part on the left compared to prev.
