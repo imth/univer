@@ -12,7 +12,7 @@ import {
   InsertDocImageCommand,
   UniverDebuggerPlugin,
   UniverDocsDrawingUIPlugin
-} from "../chunk-5E5UAZHD.js";
+} from "../chunk-JUQHS3HT.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
@@ -6700,13 +6700,14 @@ var HEADING_MAP = {
 var DEFAULT_BORDER_COLOR_RGB = "#000000";
 function parseBorder(b) {
   const a = nodeAttrs(b);
+  const valAttr = a["@_w:val"];
+  const sz = Number(a["@_w:sz"]);
+  if (valAttr === "none" || valAttr === "nil" || sz === 0) return void 0;
   const out = {};
   const colorAttr = a["@_w:color"];
   if (colorAttr && colorAttr !== "auto") out.color = { rgb: `#${colorAttr.toUpperCase()}` };
   else out.color = { rgb: DEFAULT_BORDER_COLOR_RGB };
-  const sz = Number(a["@_w:sz"]);
   if (!Number.isNaN(sz)) out.width = Math.max(1, Math.round(sz / 6));
-  const valAttr = a["@_w:val"];
   out.dashStyle = valAttr && DOCX_BORDER_TO_UNIVER_DASH[valAttr] || 1;
   const space = Number(a["@_w:space"]);
   if (!Number.isNaN(space)) out.padding = space * 4 / 3;
@@ -6823,11 +6824,13 @@ function parsePPr(pPr) {
     } else if (name === "w:pBdr") {
       for (const b of nodeChildren(child)) {
         const bn = nodeName(b);
-        if (bn === "w:bottom") out.borderBottom = parseBorder(b);
-        else if (bn === "w:top") out.borderTop = parseBorder(b);
-        else if (bn === "w:left") out.borderLeft = parseBorder(b);
-        else if (bn === "w:right") out.borderRight = parseBorder(b);
-        else if (bn === "w:between") out.borderBetween = parseBorder(b);
+        const parsed = parseBorder(b);
+        if (!parsed) continue;
+        if (bn === "w:bottom") out.borderBottom = parsed;
+        else if (bn === "w:top") out.borderTop = parsed;
+        else if (bn === "w:left") out.borderLeft = parsed;
+        else if (bn === "w:right") out.borderRight = parsed;
+        else if (bn === "w:between") out.borderBetween = parsed;
       }
     } else if (name === "w:tabs") {
       parseTabsInto(child, out);
@@ -8877,7 +8880,7 @@ function parseTable(tblNode, drawingsOut, styles, themeFonts) {
   }
   if (rowHeights.some((h) => h !== void 0)) result.rowHeights = rowHeights;
   if (rowCantSplit.some(Boolean)) result.rowCantSplit = rowCantSplit;
-  if (rowIsHeader.some(Boolean)) result.rowIsHeader = rowIsHeader;
+  if (rowIsHeader.some(Boolean) && !rowIsHeader.every(Boolean)) result.rowIsHeader = rowIsHeader;
   return result;
 }
 
