@@ -186,6 +186,21 @@ describe('parseTable: row-level properties', () => {
         expect(t.rowIsHeader?.[0]).toBe(true);
         expect(t.rowIsHeader?.[1]).toBeFalsy();
     });
+
+    it('drops repeat-header when EVERY row is tblHeader (degenerate, would collapse pagination)', () => {
+        // Some generators stamp <w:tblHeader/> on every row. A table whose every
+        // row repeats as a header has no body to repeat into; honoring it makes
+        // the layout reserve the whole table height on every page, paginating one
+        // row per page. Word ignores it — so do we.
+        const xml =
+            `<w:tbl ${NS}>` +
+      '<w:tr><w:trPr><w:tblHeader/></w:trPr><w:tc><w:p/></w:tc></w:tr>' +
+      '<w:tr><w:trPr><w:tblHeader/></w:trPr><w:tc><w:p/></w:tc></w:tr>' +
+      '<w:tr><w:trPr><w:tblHeader/></w:trPr><w:tc><w:p/></w:tc></w:tr>' +
+      '</w:tbl>';
+        const t = parseTable(tblNode(xml));
+        expect(t.rowIsHeader).toBeUndefined();
+    });
 });
 
 describe('parseTable: tblStyle inheritance from styles.xml (Phase 3)', () => {
