@@ -1,121 +1,121 @@
 import {
   UniverSheetsFindReplacePlugin
-} from "../chunk-EWJKUIVG.js";
+} from "../chunk-GVI2WEUB.js";
 import {
   UniverSheetsThreadCommentUIPlugin
-} from "../chunk-PP5G772A.js";
+} from "../chunk-Q5PT6UQV.js";
 import {
   UniverSheetsNoteUIPlugin,
   UniverSheetsTableUIPlugin
-} from "../chunk-D7SNSMVB.js";
+} from "../chunk-5I2C7Q2N.js";
 import {
   UniverSheetsSortUIPlugin
-} from "../chunk-RYUFVRBB.js";
+} from "../chunk-MMJAN6NN.js";
 import {
   UniverThreadCommentUIPlugin
-} from "../chunk-VGNKBCGN.js";
+} from "../chunk-ZMNFLBQU.js";
 import {
   UniverVue3AdapterPlugin,
   UniverWebComponentAdapterPlugin
-} from "../chunk-ZKRYNL77.js";
+} from "../chunk-ZU6KMATD.js";
 import {
   UniverNetworkPlugin
-} from "../chunk-AFJBWD3C.js";
-import "../chunk-E5A4PJRJ.js";
+} from "../chunk-T7YZ2IAQ.js";
+import "../chunk-DQILJ3A3.js";
 import {
   UniverSheetsThreadCommentPlugin
-} from "../chunk-ZZJ35QRB.js";
+} from "../chunk-PM7JNR7L.js";
 import {
   UniverSheetsCrosshairHighlightPlugin
-} from "../chunk-HRPVIQWC.js";
+} from "../chunk-BVRGHH7U.js";
 import {
   UniverSheetsNotePlugin,
   UniverSheetsTablePlugin
-} from "../chunk-ZCATEE7P.js";
+} from "../chunk-JXMVOULZ.js";
 import {
   UniverSheetsZenEditorPlugin
-} from "../chunk-34KQRGEW.js";
+} from "../chunk-D433V6G2.js";
 import {
   UniverSheetsHyperLinkPlugin,
   UniverSheetsHyperLinkUIPlugin
-} from "../chunk-5UVOMGFD.js";
+} from "../chunk-S2KHV4SL.js";
 import {
   UniverSheetsSortPlugin
-} from "../chunk-VI4F7W4R.js";
+} from "../chunk-PDIQKNQQ.js";
 import {
   UniverThreadCommentPlugin
-} from "../chunk-TM5QNBBA.js";
+} from "../chunk-QJ52P6YG.js";
 import {
   UniverWatermarkPlugin
-} from "../chunk-NH4KUAXR.js";
+} from "../chunk-UJ3QZ2LJ.js";
 import {
   UniverSheetsDrawingPlugin,
   UniverSheetsDrawingUIPlugin
-} from "../chunk-VFTYBZI5.js";
+} from "../chunk-R75WIQQJ.js";
 import {
   FUniver
-} from "../chunk-32E5INCS.js";
+} from "../chunk-VW3WZZGE.js";
 import {
   UniverSheetsConditionalFormattingUIPlugin,
   UniverSheetsDataValidationUIPlugin,
   UniverSheetsFilterUIPlugin
-} from "../chunk-YV5NZR7V.js";
+} from "../chunk-D22UMSAC.js";
 import {
   UniverSheetsConditionalFormattingPlugin
-} from "../chunk-VG56UQXC.js";
+} from "../chunk-RCFVT6UA.js";
 import {
   UniverSheetsFilterPlugin
-} from "../chunk-5BKQ3UGE.js";
+} from "../chunk-QONLHEDA.js";
 import {
   UniverSheetsNumfmtUIPlugin
-} from "../chunk-TWDDNSLR.js";
+} from "../chunk-3OUTO23H.js";
 import {
   UniverSheetsFormulaUIPlugin
-} from "../chunk-DGOLKE3J.js";
+} from "../chunk-SZVFURCV.js";
 import {
   UniverSheetsNumfmtPlugin
-} from "../chunk-Z4Y6TDWT.js";
+} from "../chunk-MWBVRRLU.js";
 import {
   UniverSheetsUIPlugin
-} from "../chunk-ZTNTIYC7.js";
+} from "../chunk-BGBIKM5E.js";
 import {
   DEFAULT_WORKBOOK_DATA_DEMO
-} from "../chunk-D333OPGQ.js";
+} from "../chunk-5UF6K5II.js";
 import {
   UniverDocsPlugin,
   UniverDocsUIPlugin,
   UniverSheetsDataValidationPlugin
-} from "../chunk-AWWTHDNL.js";
+} from "../chunk-RWPMR47C.js";
 import "../chunk-LI6UXASZ.js";
 import {
   UniverUIPlugin,
   render,
   require_jsx_runtime,
   require_react
-} from "../chunk-YCYH7T4W.js";
+} from "../chunk-NFRVCGXI.js";
 import {
   zh_CN_default
-} from "../chunk-YRBPDJQT.js";
+} from "../chunk-TEFKPMMF.js";
 import {
   UniverSheetsFormulaPlugin
-} from "../chunk-ARVZLWAF.js";
+} from "../chunk-DDNH2LYO.js";
 import {
   UniverFormulaEnginePlugin,
   UniverSheetsPlugin
-} from "../chunk-OH3WKAXS.js";
+} from "../chunk-FHKGEGDD.js";
 import {
   UniverRenderEnginePlugin
-} from "../chunk-TZSKLHKF.js";
+} from "../chunk-VGF75R5Y.js";
 import {
   Univer
-} from "../chunk-MR7DLPM2.js";
+} from "../chunk-AGUCVTH3.js";
 import "../chunk-EQ2B2W73.js";
 import {
   __decorateClass,
   __toESM
 } from "../chunk-24OICD5T.js";
 
-// ../node_modules/.pnpm/@lit+react@1.0.8_@types+react@19.2.14/node_modules/@lit/react/create-component.js
+// ../node_modules/.pnpm/@lit+react@1.0.8_@types+react@19.2.15/node_modules/@lit/react/create-component.js
 var e = /* @__PURE__ */ new Set(["children", "localName", "ref", "style", "className"]);
 var n = /* @__PURE__ */ new WeakMap();
 var t = (e6, t5, o6, l3, a3) => {

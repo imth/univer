@@ -2,7 +2,7 @@ import {
   DEFAULT_SLIDE_DATA,
   ObjectProvider,
   UniverSlidesPlugin
-} from "../chunk-D333OPGQ.js";
+} from "../chunk-5UF6K5II.js";
 import {
   DOCS_COMPONENT_MAIN_LAYER_INDEX,
   DRAWING_IMAGE_ALLOW_IMAGE_LIST,
@@ -18,7 +18,7 @@ import {
   UniverDocsUIPlugin,
   UniverDrawingPlugin,
   getImageSize
-} from "../chunk-AWWTHDNL.js";
+} from "../chunk-RWPMR47C.js";
 import "../chunk-LI6UXASZ.js";
 import {
   AutofillDoubleIcon,
@@ -54,14 +54,14 @@ import {
   scrollbarClassName,
   useDependency,
   useObservable
-} from "../chunk-YCYH7T4W.js";
+} from "../chunk-NFRVCGXI.js";
 import {
   zh_CN_default
-} from "../chunk-YRBPDJQT.js";
-import "../chunk-ARVZLWAF.js";
+} from "../chunk-TEFKPMMF.js";
+import "../chunk-DDNH2LYO.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-OH3WKAXS.js";
+} from "../chunk-FHKGEGDD.js";
 import {
   FIX_ONE_PIXEL_BLUR_OFFSET,
   IRenderManagerService,
@@ -75,7 +75,7 @@ import {
   fixLineWidthByScale,
   getCurrentTypeOfRenderer,
   pxToNum
-} from "../chunk-TZSKLHKF.js";
+} from "../chunk-VGF75R5Y.js";
 import {
   BehaviorSubject,
   DEFAULT_EMPTY_DOCUMENT_VALUE,
@@ -112,7 +112,7 @@ import {
   merge_default,
   takeUntil,
   toDisposable
-} from "../chunk-MR7DLPM2.js";
+} from "../chunk-AGUCVTH3.js";
 import "../chunk-EQ2B2W73.js";
 import {
   __decorateClass,
@@ -212,7 +212,7 @@ var SlideRenderController = class extends RxDisposable {
    * @param mainScene
    */
   _createSlide(mainScene) {
-    const model = this._univerInstanceService.getCurrentUnitForType(3 /* UNIVER_SLIDE */);
+    const model = this._univerInstanceService.getCurrentUnitOfType(3 /* UNIVER_SLIDE */);
     const { width: sceneWidth, height: sceneHeight } = mainScene;
     const pageSize = model.getPageSize();
     const { width = 100, height = 100 } = pageSize;
@@ -228,7 +228,7 @@ var SlideRenderController = class extends RxDisposable {
     return slideComponent;
   }
   _addBackgroundRect(scene, fill) {
-    const model = this._univerInstanceService.getCurrentUnitForType(3 /* UNIVER_SLIDE */);
+    const model = this._univerInstanceService.getCurrentUnitOfType(3 /* UNIVER_SLIDE */);
     const pageSize = model.getPageSize();
     const { width: pageWidth = 0, height: pageHeight = 0 } = pageSize;
     const page = new Rect("canvas", {
@@ -562,7 +562,7 @@ var InsertSlideFloatImageCommand = {
   handler: async (accessor, params) => {
     var _a;
     const univerInstanceService = accessor.get(IUniverInstanceService);
-    const unitId = (_a = univerInstanceService.getCurrentUnitForType(3 /* UNIVER_SLIDE */)) == null ? void 0 : _a.getUnitId();
+    const unitId = (_a = univerInstanceService.getCurrentUnitOfType(3 /* UNIVER_SLIDE */)) == null ? void 0 : _a.getUnitId();
     if (!unitId) return false;
     const fileOpenerService = accessor.get(ILocalFileService);
     const files = await fileOpenerService.openFile({
@@ -677,7 +677,7 @@ function ArrangePanel(props) {
       "div",
       {
         className: `univer-w-full univer-text-left univer-text-gray-600 dark:!univer-text-gray-200`,
-        children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: localeService.t("image-panel.arrange.title") })
+        children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: localeService.t("slides-ui.image-panel.arrange.title") })
       }
     ) }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "univer-relative univer-mt-2.5 univer-flex univer-h-full", children: [
@@ -685,13 +685,13 @@ function ArrangePanel(props) {
         onArrangeBtnClick(0 /* forward */);
       }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "univer-flex univer-items-center univer-gap-1", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(MoveUpIcon, {}),
-        localeService.t("image-panel.arrange.forward")
+        localeService.t("slides-ui.image-panel.arrange.forward")
       ] }) }) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "univer-w-1/2", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Button, { onClick: () => {
         onArrangeBtnClick(1 /* backward */);
       }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "univer-flex univer-items-center univer-gap-1", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(MoveDownIcon, {}),
-        localeService.t("image-panel.arrange.backward")
+        localeService.t("slides-ui.image-panel.arrange.backward")
       ] }) }) })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "univer-relative univer-mt-2.5 univer-flex univer-h-full", children: [
@@ -699,13 +699,13 @@ function ArrangePanel(props) {
         onArrangeBtnClick(2 /* front */);
       }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "univer-flex univer-items-center univer-gap-1", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TopmostIcon, {}),
-        localeService.t("image-panel.arrange.front")
+        localeService.t("slides-ui.image-panel.arrange.front")
       ] }) }) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "univer-w-1/2", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Button, { onClick: () => {
         onArrangeBtnClick(3 /* back */);
       }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "univer-flex univer-items-center univer-gap-1", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(BottomIcon, {}),
-        localeService.t("image-panel.arrange.back")
+        localeService.t("slides-ui.image-panel.arrange.back")
       ] }) }) })
     ] })
   ] });
@@ -757,7 +757,7 @@ function ArrangePanel2(props) {
           "div",
           {
             className: `univer-w-full univer-text-left univer-text-gray-600 dark:!univer-text-gray-200`,
-            children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { children: localeService.t("slide.panel.fill.title") })
+            children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { children: localeService.t("slides-ui.panel.fill.title") })
           }
         ) }),
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "univer-relative univer-mt-2.5 univer-flex univer-h-full", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "univer-w-1/2", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
@@ -913,7 +913,7 @@ function TransformPanel(props) {
           "header",
           {
             className: `univer-text-gray-600 dark:!univer-text-gray-200`,
-            children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { children: localeService.t("image-panel.transform.title") })
+            children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { children: localeService.t("slides-ui.image-panel.transform.title") })
           }
         ),
         /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
@@ -922,7 +922,7 @@ function TransformPanel(props) {
             className: `univer-grid univer-grid-cols-3 univer-gap-2 [&>div]:univer-grid [&>div]:univer-gap-2`,
             children: [
               /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: localeService.t("image-panel.transform.width") }),
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: localeService.t("slides-ui.image-panel.transform.width") }),
                 /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
                   InputNumber,
                   {
@@ -935,7 +935,7 @@ function TransformPanel(props) {
                 )
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: localeService.t("image-panel.transform.height") }),
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: localeService.t("slides-ui.image-panel.transform.height") }),
                 /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
                   InputNumber,
                   {
@@ -952,19 +952,19 @@ function TransformPanel(props) {
         ),
         /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "univer-relative univer-mt-2.5 univer-flex univer-h-full", children: [
           /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: localeService.t("image-panel.transform.x") }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: localeService.t("slides-ui.image-panel.transform.x") }),
             /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(InputNumber, { min: 0, precision: 1, value: xPosition, onChange: (val) => {
               handleXChange(val);
             } })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: localeService.t("image-panel.transform.y") }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: localeService.t("slides-ui.image-panel.transform.y") }),
             /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(InputNumber, { min: 0, precision: 1, value: yPosition, onChange: (val) => {
               handleYChange(val);
             } })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: localeService.t("image-panel.transform.rotate") }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: localeService.t("slides-ui.image-panel.transform.rotate") }),
             /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
               InputNumber,
               {
@@ -987,7 +987,7 @@ function RectSidebar() {
   var _a, _b, _c;
   const univerInstanceService = useDependency(IUniverInstanceService);
   const canvasView = useDependency(CanvasView);
-  const currentSlide = univerInstanceService.getCurrentUnitForType(3 /* UNIVER_SLIDE */);
+  const currentSlide = univerInstanceService.getCurrentUnitOfType(3 /* UNIVER_SLIDE */);
   const pageId = (_a = currentSlide == null ? void 0 : currentSlide.getActivePage()) == null ? void 0 : _a.id;
   const unitId = ((_b = univerInstanceService.getFocusedUnit()) == null ? void 0 : _b.getUnitId()) || "";
   if (!pageId || !unitId) return null;
@@ -1070,13 +1070,13 @@ var ToggleSlideEditSidebarOperation = {
     let title = "";
     let children = "";
     if (objectType === 4 /* RECT */) {
-      title = "slide.sidebar.shape";
+      title = "slides-ui.sidebar.shape";
       children = COMPONENT_SLIDE_SIDEBAR;
     } else if (objectType === 3 /* IMAGE */) {
-      title = "slide.sidebar.image";
+      title = "slides-ui.sidebar.image";
       children = COMPONENT_SLIDE_SIDEBAR;
     } else if (objectType === 1 /* RICH_TEXT */) {
-      title = "slide.sidebar.text";
+      title = "slides-ui.sidebar.text";
       children = COMPONENT_SLIDE_SIDEBAR;
     }
     if (visible) {
@@ -1228,7 +1228,7 @@ function SlideSideBar() {
   const renderManagerService = useDependency(IRenderManagerService);
   const localeService = useDependency(LocaleService);
   const slideBarRef = (0, import_react3.useRef)(null);
-  const currentSlide = univerInstanceService.getCurrentUnitForType(3 /* UNIVER_SLIDE */);
+  const currentSlide = univerInstanceService.getCurrentUnitOfType(3 /* UNIVER_SLIDE */);
   const pages = currentSlide == null ? void 0 : currentSlide.getPages();
   const pageOrder = currentSlide == null ? void 0 : currentSlide.getPageOrder();
   if (!pages || !pageOrder) {
@@ -1276,7 +1276,7 @@ function SlideSideBar() {
           {
             className: clsx(`univer-box-border univer-block univer-h-8 univer-w-full univer-cursor-pointer univer-rounded-md univer-bg-white univer-text-center univer-text-sm univer-leading-8 univer-transition-colors`, borderClassName),
             onClick: handleAppendSlide,
-            children: localeService.t("slide.append")
+            children: localeService.t("slides-ui.append")
           }
         ) }),
         slideList.map((item, index) => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
@@ -1402,14 +1402,14 @@ function SlideImageMenuFactory(accessor) {
     id: SLIDES_IMAGE_MENU_ID,
     type: 3 /* SUBITEMS */,
     icon: "AddImageIcon",
-    tooltip: "slide.image.insert.title",
+    tooltip: "slides-ui.image.insert.title",
     hidden$: getMenuHiddenObservable(accessor, 3 /* UNIVER_SLIDE */)
   };
 }
 function UploadSlideFloatImageMenuFactory(_accessor) {
   return {
     id: InsertSlideFloatImageCommand.id,
-    title: "slide.image.insert.float",
+    title: "slides-ui.image.insert.float",
     type: 0 /* BUTTON */,
     hidden$: getMenuHiddenObservable(_accessor, 3 /* UNIVER_SLIDE */)
   };
@@ -1422,7 +1422,7 @@ function SlideShapeMenuFactory(accessor) {
     id: SHAPE_MENU_ID,
     type: 3 /* SUBITEMS */,
     icon: "GraphIcon",
-    tooltip: "slide.shape.insert.title",
+    tooltip: "slides-ui.shape.insert.title",
     hidden$: getMenuHiddenObservable(accessor, 3 /* UNIVER_SLIDE */)
     // disabled$: getCurrentRangeDisable$(accessor, { workbookTypes: [WorkbookEditablePermission], worksheetTypes: [WorksheetEditPermission], rangeTypes: [RangeProtectionPermissionEditPoint] }),
   };
@@ -1430,7 +1430,7 @@ function SlideShapeMenuFactory(accessor) {
 function UploadSlideFloatRectangleShapeMenuFactory(_accessor) {
   return {
     id: InsertSlideShapeRectangleCommand.id,
-    title: "slide.shape.insert.rectangle",
+    title: "slides-ui.shape.insert.rectangle",
     type: 0 /* BUTTON */,
     hidden$: getMenuHiddenObservable(_accessor, 3 /* UNIVER_SLIDE */)
   };
@@ -1438,7 +1438,7 @@ function UploadSlideFloatRectangleShapeMenuFactory(_accessor) {
 function UploadSlideFloatEllipseShapeMenuFactory(_accessor) {
   return {
     id: InsertSlideShapeEllipseCommand.id,
-    title: "slide.shape.insert.ellipse",
+    title: "slides-ui.shape.insert.ellipse",
     type: 0 /* BUTTON */,
     hidden$: getMenuHiddenObservable(_accessor, 3 /* UNIVER_SLIDE */)
   };
@@ -1450,7 +1450,7 @@ function SlideAddTextMenuItemFactory(_accessor) {
     id: SlideAddTextCommand.id,
     type: 0 /* BUTTON */,
     icon: "TextIcon",
-    tooltip: "slide.text.insert.title",
+    tooltip: "slides-ui.text.insert.title",
     hidden$: getMenuHiddenObservable(_accessor, 3 /* UNIVER_SLIDE */)
   };
 }
@@ -1747,10 +1747,10 @@ SlidesUIController = __decorateClass([
 // ../packages/slides-ui/package.json
 var package_default = {
   name: "@univerjs/slides-ui",
-  version: "0.21.1",
+  version: "0.25.0",
   private: false,
-  description: "Univer normal ui-plugin-slides",
-  author: "DreamNum <developer@univer.ai>",
+  description: "Presentation editor UI layer for Univer Slides.",
+  author: "DreamNum Co., Ltd. <developer@univer.ai>",
   license: "Apache-2.0",
   funding: {
     type: "opencollective",
@@ -1765,7 +1765,11 @@ var package_default = {
     url: "https://github.com/dream-num/univer/issues"
   },
   keywords: [
-    "univer"
+    "univer",
+    "slides",
+    "presentation",
+    "editor",
+    "ui"
   ],
   exports: {
     ".": "./src/index.ts",
@@ -1823,18 +1827,18 @@ var package_default = {
     "@univerjs/docs-ui": "workspace:*",
     "@univerjs/drawing": "workspace:*",
     "@univerjs/engine-render": "workspace:*",
-    "@univerjs/icons": "^1.1.1",
+    "@univerjs/icons": "1.4.0",
     "@univerjs/slides": "workspace:*",
     "@univerjs/ui": "workspace:*"
   },
   devDependencies: {
     "@univerjs-infra/shared": "workspace:*",
-    postcss: "^8.5.10",
+    postcss: "^8.5.15",
     react: "18.3.1",
     rxjs: "^7.8.2",
     tailwindcss: "3.4.18",
-    typescript: "^6.0.2",
-    vitest: "^4.1.4"
+    typescript: "^6.0.3",
+    vitest: "^4.1.7"
   }
 };
 
@@ -2695,7 +2699,7 @@ var SlideEditorBridgeRenderController = class extends RxDisposable {
     if (!this._curRichText) return;
     this.setEditorVisible(false);
     const curRichText = this._curRichText;
-    const slideData = this._instanceSrv.getCurrentUnitForType(3 /* UNIVER_SLIDE */);
+    const slideData = this._instanceSrv.getCurrentUnitOfType(3 /* UNIVER_SLIDE */);
     if (!slideData) return false;
     curRichText.refreshDocumentByDocData();
     curRichText.resizeToContentSize();
@@ -2822,7 +2826,7 @@ var SlideCanvasPopMangerService = class extends Disposable {
     };
   }
   attachPopupToObject(targetObject, popup) {
-    const workbook = this._univerInstanceService.getCurrentUnitForType(3 /* UNIVER_SLIDE */);
+    const workbook = this._univerInstanceService.getCurrentUnitOfType(3 /* UNIVER_SLIDE */);
     const unitId = workbook.getUnitId();
     const currentRender = this._renderManagerService.getRenderById(unitId);
     if (!currentRender) {
@@ -2888,7 +2892,7 @@ var SlidePopupMenuController = class extends RxDisposable {
   // eslint-disable-next-line max-lines-per-function
   _popupMenuListener(unitId) {
     var _a;
-    const model = this._univerInstanceService.getCurrentUnitForType(3 /* UNIVER_SLIDE */);
+    const model = this._univerInstanceService.getCurrentUnitOfType(3 /* UNIVER_SLIDE */);
     const pages = (_a = model == null ? void 0 : model.getPages()) != null ? _a : {};
     Object.keys(pages).forEach((pageId) => {
       var _a2;
@@ -2961,7 +2965,7 @@ var SlidePopupMenuController = class extends RxDisposable {
   }
   _getMenuItemsByObjectType(objectType, oKey, unitId) {
     const menuItems = [{
-      label: "slide.popup.edit",
+      label: "slides-ui.popup.edit",
       index: 0,
       commandId: ToggleSlideEditSidebarOperation.id,
       commandParams: {
@@ -2970,7 +2974,7 @@ var SlidePopupMenuController = class extends RxDisposable {
       },
       disable: false
     }, {
-      label: "slide.popup.delete",
+      label: "slides-ui.popup.delete",
       index: 5,
       commandId: DeleteSlideElementOperation.id,
       commandParams: {
@@ -3109,7 +3113,7 @@ var UniverSlidesUIPlugin = class extends Plugin {
   _markSlideAsFocused() {
     const currentService = this._univerInstanceService;
     try {
-      const slideDataModel = currentService.getCurrentUnitForType(3 /* UNIVER_SLIDE */);
+      const slideDataModel = currentService.getCurrentUnitOfType(3 /* UNIVER_SLIDE */);
       currentService.focusUnit(slideDataModel.getUnitId());
     } catch (e) {
     }

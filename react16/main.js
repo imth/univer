@@ -5,11 +5,11 @@ import {
   render,
   require_jsx_runtime,
   require_react
-} from "./chunk-YCYH7T4W.js";
-import "./chunk-TZSKLHKF.js";
+} from "./chunk-NFRVCGXI.js";
+import "./chunk-VGF75R5Y.js";
 import {
   default_default
-} from "./chunk-MR7DLPM2.js";
+} from "./chunk-AGUCVTH3.js";
 import "./chunk-EQ2B2W73.js";
 import {
   __toESM
@@ -22,9 +22,9 @@ var import_react = __toESM(require_react());
 var package_default = {
   name: "univer",
   type: "module",
-  version: "0.21.1",
+  version: "0.25.0",
   private: true,
-  packageManager: "pnpm@10.33.0",
+  packageManager: "pnpm@10.33.4",
   author: "DreamNum Co., Ltd. <developer@univer.ai>",
   license: "Apache-2.0",
   funding: {
@@ -77,45 +77,45 @@ var package_default = {
   },
   devDependencies: {
     "@antfu/eslint-config": "^7.7.3",
-    "@commitlint/cli": "^20.5.0",
-    "@commitlint/config-conventional": "^20.5.0",
+    "@commitlint/cli": "^20.5.3",
+    "@commitlint/config-conventional": "^20.5.3",
     "@eslint-react/eslint-plugin": "^2.13.0",
-    "@eslint/compat": "^2.0.3",
+    "@eslint/compat": "^2.0.5",
     "@playwright/test": "^1.57.0",
     "@release-it-plugins/workspaces": "^5.0.3",
     "@release-it/conventional-changelog": "^10.0.6",
     "@types/fs-extra": "^11.0.4",
-    "@types/node": "^25.6.0",
-    "@types/react": "19.2.14",
+    "@types/node": "^25.9.1",
+    "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
     "@univerjs-infra/shared": "workspace:*",
     "@univerjs/design": "workspace:*",
-    eslint: "10.2.0",
+    eslint: "10.4.1",
     "eslint-plugin-format": "^2.0.1",
     "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "7.0.1",
+    "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
-    "fs-extra": "^11.3.4",
+    "fs-extra": "^11.3.5",
     husky: "^9.1.7",
-    "lint-staged": "^16.4.0",
-    "posthog-node": "^5.29.2",
-    react: "19.2.5",
-    "react-dom": "19.2.5",
+    "lint-staged": "^17.0.5",
+    "posthog-node": "^5.35.6",
+    react: "19.2.6",
+    "react-dom": "19.2.6",
     "release-it": "^19.2.4",
     serve: "^14.2.6",
     tailwindcss: "3.4.18",
-    tsx: "^4.21.0",
-    turbo: "^2.9.6",
-    typescript: "^6.0.2",
-    vitest: "^4.1.4"
+    tsx: "^4.22.3",
+    turbo: "^2.9.16",
+    typescript: "^6.0.3",
+    vitest: "^4.1.7"
   },
   pnpm: {
     overrides: {
-      "@types/react": "19.2.14",
+      "@types/react": "19.2.15",
       "@types/react-dom": "19.2.3",
       "basic-ftp": "5.2.0",
-      react: "19.2.5",
-      "react-dom": "19.2.5"
+      react: "19.2.6",
+      "react-dom": "19.2.6"
     }
   },
   "lint-staged": {
@@ -225,11 +225,11 @@ if (true) {
     // eslint-disable-next-line node/prefer-global/process
     NODE_ENV: "production",
     // eslint-disable-next-line node/prefer-global/process
-    GIT_COMMIT_HASH: "6e49e10",
+    GIT_COMMIT_HASH: "4c4112d",
     // eslint-disable-next-line node/prefer-global/process
     GIT_REF_NAME: "dev",
     // eslint-disable-next-line node/prefer-global/process
-    BUILD_TIME: "2026-06-01T15:30:50.830Z"
+    BUILD_TIME: "2026-06-02T04:25:43.793Z"
   });
 }
 function DemoList({ items }) {

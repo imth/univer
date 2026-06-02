@@ -1,38 +1,36 @@
 import {
   UniverDocsMentionUIPlugin
-} from "../chunk-TUIUF3VQ.js";
+} from "../chunk-Z6YKATGB.js";
 import {
   SetActiveCommentOperation,
   ThreadCommentPanel,
   ThreadCommentPanelService,
   UniverThreadCommentUIPlugin
-} from "../chunk-VGNKBCGN.js";
-import "../chunk-D5V4HXQZ.js";
-import {
-  UniverDebuggerPlugin
-} from "../chunk-TNNMQOJ2.js";
+} from "../chunk-ZMNFLBQU.js";
+import "../chunk-AR2XLGIP.js";
 import {
   InsertDocImageCommand,
+  UniverDebuggerPlugin,
   UniverDocsDrawingUIPlugin
-} from "../chunk-WT2L3KGQ.js";
+} from "../chunk-ELIHJTE5.js";
 import {
   AddCommentMutation,
   IThreadCommentDataSourceService,
   ThreadCommentModel,
   getDT
-} from "../chunk-TM5QNBBA.js";
-import "../chunk-NH4KUAXR.js";
+} from "../chunk-QJ52P6YG.js";
+import "../chunk-UJ3QZ2LJ.js";
 import {
   UniverDocsDrawingPlugin,
   UniverDrawingUIPlugin
-} from "../chunk-VFTYBZI5.js";
+} from "../chunk-R75WIQQJ.js";
 import {
   FUniver
-} from "../chunk-32E5INCS.js";
-import "../chunk-ZTNTIYC7.js";
+} from "../chunk-VW3WZZGE.js";
+import "../chunk-BGBIKM5E.js";
 import {
   DEFAULT_DOCUMENT_DATA_SIMPLE
-} from "../chunk-D333OPGQ.js";
+} from "../chunk-5UF6K5II.js";
 import {
   BulletListCommand,
   CutContentCommand,
@@ -48,8 +46,10 @@ import {
   DocSelectionManagerService,
   DocSelectionRenderService,
   DocSkeletonManagerService,
+  EMPTY_PARAGRAPH_MENU_ID,
   HorizontalLineCommand,
   IMEInputCommand,
+  INSERT_BELLOW_MENU_ID,
   InsertCommand,
   MoveCursorOperation,
   NodePositionConvertToCursor,
@@ -66,7 +66,7 @@ import {
   getAnchorBounding,
   replaceSelectionFactory,
   whenDocAndEditorFocused
-} from "../chunk-AWWTHDNL.js";
+} from "../chunk-RWPMR47C.js";
 import "../chunk-LI6UXASZ.js";
 import {
   Button,
@@ -99,20 +99,20 @@ import {
   useDependency,
   useEvent,
   useObservable
-} from "../chunk-YCYH7T4W.js";
+} from "../chunk-NFRVCGXI.js";
 import {
   zh_CN_default
-} from "../chunk-YRBPDJQT.js";
-import "../chunk-ARVZLWAF.js";
+} from "../chunk-TEFKPMMF.js";
+import "../chunk-DDNH2LYO.js";
 import {
   UniverFormulaEnginePlugin
-} from "../chunk-OH3WKAXS.js";
+} from "../chunk-FHKGEGDD.js";
 import {
   IRenderManagerService,
   UniverRenderEnginePlugin,
   ptToPixel,
   withCurrentTypeOfRenderer
-} from "../chunk-TZSKLHKF.js";
+} from "../chunk-VGF75R5Y.js";
 import {
   BehaviorSubject,
   BuildTextUtils,
@@ -143,6 +143,7 @@ import {
   generateRandomId,
   getBodySlice,
   isInternalEditorID,
+  isSafeUrl,
   map,
   merge_default,
   of,
@@ -150,7 +151,7 @@ import {
   sequenceExecute,
   tap,
   toDisposable
-} from "../chunk-MR7DLPM2.js";
+} from "../chunk-AGUCVTH3.js";
 import "../chunk-EQ2B2W73.js";
 import {
   __commonJS,
@@ -2573,7 +2574,7 @@ function ptToPx(pt) {
   return pt / PT_PER_PX;
 }
 
-// ../node_modules/.pnpm/fast-xml-parser@5.7.2/node_modules/fast-xml-parser/src/util.js
+// ../node_modules/.pnpm/fast-xml-parser@5.8.0/node_modules/fast-xml-parser/src/util.js
 var nameStartChar = ":A-Za-z_\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD";
 var nameChar = nameStartChar + "\\-.\\d\\u00B7\\u0300-\\u036F\\u203F-\\u2040";
 var nameRegexp = "[" + nameStartChar + "][" + nameChar + "]*";
@@ -2614,7 +2615,7 @@ var DANGEROUS_PROPERTY_NAMES = [
 ];
 var criticalProperties = ["__proto__", "constructor", "prototype"];
 
-// ../node_modules/.pnpm/fast-xml-parser@5.7.2/node_modules/fast-xml-parser/src/validator.js
+// ../node_modules/.pnpm/fast-xml-parser@5.8.0/node_modules/fast-xml-parser/src/validator.js
 var defaultOptions = {
   allowBooleanAttributes: false,
   //A tag can have attributes without any value
@@ -2920,7 +2921,7 @@ function getPositionFromMatch(match) {
   return match.startIndex + match[1].length;
 }
 
-// ../node_modules/.pnpm/@nodable+entities@2.1.0/node_modules/@nodable/entities/src/entities.js
+// ../node_modules/.pnpm/@nodable+entities@2.1.1/node_modules/@nodable/entities/src/entities.js
 var BASIC_LATIN = {
   amp: "&",
   AMP: "&",
@@ -2948,7 +2949,6 @@ var BASIC_LATIN = {
   num: "#",
   dollar: "$",
   percent: "%",
-  amp: "&",
   ast: "*",
   commat: "@",
   lowbar: "_",
@@ -3355,9 +3355,6 @@ var CYRILLIC = {
 };
 var MATH = {
   plus: "+",
-  minus: "\u2212",
-  mnplus: "\u2213",
-  mp: "\u2213",
   pm: "\xB1",
   times: "\xD7",
   div: "\xF7",
@@ -3430,10 +3427,6 @@ var MATH = {
   bumpe: "\u224F",
   bumpeq: "\u224F",
   HumpEqual: "\u224F",
-  dotminus: "\u2238",
-  minusd: "\u2238",
-  plusdo: "\u2214",
-  dotplus: "\u2214",
   le: "\u2264",
   LessEqual: "\u2264",
   ge: "\u2265",
@@ -3544,7 +3537,6 @@ var MATH_ADVANCED = {
   wr: "\u2240",
   wreath: "\u2240",
   nsime: "\u2244",
-  nsimeq: "\u2244",
   nsimeq: "\u2244",
   ncong: "\u2247",
   simne: "\u2246",
@@ -3657,10 +3649,6 @@ var ARROWS = {
   mapsto: "\u21A6",
   mapstodown: "\u21A7",
   crarr: "\u21B5",
-  nwarrow: "\u2196",
-  nearrow: "\u2197",
-  searrow: "\u2198",
-  swarrow: "\u2199",
   nleftarrow: "\u219A",
   nleftrightarrow: "\u21AE",
   nrightarrow: "\u219B",
@@ -3701,7 +3689,6 @@ var ARROWS = {
   ldrushar: "\u294B",
   rdldhar: "\u2969",
   lrhard: "\u296D",
-  rlhar: "\u21CC",
   uharr: "\u21BE",
   uharl: "\u21BF",
   dharr: "\u21C2",
@@ -3717,7 +3704,6 @@ var ARROWS = {
   nhArr: "\u21CE",
   nlarr: "\u219A",
   nlArr: "\u21CD",
-  nrarr: "\u219B",
   nrArr: "\u21CF",
   larrb: "\u21E4",
   LeftArrowBar: "\u21E4",
@@ -3868,8 +3854,7 @@ var PUNCTUATION = {
   DiacriticalTilde: "\u02DC",
   DiacriticalDot: "\u02D9",
   DiacriticalDoubleAcute: "\u02DD",
-  grave: "`",
-  acute: "\xB4"
+  grave: "`"
 };
 var CURRENCY = {
   cent: "\xA2",
@@ -3878,7 +3863,6 @@ var CURRENCY = {
   yen: "\xA5",
   euro: "\u20AC",
   dollar: "$",
-  euro: "\u20AC",
   fnof: "\u0192",
   inr: "\u20B9",
   af: "\u060B",
@@ -3968,7 +3952,6 @@ var MISC_SYMBOLS = {
   Vdash: "\u22A9",
   dashv: "\u22A3",
   vDash: "\u22A8",
-  Vdash: "\u22A9",
   Vvdash: "\u22AA",
   nvdash: "\u22AC",
   nvDash: "\u22AD",
@@ -4020,7 +4003,7 @@ var COMMON_HTML = {
   frac34: "\xBE"
 };
 
-// ../node_modules/.pnpm/@nodable+entities@2.1.0/node_modules/@nodable/entities/src/EntityDecoder.js
+// ../node_modules/.pnpm/@nodable+entities@2.1.1/node_modules/@nodable/entities/src/EntityDecoder.js
 var SPECIAL_CHARS = new Set("!?\\\\/[]$%{}^&*()<>|+");
 function validateEntityName(name) {
   if (name[0] === "#") {
@@ -4198,6 +4181,7 @@ var EntityDecoder = class {
    */
   decode(str) {
     if (typeof str !== "string" || str.length === 0) return str;
+    if (str.indexOf("&") === -1) return str;
     const original = str;
     const chunks = [];
     const len = str.length;
@@ -4391,7 +4375,7 @@ var EntityDecoder = class {
   }
 };
 
-// ../node_modules/.pnpm/fast-xml-parser@5.7.2/node_modules/fast-xml-parser/src/xmlparser/OptionsBuilder.js
+// ../node_modules/.pnpm/fast-xml-parser@5.8.0/node_modules/fast-xml-parser/src/xmlparser/OptionsBuilder.js
 var defaultOnDangerousProperty = (name) => {
   if (DANGEROUS_PROPERTY_NAMES.includes(name)) {
     return "__" + name;
@@ -4526,7 +4510,7 @@ var buildOptions = function(options) {
   return built;
 };
 
-// ../node_modules/.pnpm/fast-xml-parser@5.7.2/node_modules/fast-xml-parser/src/xmlparser/xmlNode.js
+// ../node_modules/.pnpm/fast-xml-parser@5.8.0/node_modules/fast-xml-parser/src/xmlparser/xmlNode.js
 var METADATA_SYMBOL;
 if (typeof Symbol !== "function") {
   METADATA_SYMBOL = "@@xmlMetadata";
@@ -4560,11 +4544,37 @@ var XmlNode = class {
   }
 };
 
-// ../node_modules/.pnpm/fast-xml-parser@5.7.2/node_modules/fast-xml-parser/src/xmlparser/DocTypeReader.js
+// ../node_modules/.pnpm/xml-naming@0.1.0/node_modules/xml-naming/src/index.js
+var nameStartChar10 = ":A-Za-z_\xC0-\xD6\xD8-\xF6\xF8-\u02FF\u0370-\u037D\u037F-\u0486\u0488-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD";
+var nameChar10 = nameStartChar10 + "\\-\\.\\d\xB7\u0300-\u036F\u203F-\u2040";
+var nameStartChar11 = ":A-Za-z_\xC0-\u02FF\u0370-\u037D\u037F-\u0486\u0488-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\u{10000}-\u{EFFFF}";
+var nameChar11 = nameStartChar11 + "\\-\\.\\d\xB7\u0300-\u036F\u0487\u203F-\u2040";
+var buildRegexes = (startChar, char, flags = "") => {
+  const ncStart = startChar.replace(":", "");
+  const ncChar = char.replace(":", "");
+  const ncNamePat = `[${ncStart}][${ncChar}]*`;
+  return {
+    name: new RegExp(`^[${startChar}][${char}]*$`, flags),
+    ncName: new RegExp(`^${ncNamePat}$`, flags),
+    qName: new RegExp(`^${ncNamePat}(?::${ncNamePat})?$`, flags),
+    nmToken: new RegExp(`^[${char}]+$`, flags),
+    nmTokens: new RegExp(`^[${char}]+(?:\\s+[${char}]+)*$`, flags)
+  };
+};
+var regexes10 = buildRegexes(nameStartChar10, nameChar10);
+var regexes11 = buildRegexes(nameStartChar11, nameChar11, "u");
+var getRegexes = (xmlVersion = "1.0") => xmlVersion === "1.1" ? regexes11 : regexes10;
+var qName = (str, { xmlVersion = "1.0" } = {}) => getRegexes(xmlVersion).qName.test(str);
+
+// ../node_modules/.pnpm/fast-xml-parser@5.8.0/node_modules/fast-xml-parser/src/xmlparser/DocTypeReader.js
 var DocTypeReader = class {
-  constructor(options) {
+  constructor(options, xmlVersion) {
     this.suppressValidationErr = !options;
     this.options = options;
+    this.xmlVersion = xmlVersion || 1;
+  }
+  setXmlVersion(xmlVersion = 1) {
+    this.xmlVersion = xmlVersion;
   }
   readDocType(xmlData, i) {
     const entities = /* @__PURE__ */ Object.create(null);
@@ -4636,7 +4646,7 @@ var DocTypeReader = class {
       i++;
     }
     let entityName = xmlData.substring(startIndex, i);
-    validateEntityName2(entityName);
+    validateEntityName2(entityName, { xmlVersion: this.xmlVersion });
     i = skipWhitespace(xmlData, i);
     if (!this.suppressValidationErr) {
       if (xmlData.substring(i, i + 6).toUpperCase() === "SYSTEM") {
@@ -4662,7 +4672,7 @@ var DocTypeReader = class {
       i++;
     }
     let notationName = xmlData.substring(startIndex, i);
-    !this.suppressValidationErr && validateEntityName2(notationName);
+    !this.suppressValidationErr && validateEntityName2(notationName, { xmlVersion: this.xmlVersion });
     i = skipWhitespace(xmlData, i);
     const identifierType = xmlData.substring(i, i + 6).toUpperCase();
     if (!this.suppressValidationErr && identifierType !== "SYSTEM" && identifierType !== "PUBLIC") {
@@ -4711,7 +4721,7 @@ var DocTypeReader = class {
       i++;
     }
     let elementName = xmlData.substring(startIndex, i);
-    if (!this.suppressValidationErr && !isName(elementName)) {
+    if (!this.suppressValidationErr && !qName(elementName, { xmlVersion: this.xmlVersion })) {
       throw new Error(`Invalid element name: "${elementName}"`);
     }
     i = skipWhitespace(xmlData, i);
@@ -4744,14 +4754,14 @@ var DocTypeReader = class {
       i++;
     }
     let elementName = xmlData.substring(startIndex, i);
-    validateEntityName2(elementName);
+    validateEntityName2(elementName, { xmlVersion: this.xmlVersion });
     i = skipWhitespace(xmlData, i);
     startIndex = i;
     while (i < xmlData.length && !/\s/.test(xmlData[i])) {
       i++;
     }
     let attributeName = xmlData.substring(startIndex, i);
-    if (!validateEntityName2(attributeName)) {
+    if (!validateEntityName2(attributeName, { xmlVersion: this.xmlVersion })) {
       throw new Error(`Invalid attribute name: "${attributeName}"`);
     }
     i = skipWhitespace(xmlData, i);
@@ -4772,7 +4782,7 @@ var DocTypeReader = class {
         }
         let notation = xmlData.substring(startIndex2, i);
         notation = notation.trim();
-        if (!validateEntityName2(notation)) {
+        if (!validateEntityName2(notation, { xmlVersion: this.xmlVersion })) {
           throw new Error(`Invalid notation name: "${notation}"`);
         }
         allowedNotations.push(notation);
@@ -4829,19 +4839,22 @@ function hasSeq(data, seq, i) {
   }
   return true;
 }
-function validateEntityName2(name) {
-  if (isName(name))
+function validateEntityName2(name, xmlVersion) {
+  if (qName(name, { xmlVersion }))
     return name;
   else
     throw new Error(`Invalid entity name ${name}`);
 }
 
-// ../node_modules/.pnpm/strnum@2.2.3/node_modules/strnum/strnum.js
+// ../node_modules/.pnpm/strnum@2.3.0/node_modules/strnum/strnum.js
 var hexRegex = /^[-+]?0x[a-fA-F0-9]+$/;
+var binRegex = /^0b[01]+$/;
+var octRegex = /^0o[0-7]+$/;
 var numRegex = /^([\-\+])?(0*)([0-9]*(\.[0-9]*)?)$/;
 var consider = {
   hex: true,
-  // oct: false,
+  binary: false,
+  octal: false,
   leadingZeros: true,
   decimalPoint: ".",
   eNotation: true,
@@ -4858,6 +4871,10 @@ function toNumber(str, options = {}) {
   else if (trimmedStr === "0") return 0;
   else if (options.hex && hexRegex.test(trimmedStr)) {
     return parse_int(trimmedStr, 16);
+  } else if (options.binary && binRegex.test(trimmedStr)) {
+    return parse_int(trimmedStr, 2);
+  } else if (options.octal && octRegex.test(trimmedStr)) {
+    return parse_int(trimmedStr, 8);
   } else if (!isFinite(trimmedStr)) {
     return handleInfinity(str, Number(trimmedStr), options);
   } else if (trimmedStr.includes("e") || trimmedStr.includes("E")) {
@@ -4937,6 +4954,8 @@ function trimZeros(numStr) {
   return numStr;
 }
 function parse_int(numStr, base) {
+  const str = numStr.trim();
+  if (base === 2 || base === 8) numStr = str.substring(2);
   if (parseInt) return parseInt(numStr, base);
   else if (Number.parseInt) return Number.parseInt(numStr, base);
   else if (window && window.parseInt) return window.parseInt(numStr, base);
@@ -4958,7 +4977,7 @@ function handleInfinity(str, num, options) {
   }
 }
 
-// ../node_modules/.pnpm/fast-xml-parser@5.7.2/node_modules/fast-xml-parser/src/ignoreAttributes.js
+// ../node_modules/.pnpm/fast-xml-parser@5.8.0/node_modules/fast-xml-parser/src/ignoreAttributes.js
 function getIgnoreAttributesFn(ignoreAttributes) {
   if (typeof ignoreAttributes === "function") {
     return ignoreAttributes;
@@ -5753,7 +5772,7 @@ var Matcher = class {
   }
 };
 
-// ../node_modules/.pnpm/fast-xml-parser@5.7.2/node_modules/fast-xml-parser/src/xmlparser/OrderedObjParser.js
+// ../node_modules/.pnpm/fast-xml-parser@5.8.0/node_modules/fast-xml-parser/src/xmlparser/OrderedObjParser.js
 function extractRawAttributes(prefixedAttrs, options) {
   if (!prefixedAttrs) return {};
   const attrs = options.attributesGroupName ? prefixedAttrs[options.attributesGroupName] : prefixedAttrs;
@@ -5984,6 +6003,7 @@ var parseXml = function(xmlData) {
         if (attsMap) {
           const ver = attsMap[this.options.attributeNamePrefix + "version"];
           this.entityDecoder.setXmlVersion(Number(ver) || 1);
+          docTypeReader.setXmlVersion(Number(ver) || 1);
         }
         if (options.ignoreDeclaration && tagData.tagName === "?xml" || options.ignorePiTags) {
         } else {
@@ -6287,7 +6307,7 @@ function readStopNodeData(xmlData, tagName, i) {
         const closeIndex = findClosingIndex(xmlData, "]]>", i, "StopNode is not closed.") - 2;
         i = closeIndex;
       } else {
-        const tagData = readTagExp(xmlData, i, ">");
+        const tagData = readTagExp(xmlData, i, false);
         if (tagData) {
           const openTagName = tagData && tagData.tagName;
           if (openTagName === tagName && tagData.tagExp[tagData.tagExp.length - 1] !== "/") {
@@ -6333,7 +6353,7 @@ function sanitizeName(name, options) {
   return name;
 }
 
-// ../node_modules/.pnpm/fast-xml-parser@5.7.2/node_modules/fast-xml-parser/src/xmlparser/node2json.js
+// ../node_modules/.pnpm/fast-xml-parser@5.8.0/node_modules/fast-xml-parser/src/xmlparser/node2json.js
 var METADATA_SYMBOL2 = XmlNode.getMetaDataSymbol();
 function stripAttributePrefix(attrs, prefix) {
   if (!attrs || typeof attrs !== "object") return {};
@@ -6373,6 +6393,9 @@ function compress(arr, options, matcher, readonlyMatcher) {
     } else if (tagObj[property]) {
       let val = compress(tagObj[property], options, matcher, readonlyMatcher);
       const isLeaf = isLeafTag(val, options);
+      if (Object.keys(val).length === 0 && options.alwaysCreateTextNode) {
+        val[options.textNodeName] = "";
+      }
       if (tagObj[":@"]) {
         assignAttributes(val, tagObj[":@"], readonlyMatcher, options);
       } else if (Object.keys(val).length === 1 && val[options.textNodeName] !== void 0 && !options.alwaysCreateTextNode) {
@@ -6442,7 +6465,7 @@ function isLeafTag(obj, options) {
   return false;
 }
 
-// ../node_modules/.pnpm/fast-xml-parser@5.7.2/node_modules/fast-xml-parser/src/xmlparser/XMLParser.js
+// ../node_modules/.pnpm/fast-xml-parser@5.8.0/node_modules/fast-xml-parser/src/xmlparser/XMLParser.js
 var XMLParser = class {
   constructor(options) {
     this.externalEntities = {};
@@ -9948,7 +9971,7 @@ DocsExchangeUIController = __decorateClass([
 // ../packages/docs-exchange-ui/package.json
 var package_default = {
   name: "@univerjs/docs-exchange-ui",
-  version: "0.21.1",
+  version: "0.25.0",
   private: false,
   description: "Univer docs import/export UI integration",
   author: "DreamNum <developer@univer.ai>",
@@ -10073,10 +10096,10 @@ UniverDocsExchangeUIPlugin = __decorateClass([
 // ../packages/docs-hyper-link/package.json
 var package_default2 = {
   name: "@univerjs/docs-hyper-link",
-  version: "0.21.1",
+  version: "0.25.0",
   private: false,
-  description: "Univer thread comment plugin",
-  author: "DreamNum <developer@univer.ai>",
+  description: "Hyperlink model and commands for Univer Docs.",
+  author: "DreamNum Co., Ltd. <developer@univer.ai>",
   license: "Apache-2.0",
   funding: {
     type: "opencollective",
@@ -10090,7 +10113,13 @@ var package_default2 = {
   bugs: {
     url: "https://github.com/dream-num/univer/issues"
   },
-  keywords: [],
+  keywords: [
+    "univer",
+    "docs",
+    "hyperlink",
+    "link",
+    "plugin"
+  ],
   exports: {
     ".": "./src/index.ts",
     "./*": "./src/*"
@@ -10135,8 +10164,8 @@ var package_default2 = {
   },
   devDependencies: {
     "@univerjs-infra/shared": "workspace:*",
-    typescript: "^6.0.2",
-    vitest: "^4.1.4"
+    typescript: "^6.0.3",
+    vitest: "^4.1.7"
   }
 };
 
@@ -10289,10 +10318,10 @@ UniverDocsHyperLinkPlugin = __decorateClass([
 // ../packages/docs-hyper-link-ui/package.json
 var package_default3 = {
   name: "@univerjs/docs-hyper-link-ui",
-  version: "0.21.1",
+  version: "0.25.0",
   private: false,
-  description: "Univer thread comment plugin",
-  author: "DreamNum <developer@univer.ai>",
+  description: "Hyperlink editing UI for Univer Docs.",
+  author: "DreamNum Co., Ltd. <developer@univer.ai>",
   license: "Apache-2.0",
   funding: {
     type: "opencollective",
@@ -10306,7 +10335,13 @@ var package_default3 = {
   bugs: {
     url: "https://github.com/dream-num/univer/issues"
   },
-  keywords: [],
+  keywords: [
+    "univer",
+    "docs",
+    "hyperlink",
+    "link",
+    "ui"
+  ],
   exports: {
     ".": "./src/index.ts",
     "./*": "./src/*",
@@ -10363,17 +10398,17 @@ var package_default3 = {
     "@univerjs/docs-hyper-link": "workspace:*",
     "@univerjs/docs-ui": "workspace:*",
     "@univerjs/engine-render": "workspace:*",
-    "@univerjs/icons": "^1.1.1",
+    "@univerjs/icons": "1.4.0",
     "@univerjs/ui": "workspace:*"
   },
   devDependencies: {
     "@univerjs-infra/shared": "workspace:*",
-    postcss: "^8.5.10",
+    postcss: "^8.5.15",
     react: "18.3.1",
     rxjs: "^7.8.2",
     tailwindcss: "3.4.18",
-    typescript: "^6.0.2",
-    vitest: "^4.1.4"
+    typescript: "^6.0.3",
+    vitest: "^4.1.7"
   }
 };
 
@@ -10496,7 +10531,7 @@ var DocHyperLinkEdit = () => {
   const [label, setLabel] = (0, import_react.useState)("");
   const [showError, setShowError] = (0, import_react.useState)(false);
   const isLegal = Tools.isLegalUrl(link);
-  const doc = editing ? univerInstanceService.getUnit(editing.unitId, 1 /* UNIVER_DOC */) : univerInstanceService.getCurrentUnitForType(1 /* UNIVER_DOC */);
+  const doc = editing ? univerInstanceService.getUnit(editing.unitId, 1 /* UNIVER_DOC */) : univerInstanceService.getCurrentUnitOfType(1 /* UNIVER_DOC */);
   (0, import_react.useEffect)(() => {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i;
     const activeRange = docSelectionManagerService.getActiveTextRange();
@@ -10559,8 +10594,8 @@ var DocHyperLinkEdit = () => {
           editing ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
             FormLayout,
             {
-              label: localeService.t("docLink.edit.label"),
-              error: showError && isBlankInput(label) ? localeService.t("docLink.edit.labelError") : "",
+              label: localeService.t("docs-hyper-link-ui.edit.label"),
+              error: showError && isBlankInput(label) ? localeService.t("docs-hyper-link-ui.edit.labelError") : "",
               children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                 Input,
                 {
@@ -10579,8 +10614,8 @@ var DocHyperLinkEdit = () => {
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
             FormLayout,
             {
-              label: localeService.t("docLink.edit.address"),
-              error: showError && !isLegal ? localeService.t("docLink.edit.addressError") : "",
+              label: localeService.t("docs-hyper-link-ui.edit.address"),
+              error: showError && !isLegal ? localeService.t("docs-hyper-link-ui.edit.addressError") : "",
               children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                 Input,
                 {
@@ -10598,14 +10633,14 @@ var DocHyperLinkEdit = () => {
           )
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "univer-flex univer-justify-end univer-gap-3", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Button, { onClick: handleCancel, children: localeService.t("docLink.edit.cancel") }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Button, { onClick: handleCancel, children: localeService.t("docs-hyper-link-ui.edit.cancel") }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
             Button,
             {
               variant: "primary",
               disabled: isBlankInput(link),
               onClick: handleConfirm,
-              children: localeService.t("docLink.edit.confirm")
+              children: localeService.t("docs-hyper-link-ui.edit.confirm")
             }
           )
         ] })
@@ -10642,7 +10677,7 @@ var shouldDisableAddLink = (accessor) => {
     return true;
   }
   const activeRange = textRanges[0];
-  const doc = univerInstanceService.getCurrentUnitForType(1 /* UNIVER_DOC */);
+  const doc = univerInstanceService.getCurrentUnitOfType(1 /* UNIVER_DOC */);
   if (!doc || !activeRange || activeRange.collapsed) {
     return true;
   }
@@ -10659,7 +10694,7 @@ var ShowDocHyperLinkEditPopupOperation = {
       return false;
     }
     const hyperLinkService = accessor.get(DocHyperLinkPopupService);
-    const unitId = (linkInfo == null ? void 0 : linkInfo.unitId) || ((_a = univerInstanceService.getCurrentUnitForType(1 /* UNIVER_DOC */)) == null ? void 0 : _a.getUnitId());
+    const unitId = (linkInfo == null ? void 0 : linkInfo.unitId) || ((_a = univerInstanceService.getCurrentUnitOfType(1 /* UNIVER_DOC */)) == null ? void 0 : _a.getUnitId());
     if (!unitId) {
       return false;
     }
@@ -10693,9 +10728,10 @@ var ClickDocHyperLinkOperation = {
     const doc = univerInstanceService.getUnit(unitId, 1 /* UNIVER_DOC */);
     const body = doc == null ? void 0 : doc.getSelfOrHeaderFooterModel(segmentId).getBody();
     const link = (_c = (_b = (_a = body == null ? void 0 : body.customRanges) == null ? void 0 : _a.find((range) => range.rangeId === linkId && range.rangeType === 0 /* HYPERLINK */)) == null ? void 0 : _b.properties) == null ? void 0 : _c.url;
-    if (link) {
-      window.open(link, "_blank", "noopener noreferrer");
+    if (!isSafeUrl(link)) {
+      return false;
     }
+    window.open(link, "_blank", "noopener noreferrer");
     return true;
   }
 };
@@ -10754,11 +10790,11 @@ var DocLinkPopup = () => {
               onClick: () => {
                 navigator.clipboard.writeText(url);
                 messageService.show({
-                  content: localeService.t("docLink.info.coped"),
+                  content: localeService.t("docs-hyper-link-ui.info.coped"),
                   type: "info" /* Info */
                 });
               },
-              children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Tooltip, { placement: "bottom", title: localeService.t("docLink.info.copy"), children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(CopyIcon, {}) })
+              children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Tooltip, { placement: "bottom", title: localeService.t("docs-hyper-link-ui.info.copy"), children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(CopyIcon, {}) })
             }
           ),
           /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
@@ -10770,7 +10806,7 @@ var DocLinkPopup = () => {
                   link: currentPopup
                 });
               },
-              children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Tooltip, { placement: "bottom", title: localeService.t("docLink.info.edit"), children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(WriteIcon, {}) })
+              children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Tooltip, { placement: "bottom", title: localeService.t("docs-hyper-link-ui.info.edit"), children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(WriteIcon, {}) })
             }
           ),
           /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
@@ -10784,7 +10820,7 @@ var DocLinkPopup = () => {
                   segmentId
                 });
               },
-              children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Tooltip, { placement: "bottom", title: localeService.t("docLink.info.cancel"), children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(UnlinkIcon, {}) })
+              children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Tooltip, { placement: "bottom", title: localeService.t("docs-hyper-link-ui.info.cancel"), children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(UnlinkIcon, {}) })
             }
           )
         ] })
@@ -10980,11 +11016,11 @@ var DocHyperLinkEventRenderController = class extends Disposable {
   _initHover() {
     this.disposeWithMe(
       this._docEventManagerService.hoverCustomRanges$.subscribe((ranges) => {
-        var _a;
+        var _a, _b;
         const link = ranges.find((range) => range.range.rangeType === 0 /* HYPERLINK */);
         const activeRanges = this._docSelectionManagerService.getTextRanges();
-        const currentSegmentId = activeRanges == null ? void 0 : activeRanges[0].segmentId;
-        if (((_a = link == null ? void 0 : link.segmentId) != null ? _a : "") !== currentSegmentId) {
+        const currentSegmentId = (_a = activeRanges == null ? void 0 : activeRanges[0]) == null ? void 0 : _a.segmentId;
+        if (((_b = link == null ? void 0 : link.segmentId) != null ? _b : "") !== currentSegmentId) {
           this._hideInfoPopup();
           return;
         }
@@ -11097,8 +11133,8 @@ function AddHyperLinkMenuItemFactory(accessor) {
     id: ShowDocHyperLinkEditPopupOperation.id,
     type: 0 /* BUTTON */,
     icon: DOC_LINK_ICON,
-    title: "docLink.menu.tooltip",
-    tooltip: "docLink.menu.tooltip",
+    title: "docs-hyper-link-ui.menu.tooltip",
+    tooltip: "docs-hyper-link-ui.menu.tooltip",
     hidden$: getMenuHiddenObservable(accessor, 1 /* UNIVER_DOC */),
     disabled$: new Observable(function(subscribe) {
       const textSelectionService = accessor.get(DocSelectionManagerService);
@@ -11114,7 +11150,7 @@ function AddHyperLinkMenuItemFactory(accessor) {
 var addLinkShortcut = {
   id: ShowDocHyperLinkEditPopupOperation.id,
   binding: 4096 /* CTRL_COMMAND */ | 75 /* K */,
-  description: "docLink.menu.tooltip",
+  description: "docs-hyper-link-ui.menu.tooltip",
   preconditions: whenDocAndEditorFocused
 };
 
@@ -11131,6 +11167,24 @@ var menuSchema2 = {
       [ShowDocHyperLinkEditPopupOperation.id]: {
         order: 0,
         menuItemFactory: AddHyperLinkMenuItemFactory
+      }
+    }
+  },
+  ["contextMenu.paragraph" /* PARAGRAPH */]: {
+    ["contextMenu.layout" /* LAYOUT */]: {
+      [INSERT_BELLOW_MENU_ID]: {
+        [ShowDocHyperLinkEditPopupOperation.id]: {
+          order: 6,
+          menuItemFactory: AddHyperLinkMenuItemFactory
+        }
+      }
+    },
+    [EMPTY_PARAGRAPH_MENU_ID]: {
+      ["contextMenu.layout" /* LAYOUT */]: {
+        [ShowDocHyperLinkEditPopupOperation.id]: {
+          order: 6,
+          menuItemFactory: AddHyperLinkMenuItemFactory
+        }
       }
     }
   }
@@ -11290,7 +11344,7 @@ function measureTextWidth(text, font) {
 var KeywordInputPlaceholder = ({ popup }) => {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
   const localeService = useDependency(LocaleService);
-  const placeholder = localeService.t("docQuickInsert.keywordInputPlaceholder");
+  const placeholder = localeService.t("docs-quick-insert-ui.keywordInputPlaceholder");
   const fontSize = (_b = (_a = popup.extraProps) == null ? void 0 : _a.fontSize) != null ? _b : DEFAULT_FONT_SIZE;
   const fontSizePx = ptToPixel(fontSize);
   const fontString = (_d = (_c = popup.extraProps) == null ? void 0 : _c.fontString) != null ? _d : `${fontSizePx}px sans-serif`;
@@ -11450,7 +11504,7 @@ var QuickInsertPlaceholder = () => {
     "div",
     {
       className: `univer-flex univer-h-full univer-items-center univer-justify-center univer-rounded-lg univer-bg-white univer-px-12 univer-py-6 univer-text-gray-400 univer-shadow-lg`,
-      children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { children: localeService.t("docQuickInsert.placeholder") })
+      children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { children: localeService.t("docs-quick-insert-ui.placeholder") })
     }
   );
 };
@@ -11892,43 +11946,43 @@ var CloseQuickInsertPopupOperation = {
 // ../packages/docs-quick-insert-ui/src/menu/menu.ts
 var textMenu = {
   id: "quick-insert.text.menu",
-  title: "docQuickInsert.menu.text",
+  title: "docs-quick-insert-ui.menu.text",
   icon: "TextIcon",
   keywords: ["text"]
 };
 var numberedListMenu = {
   id: OrderListCommand.id,
-  title: "docQuickInsert.menu.numberedList",
+  title: "docs-quick-insert-ui.menu.numberedList",
   icon: "OrderIcon",
   keywords: ["numbered", "list", "ordered"]
 };
 var bulletedListMenu = {
   id: BulletListCommand.id,
-  title: "docQuickInsert.menu.bulletedList",
+  title: "docs-quick-insert-ui.menu.bulletedList",
   icon: "UnorderIcon",
   keywords: ["bulleted", "list", "unordered"]
 };
 var dividerMenu = {
   id: HorizontalLineCommand.id,
-  title: "docQuickInsert.menu.divider",
+  title: "docs-quick-insert-ui.menu.divider",
   icon: "DividerIcon",
   keywords: ["divider", "line", "separate"]
 };
 var tableMenu = {
   id: DocCreateTableOperation.id,
-  title: "docQuickInsert.menu.table",
+  title: "docs-quick-insert-ui.menu.table",
   icon: "GridIcon",
   keywords: ["table", "grid", "spreadsheet"]
 };
 var imageMenu = {
   id: InsertDocImageCommand.id,
-  title: "docQuickInsert.menu.image",
+  title: "docs-quick-insert-ui.menu.image",
   icon: "AdditionAndSubtractionIcon",
   keywords: ["image", "picture", "photo"]
 };
 var builtInMenus = [
   {
-    title: "docQuickInsert.group.basics",
+    title: "docs-quick-insert-ui.group.basics",
     id: "quick.insert.group.basic" /* Basic */,
     children: [
       textMenu,
@@ -12247,10 +12301,10 @@ DocQuickInsertUIController = __decorateClass([
 // ../packages/docs-quick-insert-ui/package.json
 var package_default4 = {
   name: "@univerjs/docs-quick-insert-ui",
-  version: "0.21.1",
+  version: "0.25.0",
   private: false,
-  description: "",
-  author: "DreamNum <developer@univer.ai>",
+  description: "Quick insert UI integration for Univer Docs.",
+  author: "DreamNum Co., Ltd. <developer@univer.ai>",
   license: "Apache-2.0",
   funding: {
     type: "opencollective",
@@ -12264,7 +12318,13 @@ var package_default4 = {
   bugs: {
     url: "https://github.com/dream-num/univer/issues"
   },
-  keywords: [],
+  keywords: [
+    "univer",
+    "docs",
+    "quick-insert",
+    "insert",
+    "ui"
+  ],
   exports: {
     ".": "./src/index.ts",
     "./*": "./src/*",
@@ -12324,17 +12384,17 @@ var package_default4 = {
     "@univerjs/drawing": "workspace:*",
     "@univerjs/drawing-ui": "workspace:*",
     "@univerjs/engine-render": "workspace:*",
-    "@univerjs/icons": "^1.1.1",
+    "@univerjs/icons": "1.4.0",
     "@univerjs/ui": "workspace:*"
   },
   devDependencies: {
     "@univerjs-infra/shared": "workspace:*",
-    postcss: "^8.5.10",
+    postcss: "^8.5.15",
     react: "18.3.1",
     rxjs: "^7.8.2",
     tailwindcss: "3.4.18",
-    typescript: "^6.0.2",
-    vitest: "^4.1.4"
+    typescript: "^6.0.3",
+    vitest: "^4.1.7"
   }
 };
 
@@ -12497,7 +12557,7 @@ var ShowCommentPanelOperation = {
     const sidebarService = accessor.get(ISidebarService);
     if (!panelService.panelVisible || ((_a = sidebarService.options.children) == null ? void 0 : _a.label) !== DOCS_THREAD_COMMENT_PANEL) {
       sidebarService.open({
-        header: { title: "threadCommentUI.panel.title" },
+        header: { title: "docs-thread-comment-ui.panel.title" },
         children: { label: DOCS_THREAD_COMMENT_PANEL },
         width: 320,
         onClose: () => panelService.setPanelVisible(false)
@@ -12519,7 +12579,7 @@ var ToggleCommentPanelOperation = {
     const sidebarService = accessor.get(ISidebarService);
     if (!panelService.panelVisible || ((_a = sidebarService.options.children) == null ? void 0 : _a.label) !== DOCS_THREAD_COMMENT_PANEL) {
       sidebarService.open({
-        header: { title: "threadCommentUI.panel.title" },
+        header: { title: "docs-thread-comment-ui.panel.title" },
         children: { label: DOCS_THREAD_COMMENT_PANEL },
         width: 320,
         onClose: () => panelService.setPanelVisible(false)
@@ -12540,7 +12600,7 @@ var StartAddCommentOperation = {
     var _a, _b, _c;
     const panelService = accessor.get(ThreadCommentPanelService);
     const univerInstanceService = accessor.get(IUniverInstanceService);
-    const doc = univerInstanceService.getCurrentUnitForType(1 /* UNIVER_DOC */);
+    const doc = univerInstanceService.getCurrentUnitOfType(1 /* UNIVER_DOC */);
     const docSelectionManagerService = accessor.get(DocSelectionManagerService);
     const renderManagerService = accessor.get(IRenderManagerService);
     const userManagerService2 = accessor.get(UserManagerService);
@@ -12597,10 +12657,10 @@ var StartAddCommentOperation = {
 // ../packages/docs-thread-comment-ui/package.json
 var package_default5 = {
   name: "@univerjs/docs-thread-comment-ui",
-  version: "0.21.1",
+  version: "0.25.0",
   private: false,
-  description: "Univer thread comment plugin",
-  author: "DreamNum <developer@univer.ai>",
+  description: "Thread comment UI integration for Univer Docs.",
+  author: "DreamNum Co., Ltd. <developer@univer.ai>",
   license: "Apache-2.0",
   funding: {
     type: "opencollective",
@@ -12614,10 +12674,17 @@ var package_default5 = {
   bugs: {
     url: "https://github.com/dream-num/univer/issues"
   },
-  keywords: [],
+  keywords: [
+    "univer",
+    "docs",
+    "comment",
+    "thread-comment",
+    "ui"
+  ],
   exports: {
     ".": "./src/index.ts",
-    "./*": "./src/*"
+    "./*": "./src/*",
+    "./locale/*": "./src/locale/*.ts"
   },
   main: "./src/index.ts",
   types: "./lib/types/index.d.ts",
@@ -12635,6 +12702,11 @@ var package_default5 = {
         import: "./lib/es/*",
         require: "./lib/cjs/*",
         types: "./lib/types/index.d.ts"
+      },
+      "./locale/*": {
+        import: "./lib/es/locale/*.js",
+        require: "./lib/cjs/locale/*.js",
+        types: "./lib/types/locale/*.d.ts"
       },
       "./lib/*": "./lib/*"
     }
@@ -12663,19 +12735,19 @@ var package_default5 = {
     "@univerjs/docs": "workspace:*",
     "@univerjs/docs-ui": "workspace:*",
     "@univerjs/engine-render": "workspace:*",
-    "@univerjs/icons": "^1.1.1",
+    "@univerjs/icons": "1.4.0",
     "@univerjs/thread-comment": "workspace:*",
     "@univerjs/thread-comment-ui": "workspace:*",
     "@univerjs/ui": "workspace:*"
   },
   devDependencies: {
     "@univerjs-infra/shared": "workspace:*",
-    postcss: "^8.5.10",
+    postcss: "^8.5.15",
     react: "18.3.1",
     rxjs: "^7.8.2",
     tailwindcss: "3.4.18",
-    typescript: "^6.0.2",
-    vitest: "^4.1.4"
+    typescript: "^6.0.3",
+    vitest: "^4.1.7"
   }
 };
 
@@ -12735,6 +12807,11 @@ var DocThreadCommentSelectionController = class extends Disposable {
             }
           }
           if (!this._threadCommentPanelService.activeCommentId) {
+            return;
+          }
+          const addingComment = this._docThreadCommentService.addingComment;
+          const activeComment = this._threadCommentPanelService.activeCommentId;
+          if (addingComment && (activeComment == null ? void 0 : activeComment.unitId) === addingComment.unitId && (activeComment == null ? void 0 : activeComment.subUnitId) === DEFAULT_DOC_SUBUNIT_ID && (activeComment == null ? void 0 : activeComment.commentId) === addingComment.id) {
             return;
           }
           this._commandService.executeCommand(SetActiveCommentOperation.id);
@@ -12800,8 +12877,8 @@ function AddDocCommentMenuItemFactory(accessor) {
     id: StartAddCommentOperation.id,
     type: 0 /* BUTTON */,
     icon: "CommentIcon",
-    title: "threadCommentUI.panel.addComment",
-    tooltip: "threadCommentUI.panel.addComment",
+    title: "docs-thread-comment-ui.panel.addComment",
+    tooltip: "docs-thread-comment-ui.panel.addComment",
     hidden$: getMenuHiddenObservable(accessor, 1 /* UNIVER_DOC */, void 0, SHEET_EDITOR_UNITS),
     disabled$: new Observable(function(subscribe) {
       const textSelectionService = accessor.get(DocSelectionManagerService);
@@ -12819,8 +12896,8 @@ function ToolbarDocCommentMenuItemFactory(accessor) {
     id: ToggleCommentPanelOperation.id,
     type: 0 /* BUTTON */,
     icon: "CommentIcon",
-    title: "threadCommentUI.panel.addComment",
-    tooltip: "threadCommentUI.panel.addComment",
+    title: "docs-thread-comment-ui.panel.addComment",
+    tooltip: "docs-thread-comment-ui.panel.addComment",
     hidden$: getMenuHiddenObservable(accessor, 1 /* UNIVER_DOC */)
   };
 }
@@ -12997,7 +13074,7 @@ var DocThreadCommentRenderController = class extends Disposable {
         this._docRenderController.reRender(activeComment.unitId);
         return;
       }
-      const unitId = (_a = this._univerInstanceService.getCurrentUnitForType(1 /* UNIVER_DOC */)) == null ? void 0 : _a.getUnitId();
+      const unitId = (_a = this._univerInstanceService.getCurrentUnitOfType(1 /* UNIVER_DOC */)) == null ? void 0 : _a.getUnitId();
       if (unitId) {
         this._docRenderController.reRender(unitId);
       }
@@ -13040,12 +13117,6 @@ var DocThreadCommentRenderController = class extends Disposable {
     const unitId = this._context.unit.getUnitId();
     const subUnitId = DEFAULT_DOC_SUBUNIT_ID;
     const threadIds = (_c = (_b = (_a = this._context.unit.getBody()) == null ? void 0 : _a.customDecorations) == null ? void 0 : _b.filter((i) => i.type === 0 /* COMMENT */).map((i) => i.id)) != null ? _c : [];
-    threadIds.forEach((id) => {
-      const comment = this._threadCommentModel.getComment(unitId, subUnitId, id);
-      if (!comment) {
-        this._threadCommentModel.addComment(unitId, subUnitId, { id, threadId: id, ref: "", dT: "", personId: "", text: { dataStream: "" }, unitId, subUnitId });
-      }
-    });
     threadIds.length && this._threadCommentModel.syncThreadComments(this._context.unit.getUnitId(), DEFAULT_DOC_SUBUNIT_ID, threadIds);
     let prevThreadIds = threadIds.sort();
     this.disposeWithMe(this._commandService.onCommandExecuted((commandInfo) => {
@@ -13059,26 +13130,13 @@ var DocThreadCommentRenderController = class extends Disposable {
         const currentThreadIdsSorted = currentThreadIds.sort();
         if (JSON.stringify(prevThreadIds) !== JSON.stringify(currentThreadIdsSorted)) {
           const preIds = new Set(prevThreadIds);
-          const currentIds = new Set(currentThreadIdsSorted);
           const addIds = /* @__PURE__ */ new Set();
-          const deleteIds = /* @__PURE__ */ new Set();
           currentThreadIds.forEach((id) => {
             if (!preIds.has(id)) {
               addIds.add(id);
             }
           });
-          prevThreadIds.forEach((id) => {
-            if (!currentIds.has(id)) {
-              deleteIds.add(id);
-            }
-          });
           prevThreadIds = currentThreadIdsSorted;
-          addIds.forEach((id) => {
-            const comment = this._threadCommentModel.getComment(unitId, subUnitId, id);
-            if (!comment) {
-              this._threadCommentModel.addComment(unitId, subUnitId, { id, threadId: id, ref: "", dT: "", personId: "", text: { dataStream: "" }, unitId, subUnitId });
-            }
-          });
           this._threadCommentModel.syncThreadComments(unitId, subUnitId, [...addIds]);
         }
       }
@@ -13150,7 +13208,7 @@ var DOC_WATERMARK_PLUGIN2 = "DOC_WATERMARK_PLUGIN";
 // ../packages/docs-watermark/package.json
 var package_default6 = {
   name: "@univerjs/docs-watermark",
-  version: "0.21.1",
+  version: "0.25.0",
   private: false,
   description: "Per-document watermark plugin for Univer docs (renders Word-style page watermarks).",
   author: "DreamNum <developer@univer.ai>",
