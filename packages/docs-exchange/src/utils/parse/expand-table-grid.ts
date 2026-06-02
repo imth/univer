@@ -55,6 +55,7 @@ function isContinuation(cell: ParsedCell): boolean {
 export function expandTableGrid(table: ParsedTable): CanonicalCell[][] {
     const columnOwner: Array<CanonicalCell | undefined> = [];
     const grid: CanonicalCell[][] = [];
+    const ownerSnapshots: Array<Array<CanonicalCell | undefined>> = [];
     let gridWidth = 0;
 
     for (const rowSource of table.rows) {
@@ -87,6 +88,8 @@ export function expandTableGrid(table: ParsedTable): CanonicalCell[][] {
                         rowCells.push({ kind: 'covered', colStart: c, columnSpan: 1, rowSpan: 1, master: owner });
                     }
                 } else {
+                    // Fallback: orphan continuation with no owner above becomes a master and
+                    // claims ownership of its columns going forward.
                     const master: CanonicalCell = {
                         kind: 'master',
                         colStart: colCursor,
@@ -108,12 +111,15 @@ export function expandTableGrid(table: ParsedTable): CanonicalCell[][] {
 
         gridWidth = Math.max(gridWidth, colCursor);
         grid.push(rowCells);
+        // Snapshot columnOwner after this row so the padding pass can look up
+        // the correct owner at-or-above each row (never a forward reference).
+        ownerSnapshots.push(columnOwner.slice());
     }
 
-    for (const rowCells of grid) {
+    grid.forEach((rowCells, ri) => {
         let width = rowCells.reduce((n, c) => Math.max(n, c.colStart + c.columnSpan), 0);
         while (width < gridWidth) {
-            const owner = columnOwner[width];
+            const owner = ownerSnapshots[ri][width];
             if (owner) {
                 rowCells.push({ kind: 'covered', colStart: width, columnSpan: 1, rowSpan: 1, master: owner });
             } else {
@@ -129,7 +135,7 @@ export function expandTableGrid(table: ParsedTable): CanonicalCell[][] {
             }
             width += 1;
         }
-    }
+    });
 
     return grid;
 }

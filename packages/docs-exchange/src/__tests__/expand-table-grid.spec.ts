@@ -77,4 +77,36 @@ describe('expandTableGrid', () => {
         expect(grid[0][0].kind).toBe('master');
         expect(grid[0][0].rowSpan).toBe(1);
     });
+
+    it('does not point a padded covered cell at a master in a LATER row', () => {
+        const grid = expandTableGrid(table([
+            [cell(), cell(), cell()], // row 0: 3 masters
+            [cell(), cell()], // row 1: short, padded at col 2
+            [cell({ columnSpan: 3 })], // row 2: new master claims col 2
+        ]));
+        // row 1 col 2 padding must NOT reference the row-2 master; it should
+        // reference the row-0 master at col 2 (the owner at or above row 1).
+        expect(grid[1][2].master).toBe(grid[0][2]);
+    });
+
+    it('handles a vMerge continuation cell that also carries columnSpan > 1', () => {
+        const grid = expandTableGrid(table([
+            [cell({ rowSpan: 2, columnSpan: 2 }), cell()], // master 2 wide, 2 tall
+            [cell({ vMerge: 'continue', columnSpan: 2 }), cell()], // continuation, 2 wide
+        ]));
+        // Row 1 cols 0 and 1 are covered, both pointing at the row-0 master.
+        expect(grid[1][0]).toMatchObject({ kind: 'covered', colStart: 0 });
+        expect(grid[1][1]).toMatchObject({ kind: 'covered', colStart: 1 });
+        expect(grid[1][0].master).toBe(grid[0][0]);
+        expect(grid[1][1].master).toBe(grid[0][0]);
+    });
+
+    it('points a padded short-row covered cell at the master directly above', () => {
+        const grid = expandTableGrid(table([
+            [cell(), cell(), cell()],
+            [cell(), cell()],
+        ]));
+        expect(grid[1][2]).toMatchObject({ kind: 'covered', colStart: 2 });
+        expect(grid[1][2].master).toBe(grid[0][2]);
+    });
 });
