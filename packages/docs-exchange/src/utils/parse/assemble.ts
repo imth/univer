@@ -33,6 +33,7 @@ import type { ParsedSection } from './parse-section';
 import type { DocumentChild, ParsedBorder, ParsedCellBorders, ParsedCellMargin, ParsedNumberingDef, ParsedParagraph, ParsedRelationship, ParsedTable } from './types';
 import { BooleanNumber, CustomDecorationType, CustomRangeType, DataStreamTreeTokenType, generateRandomId, SectionType } from '@univerjs/core';
 import { DOCX_BORDER_TO_UNIVER_DASH } from './border-dash';
+import { expandTableGrid } from './expand-table-grid';
 import { buildDrawing } from './parse-drawing';
 
 const uuidv4 = () => generateRandomId();
@@ -383,25 +384,28 @@ function emitTable(t: ParsedTable, acc: Accumulator, ctx: AssembleContext) {
     const start = acc.data.length;
     acc.data += TABLE_START;
 
-    for (const row of t.rows) {
+    const grid = expandTableGrid(t);
+
+    for (const rowCells of grid) {
         acc.data += TABLE_ROW_START;
-        for (const cell of row) {
+        for (const gc of rowCells) {
             acc.data += TABLE_CELL_START;
-            for (const p of cell.paragraphs) {
-        // Inline `<w:pPr><w:sectPr>` inside a table cell is illegal per
-        // ECMA-376 but a few generators emit it. Strip silently — letting
-        // emitParagraph see it would inject document-level SECTION_BREAKs
-        // into the cell stream and corrupt the table.
-                emitParagraph(
-                    p.sectionBreakAfter ? { ...p, sectionBreakAfter: undefined } : p,
-                    acc,
-                    ctx
-                );
+            if (gc.kind === 'master') {
+                for (const p of gc.source!.paragraphs) {
+                    // Inline <w:pPr><w:sectPr> inside a table cell is illegal per
+                    // ECMA-376 but a few generators emit it. Strip silently.
+                    emitParagraph(
+                        p.sectionBreakAfter ? { ...p, sectionBreakAfter: undefined } : p,
+                        acc,
+                        ctx
+                    );
+                }
+            } else {
+                // Canonical covered cell: a single empty paragraph, no content.
+                emitParagraph({ runs: [] }, acc, ctx);
             }
-      // Univer's view-model expects each cell to end with a SECTION_BREAK
-      // after the last paragraph's PARAGRAPH (\r). Without the \n, the cell
-      // node ends up with no children and view-model construction fails,
-      // causing the table to silently drop from the rendered document.
+            // Univer's view-model expects each cell to end with a SECTION_BREAK
+            // after the last paragraph's PARAGRAPH (\r).
             acc.sectionBreaks.push({ startIndex: acc.data.length });
             acc.data += '\n';
             acc.data += TABLE_CELL_END;
@@ -435,41 +439,19 @@ function emitTable(t: ParsedTable, acc: Accumulator, ctx: AssembleContext) {
 
     const rowCount = t.rows.length;
 
-    // Pre-compute each cell's grid rectangle so border perimeter judges
-    // against the *merged* rectangle, not the underlying grid position.
-    // A continuation cell (vMerge without restart) reports its owner's
-    // span — though we don't actually need its borders, since the layout
-    // pass and renderer skip continuation cells. Computing `gridColCount`
-    // up front lets us answer "is this cell on the right edge of the
-    // table?" without relying on the per-row colCountInRow (which differs
-    // from the grid width when continuation rows are shorter).
-    interface CellMeta { colStart: number; colSpan: number; rowSpan: number; isContinue: boolean }
-    const cellMeta: CellMeta[][] = [];
-    let gridColCount = 0;
-    for (let ri = 0; ri < t.rows.length; ri++) {
-        const row = t.rows[ri];
-        const metaRow: CellMeta[] = [];
-        let cursor = 0;
-        for (const c of row) {
-            const colSpan = c.columnSpan ?? 1;
-            metaRow.push({
-                colStart: cursor,
-                colSpan,
-                rowSpan: c.rowSpan ?? 1,
-                isContinue: c.vMerge === 'continue',
-            });
-            cursor += colSpan;
-        }
-        gridColCount = Math.max(gridColCount, cursor);
-        cellMeta.push(metaRow);
-    }
+    const gridColCount = Math.max(0, ...grid.map((r) =>
+        r.reduce((n, c) => Math.max(n, c.colStart + c.columnSpan), 0)));
 
     acc.tableSource[tableId] = {
         tableId,
-        tableRows: t.rows.map((row, ri) => {
-            const tableCells = row.map((c, ci) => {
+        tableRows: grid.map((rowCells, ri) => {
+            const tableCells = rowCells.map((gc) => {
+                if (gc.kind === 'covered') {
+                    // Canonical covered cell: empty, no border, no shading.
+                    return { rowSpan: 0, columnSpan: 0 };
+                }
+                const c = gc.source!;
                 const cellEntry: Record<string, unknown> = {
-          // Cell margin: cell-level overrides table-level, table-level overrides global default.
                     margin: marginToUniver(c.margin, {
                         start: t.cellMargin?.start ?? defaultMargin.start,
                         end: t.cellMargin?.end ?? defaultMargin.end,
@@ -477,34 +459,18 @@ function emitTable(t: ParsedTable, acc: Accumulator, ctx: AssembleContext) {
                         bottom: t.cellMargin?.bottom ?? defaultMargin.bottom,
                     }),
                 };
-                if (c.rowSpan !== undefined) cellEntry.rowSpan = c.rowSpan;
-                if (c.columnSpan !== undefined) cellEntry.columnSpan = c.columnSpan;
-                // OOXML <w:vMerge/> (without val="restart") marks a cell as
-                // the continuation of a vertical merge. The layout pass
-                // skips painting these and folds their grid slot into the
-                // restart cell above. BooleanNumber.TRUE = 1.
-                if (c.vMerge === 'continue') cellEntry.vMergeContinue = 1;
+                cellEntry.rowSpan = gc.rowSpan;
+                cellEntry.columnSpan = gc.columnSpan;
 
-        // Background: cell shading wins, falls back to table-level default.
                 const fill = c.shadingFill ?? t.shadingFill;
                 if (fill && fill !== 'auto') cellEntry.backgroundColor = { rgb: `#${fill.toUpperCase()}` };
 
-        // Borders: per-side resolution against table perimeter / inside borders.
-        // Border perimeter checks the cell's MERGED rectangle against the
-        // table's grid edges. Continuation cells (`vMerge` without
-        // restart) get no border data emitted — the layout/renderer skip
-        // them, and the owning restart cell's bottom edge is the one
-        // visible at the merged region's bottom.
-                const meta = cellMeta[ri][ci];
-                if (meta.isContinue) {
-                    return cellEntry;
-                }
                 const sides: Array<'top' | 'bottom' | 'left' | 'right'> = ['top', 'bottom', 'left', 'right'];
                 const isPerimeter: Record<typeof sides[number], boolean> = {
                     top: ri === 0,
-                    bottom: ri + meta.rowSpan - 1 === rowCount - 1,
-                    left: meta.colStart === 0,
-                    right: meta.colStart + meta.colSpan === gridColCount,
+                    bottom: ri + gc.rowSpan - 1 === rowCount - 1,
+                    left: gc.colStart === 0,
+                    right: gc.colStart + gc.columnSpan === gridColCount,
                 };
                 for (const side of sides) {
                     const resolved = resolveCellBorder(side, c.borders, t.borders, isPerimeter[side]);
@@ -517,9 +483,8 @@ function emitTable(t: ParsedTable, acc: Accumulator, ctx: AssembleContext) {
 
                 if (c.vAlign) cellEntry.vAlign = VALIGN_TO_UNIVER[c.vAlign];
                 if (c.preferredWidthPx !== undefined) {
-                    cellEntry.size = { type: 1, width: { v: c.preferredWidthPx } }; // SPECIFIED
+                    cellEntry.size = { type: 1, width: { v: c.preferredWidthPx } };
                 }
-
                 return cellEntry;
             });
 
@@ -529,7 +494,7 @@ function emitTable(t: ParsedTable, acc: Accumulator, ctx: AssembleContext) {
                     : { val: { v: 0 }, hRule: 0 };
 
             const rowEntry: Record<string, unknown> = { tableCells, trHeight };
-            if (t.rowCantSplit?.[ri]) rowEntry.cantSplit = 1; // BooleanNumber.TRUE
+            if (t.rowCantSplit?.[ri]) rowEntry.cantSplit = 1;
             if (t.rowIsHeader?.[ri]) rowEntry.repeatHeaderRow = 1;
             return rowEntry;
         }),

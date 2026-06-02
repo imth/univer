@@ -280,7 +280,7 @@ describe('assembleDocument', () => {
         expect(cell.margin).toMatchObject({ start: { v: 10 }, end: { v: 10 }, top: { v: 5 }, bottom: { v: 5 } });
     });
 
-    it('vMerge=continue cell carries vMergeContinue and no border data', () => {
+    it('vMerge=continue cell is emitted as canonical covered cell (rowSpan:0, columnSpan:0), not vMergeContinue', () => {
         const children: DocumentChild[] = [
             {
                 kind: 'table',
@@ -307,14 +307,13 @@ describe('assembleDocument', () => {
         ).tableSource[tableId];
         const restartCell = src.tableRows[0].tableCells[0];
         const continueCell = src.tableRows[1].tableCells[0];
+        // Restart cell carries full rowSpan from expandTableGrid (master).
         expect(restartCell.rowSpan).toBe(2);
         expect(restartCell.vMergeContinue).toBeUndefined();
-        // Restart cell spans to row 1 (the last row), so its bottom border
-        // should resolve as the table's perimeter — we don't directly
-        // assert "isPerimeter" here, but borderBottom should be populated
-        // from t.borders when present. The narrower invariant:
-        // continuation cell emits NO border keys at all.
-        expect(continueCell.vMergeContinue).toBe(1);
+        // Canonical covered cell: rowSpan:0, columnSpan:0. No vMergeContinue emitted.
+        expect(continueCell.rowSpan).toBe(0);
+        expect(continueCell.columnSpan).toBe(0);
+        expect(continueCell.vMergeContinue).toBeUndefined();
         expect(continueCell.borderTop).toBeUndefined();
         expect(continueCell.borderBottom).toBeUndefined();
         expect(continueCell.borderLeft).toBeUndefined();
@@ -415,6 +414,44 @@ describe('assembleDocument', () => {
     // The paragraph entry inside the cell must point at the \r, not the new \n.
         const cellParagraph = ps.find((p) => ds.charCodeAt(p.startIndex) === 13);
         expect(cellParagraph).toBeDefined();
+    });
+
+    it('emits canonical covered cells for gridSpan (master + 0/0 covered, one block each)', () => {
+        const children: DocumentChild[] = [{
+            kind: 'table',
+            table: {
+                rows: [
+                    [{ paragraphs: [{ runs: [{ text: 'A' }] }], columnSpan: 2 }],
+                    [{ paragraphs: [{ runs: [{ text: 'B' }] }] }, { paragraphs: [{ runs: [{ text: 'C' }] }] }],
+                ],
+            },
+        }];
+        const doc = assembleDocument(children, { numbering: new Map(), rels: new Map(), media: new Map() });
+        const src = Object.values(doc.tableSource ?? {})[0] as any;
+
+        expect(src.tableRows[0].tableCells.map((c: any) => [c.rowSpan, c.columnSpan]))
+            .toEqual([[1, 2], [0, 0]]);
+        expect(src.tableRows[1].tableCells.length).toBe(2);
+
+        const cellStarts = (doc.body!.dataStream.match(/\x1C/g) ?? []).length;
+        expect(cellStarts).toBe(4);
+    });
+
+    it('emits vMerge continuation as a canonical covered 0/0 cell', () => {
+        const children: DocumentChild[] = [{
+            kind: 'table',
+            table: {
+                rows: [
+                    [{ paragraphs: [{ runs: [{ text: 'top' }] }], rowSpan: 2 }, { paragraphs: [{ runs: [{ text: 'x' }] }] }],
+                    [{ paragraphs: [], vMerge: 'continue' }, { paragraphs: [{ runs: [{ text: 'y' }] }] }],
+                ],
+            },
+        }];
+        const doc = assembleDocument(children, { numbering: new Map(), rels: new Map(), media: new Map() });
+        const src = Object.values(doc.tableSource ?? {})[0] as any;
+        expect(src.tableRows[0].tableCells[0]).toMatchObject({ rowSpan: 2 });
+        expect(src.tableRows[1].tableCells[0]).toMatchObject({ rowSpan: 0, columnSpan: 0 });
+        expect(JSON.stringify(src)).not.toContain('vMergeContinue');
     });
 
     it('OOXML numFmt → ListGlyphType: lowerLetter→5, lowerRoman→7, upperLetter→4, upperRoman→6, decimalZero→3', () => {
